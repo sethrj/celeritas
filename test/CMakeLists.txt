@@ -203,3 +203,9 @@ if(CELERITAS_USE_CUDA)
 endif()
 
 #-----------------------------------------------------------------------------#
+# Sim
+
+celeritas_setup_tests(SERIAL PREFIX sim)
+celeritas_add_test(sim/AccumPathLength.test.cc)
+
+#-----------------------------------------------------------------------------#
