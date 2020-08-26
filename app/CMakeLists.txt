@@ -57,3 +57,16 @@ if(CELERITAS_USE_Geant4 AND CELERITAS_USE_ROOT)
 endif()
 
 #-----------------------------------------------------------------------------#
+# DEMO: geometry tracking
+#-----------------------------------------------------------------------------#
+
+if(CELERITAS_BUILD_DEMOS)
+  add_executable(demo-rasterizer
+    demo-rasterizer/demo-rasterizer.cc
+  )
+  target_link_libraries(demo-rasterizer celeritas
+    nlohmann_json::nlohmann_json
+  )
+endif()
+
+#-----------------------------------------------------------------------------#

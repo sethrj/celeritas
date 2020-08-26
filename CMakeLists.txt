@@ -21,7 +21,7 @@ include(CeleritasUtils)
 # OPTIONS
 #---------------------------------------------------------------------------##
 
-# Tests
+# Components
 option(CELERITAS_BUILD_DEMOS "Build Celeritas demonstration mini-apps" ON)
 option(CELERITAS_BUILD_TESTS "Build Celeritas unit tests" ON)
 
@@ -55,7 +55,7 @@ endif()
 option(CELERITAS_DEBUG "Enable runtime assertions" ON)
 if(NOT CMAKE_BUILD_TYPE AND (CMAKE_GENERATOR STREQUAL "Ninja"
     OR CMAKE_GENERATOR STREQUAL "Unix Makefiles"))
-  set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build apps" FORCE)
+  set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Default build type" FORCE)
 endif()
 
 set(CMAKE_CXX_STANDARD 14)
