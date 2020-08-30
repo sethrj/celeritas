@@ -24,6 +24,9 @@ struct ImageInterface
     real_type pixel_width; //!< Width of a pixel
     array<int, 2> dims;    //!< Image dimensions (j, i)
     span<int>     image;   //!< Stored image [j][i]
+
+    //! Whether the interface has been assigned
+    explicit operator bool() const { return !image.empty(); }
 };
 
 //---------------------------------------------------------------------------//
