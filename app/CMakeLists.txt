@@ -63,6 +63,7 @@ endif()
 if(CELERITAS_BUILD_DEMOS)
   add_executable(demo-rasterizer
     demo-rasterizer/demo-rasterizer.cc
+    demo-rasterizer/ImageStore.cc
   )
   target_link_libraries(demo-rasterizer celeritas
     nlohmann_json::nlohmann_json
