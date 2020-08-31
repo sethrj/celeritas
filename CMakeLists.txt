@@ -127,7 +127,7 @@ endif()
 
 if(CELERITAS_BUILD_DEMOS)
   enable_language(C)
-  find_package(HDF5)
+  find_package(HDF5 COMPONENTS HL)
   find_package(nlohmann_json 3.7.0 ${_required_when_no_git})
 endif()
 

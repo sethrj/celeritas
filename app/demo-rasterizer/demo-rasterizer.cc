@@ -14,7 +14,6 @@
 #include "comm/Communicator.hh"
 #include "comm/ScopedMpiInit.hh"
 #include "comm/Utils.hh"
-#include "h5/ManagedId.hh"
 #include "RDemoRunner.hh"
 
 using namespace celeritas;
@@ -38,10 +37,20 @@ void run(std::istream& is)
 
     // Load geometry
     auto geo_params = std::make_shared<GeoParams>(
-        inp.at("gdml").get<std::string>().c_str());
+        inp.at("input").get<std::string>().c_str());
 
     // Construct image
     ImageStore image(inp.at("image").get<ImageRunArgs>());
+
+    // Construct runner
+    RDemoRunner run(geo_params);
+    run(image);
+
+    // Write image
+    std::string hdf5_filename = inp.at("output");
+    demo_rasterizer::to_h5(image, hdf5_filename);
+
+    // Construct json output
 }
 
 } // namespace demo_rasterizer

@@ -15,6 +15,7 @@
 
 namespace demo_rasterizer
 {
+class ImageStore;
 //---------------------------------------------------------------------------//
 //! Image construction arguments
 struct ImageRunArgs
@@ -27,6 +28,8 @@ struct ImageRunArgs
 
 void to_json(nlohmann::json& j, const ImageRunArgs& value);
 void from_json(const nlohmann::json& j, ImageRunArgs& value);
+
+void to_h5(const ImageStore& image, const char* filename);
 //---------------------------------------------------------------------------//
 } // namespace demo_rasterizer
 

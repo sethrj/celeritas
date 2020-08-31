@@ -15,12 +15,7 @@ namespace demo_rasterizer
 {
 //---------------------------------------------------------------------------//
 /*!
- * Brief class description.
- *
- * Optional detailed class description, and possibly example usage:
- * \code
-    RDemoRunner ...;
-   \endcode
+ * Set up and run rasterization of the given device image.
  */
 class RDemoRunner
 {

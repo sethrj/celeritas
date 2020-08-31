@@ -67,9 +67,11 @@ if(CELERITAS_BUILD_DEMOS AND HDF5_FOUND)
     demo-rasterizer/ImageStore.cc
     demo-rasterizer/RDemoRunner.cc
   )
-  target_link_libraries(demo-rasterizer celeritas
+  target_link_libraries(demo-rasterizer
+    celeritas
     nlohmann_json::nlohmann_json
     hdf5::hdf5
+    hdf5::hdf5_hl
   )
 endif()
 
