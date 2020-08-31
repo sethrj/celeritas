@@ -18,7 +18,7 @@ namespace celeritas
  * The rasterizer starts at the left side of an image and traces rightward.
  * Each "line" is a single thread.
  */
-class ImageView
+class ImageTrackView
 {
   public:
     // Construct with image data and thread ID
@@ -47,5 +47,5 @@ class ImageView
 //---------------------------------------------------------------------------//
 } // namespace celeritas
 
-#include "ImageView.i.hh"
+#include "ImageTrackView.i.hh"
 //---------------------------------------------------------------------------//

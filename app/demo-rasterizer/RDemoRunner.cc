@@ -10,7 +10,7 @@
 #include "base/Range.hh"
 #include "geometry/GeoParams.hh"
 #include "geometry/GeoStateStore.hh"
-#include "ImageView.hh"
+#include "ImageTrackView.hh"
 
 using namespace celeritas;
 
@@ -32,7 +32,7 @@ void initialize_geo_state(const GeoParams&      geo_params,
     // Loop over thread index (vertical pixel)
     for (auto thread_idx : celeritas::range(num_y_pixels))
     {
-        ImageView view(shared, ThreadId(thread_idx));
+        ImageTrackView view(shared, ThreadId(thread_idx));
 
         start_pos[thread_idx] = view.start_pos();
         start_dir[thread_idx] = view.start_dir();
