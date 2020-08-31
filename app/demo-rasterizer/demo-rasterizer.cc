@@ -14,7 +14,7 @@
 #include "comm/Communicator.hh"
 #include "comm/ScopedMpiInit.hh"
 #include "comm/Utils.hh"
-//#include "RDemoIO.hh"
+#include "h5/ManagedId.hh"
 #include "RDemoRunner.hh"
 
 using namespace celeritas;
@@ -28,7 +28,21 @@ namespace demo_rasterizer
 /*!
  * Run, launch, and output.
  */
-void run(std::istream&) {}
+void run(std::istream& is)
+{
+    // Read input options
+    auto inp = nlohmann::json::parse(is);
+
+    // Initialize GPU
+    celeritas::initialize_device(Communicator::comm_world());
+
+    // Load geometry
+    auto geo_params = std::make_shared<GeoParams>(
+        inp.at("gdml").get<std::string>().c_str());
+
+    // Construct image
+    ImageStore image(inp.at("image").get<ImageRunArgs>());
+}
 
 } // namespace demo_rasterizer
 

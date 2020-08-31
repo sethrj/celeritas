@@ -3,13 +3,13 @@
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
-//! \file ImageView.hh
+//! \file ImageTrackView.hh
 //---------------------------------------------------------------------------//
 #pragma once
 
 #include "ImageInterface.hh"
 
-namespace celeritas
+namespace demo_rasterizer
 {
 //---------------------------------------------------------------------------//
 /*!
@@ -21,8 +21,16 @@ namespace celeritas
 class ImageTrackView
 {
   public:
+    //@{
+    //! Type aliases
+    using ThreadId  = celeritas::ThreadId;
+    using Real3     = celeritas::Real3;
+    using real_type = celeritas::real_type;
+    //@}
+
+  public:
     // Construct with image data and thread ID
-    inline ImageView(const ImageInterface& shared, ThreadId tid);
+    inline ImageTrackView(const ImageInterface& shared, ThreadId tid);
 
     // Calculate start position
     inline CELER_FUNCTION Real3 start_pos() const;
@@ -45,7 +53,6 @@ class ImageTrackView
 };
 
 //---------------------------------------------------------------------------//
-} // namespace celeritas
+} // namespace demo_rasterizer
 
 #include "ImageTrackView.i.hh"
-//---------------------------------------------------------------------------//

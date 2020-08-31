@@ -10,15 +10,18 @@
 #include "base/ArrayUtils.hh"
 #include "base/Range.hh"
 
-namespace celeritas
+using celeritas::range;
+
+namespace demo_rasterizer
 {
 //---------------------------------------------------------------------------//
 /*!
  * Construct with image slice and extents.
  */
-ImageStore::ImageStore(Params params)
+ImageStore::ImageStore(ImageRunArgs params)
 {
-    REQUIRE(is_soft_unit_vector(params.rightward_ax, SoftEqual<real_type>{}));
+    REQUIRE(celeritas::is_soft_unit_vector(params.rightward_ax,
+                                           celeritas::SoftEqual<real_type>{}));
     REQUIRE(params.lower_left != params.upper_right);
     REQUIRE(params.vertical_pixels > 0);
 
@@ -61,7 +64,7 @@ ImageStore::ImageStore(Params params)
 
     // Allocate storage
     dims_  = {num_y, num_x};
-    image_ = DeviceVector<int>(num_y * num_x);
+    image_ = celeritas::DeviceVector<int>(num_y * num_x);
     ENSURE(!image_.empty());
 }
 

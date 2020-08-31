@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020 UT-Battelle, LLC, and other demo_rasterizer developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -12,8 +12,9 @@
 #include "base/Span.hh"
 #include "base/Types.hh"
 #include "ImageInterface.hh"
+#include "ImageIO.hh"
 
-namespace celeritas
+namespace demo_rasterizer
 {
 //---------------------------------------------------------------------------//
 /*!
@@ -24,22 +25,15 @@ class ImageStore
   public:
     //@{
     //! Type aliases
-    using UInt2   = array<unsigned int, 2>;
-    using SpanInt = span<int>;
+    using real_type = celeritas::real_type;
+    using UInt2     = celeritas::array<unsigned int, 2>;
+    using Real3     = celeritas::Real3;
+    using SpanInt   = celeritas::span<int>;
     //@}
-
-    //! Construction arguments
-    struct Params
-    {
-        Real3        lower_left;
-        Real3        upper_right;
-        Real3        rightward_ax;
-        unsigned int vertical_pixels;
-    };
 
   public:
     // Construct with defaults
-    explicit ImageStore(Params);
+    explicit ImageStore(ImageRunArgs);
 
     // >>> DEVICE ACCESSORS
 
@@ -75,8 +69,8 @@ class ImageStore
     Real3             right_ax_;
     real_type         pixel_width_;
     UInt2             dims_;
-    DeviceVector<int> image_;
+    celeritas::DeviceVector<int> image_;
 };
 
 //---------------------------------------------------------------------------//
-} // namespace celeritas
+} // namespace demo_rasterizer

@@ -28,8 +28,7 @@ class RDemoRunner
     //@{
     //! Type aliases
     using SPConstGeo = std::shared_ptr<const celeritas::GeoParams>;
-    using ImageStore = celeritas::ImageStore;
-    using Args       = ImageStore::Params;
+    using Args       = ImageRunArgs;
     //@}
 
   public:

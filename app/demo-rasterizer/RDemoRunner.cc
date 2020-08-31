@@ -20,9 +20,9 @@ namespace
 /*!
  * Initialize the geometry state on host.
  */
-void initialize_geo_state(const GeoParams&      geo_params,
-                          const ImageInterface& shared,
-                          GeoStateStore*        state)
+void initialize_geo_state(const GeoParams&                       geo_params,
+                          const demo_rasterizer::ImageInterface& shared,
+                          GeoStateStore*                         state)
 {
     REQUIRE(state && state->size() == shared.dims[0]);
     unsigned int       num_y_pixels = shared.dims[0];
@@ -32,7 +32,7 @@ void initialize_geo_state(const GeoParams&      geo_params,
     // Loop over thread index (vertical pixel)
     for (auto thread_idx : celeritas::range(num_y_pixels))
     {
-        ImageTrackView view(shared, ThreadId(thread_idx));
+        demo_rasterizer::ImageTrackView view(shared, ThreadId(thread_idx));
 
         start_pos[thread_idx] = view.start_pos();
         start_dir[thread_idx] = view.start_dir();

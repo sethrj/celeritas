@@ -3,48 +3,44 @@
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
-//! \file ImageTrackView.i.hh
+//! \file ImageIO.hh
 //---------------------------------------------------------------------------//
+#pragma once
+
+#include <nlohmann/json.hpp>
 
 #include "base/Assert.hh"
+#include "base/Array.hh"
+#include "base/Types.hh"
 
 namespace demo_rasterizer
 {
 //---------------------------------------------------------------------------//
-/*!
- * Construct with defaults.
- */
-ImageTrackView::ImageTrackView(const ImageInterface& shared, ThreadId tid)
-    : shared_(shared), j_index_(tid.get())
+//! Image construction arguments
+struct ImageRunArgs
 {
-    REQUIRE(j_index_ < shared_.dims[0]);
-}
+    celeritas::Real3 lower_left;
+    celeritas::Real3 upper_right;
+    celeritas::Real3 rightward_ax;
+    unsigned int     vertical_pixels;
+};
 
+void to_json(nlohmann::json& j, const ImageRunArgs& value);
+void from_json(const nlohmann::json& j, ImageRunArgs& value);
 //---------------------------------------------------------------------------//
-/*!
- * Calculate starting position.
- */
-CELER_FUNCTION auto ImageTrackView::start_pos() const -> Real3
+} // namespace demo_rasterizer
+
+namespace celeritas
 {
-    Real3 result;
-    for (int i = 0; i < 3; ++i)
+//---------------------------------------------------------------------------//
+template<typename T, std::size_t N>
+void from_json(const nlohmann::json& j, array<T, N>& value)
+{
+    REQUIRE(j.size() == N);
+    for (std::size_t i = 0; i != N; ++i)
     {
-        result[i] = shared_.origin[i] + shared_.down_ax[i] * j_index_;
+        value[i] = j[i].get<T>();
     }
-    return result;
-}
-
-//---------------------------------------------------------------------------//
-/*!
- * Set the value for a pixel.
- */
-CELER_FUNCTION void ImageTrackView::set_pixel(unsigned int i, int value)
-{
-    REQUIRE(i >= 0 && i < shared_.dims[1]);
-    unsigned int idx = j_index_ * shared_.dims[1] + i;
-
-    CHECK(idx < shared_.image.size());
-    shared_.image[idx] = value;
 }
 
 //---------------------------------------------------------------------------//

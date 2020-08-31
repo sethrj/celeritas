@@ -60,14 +60,16 @@ endif()
 # DEMO: geometry tracking
 #-----------------------------------------------------------------------------#
 
-if(CELERITAS_BUILD_DEMOS)
+if(CELERITAS_BUILD_DEMOS AND HDF5_FOUND)
   add_executable(demo-rasterizer
     demo-rasterizer/demo-rasterizer.cc
+    demo-rasterizer/ImageIO.cc
     demo-rasterizer/ImageStore.cc
     demo-rasterizer/RDemoRunner.cc
   )
   target_link_libraries(demo-rasterizer celeritas
     nlohmann_json::nlohmann_json
+    hdf5::hdf5
   )
 endif()
 

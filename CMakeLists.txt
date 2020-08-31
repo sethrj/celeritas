@@ -13,6 +13,9 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 if(CMAKE_VERSION VERSION_LESS 3.18)
   list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/backport/3.18")
 endif()
+if(CMAKE_VERSION VERSION_LESS 3.19)
+  list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/backport/3.19")
+endif()
 
 include(GNUInstallDirs)
 include(CeleritasUtils)
@@ -123,6 +126,8 @@ else()
 endif()
 
 if(CELERITAS_BUILD_DEMOS)
+  enable_language(C)
+  find_package(HDF5)
   find_package(nlohmann_json 3.7.0 ${_required_when_no_git})
 endif()
 
