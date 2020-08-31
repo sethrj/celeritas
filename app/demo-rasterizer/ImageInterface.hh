@@ -22,7 +22,7 @@ struct ImageInterface
     Real3     down_ax;  //!< Downward axis (increasing j, track initialization)
     Real3     right_ax; //!< Rightward axis (increasing i, track movement)
     real_type pixel_width; //!< Width of a pixel
-    array<int, 2> dims;    //!< Image dimensions (j, i)
+    array<unsigned int, 2> dims;    //!< Image dimensions (j, i)
     span<int>     image;   //!< Stored image [j][i]
 
     //! Whether the interface has been assigned

@@ -51,7 +51,7 @@ ImageStore::ImageStore(Params params)
     // Set number of pixels in each direction.
     auto num_y   = params.vertical_pixels;
     pixel_width_ = width_y / num_y;
-    auto num_x   = std::max<int>(std::ceil(width_x / pixel_width_), 1);
+    auto num_x = std::max<unsigned int>(std::ceil(width_x / pixel_width_), 1);
 
     // Set upper left corner
     for (int i : range(3))
@@ -63,6 +63,23 @@ ImageStore::ImageStore(Params params)
     dims_  = {num_y, num_x};
     image_ = DeviceVector<int>(num_y * num_x);
     ENSURE(!image_.empty());
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Access image on host for initializing.
+ */
+ImageInterface ImageStore::host_interface()
+{
+    ImageInterface result;
+
+    result.origin      = origin_;
+    result.down_ax     = down_ax_;
+    result.right_ax    = right_ax_;
+    result.pixel_width = pixel_width_;
+    result.dims        = dims_;
+
+    return result;
 }
 
 //---------------------------------------------------------------------------//

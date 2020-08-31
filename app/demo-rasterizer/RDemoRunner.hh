@@ -1,0 +1,47 @@
+//----------------------------------*-C++-*----------------------------------//
+// Copyright 2020 UT-Battelle, LLC, and other Celeritas developers.
+// See the top-level COPYRIGHT file for details.
+// SPDX-License-Identifier: (Apache-2.0 OR MIT)
+//---------------------------------------------------------------------------//
+//! \file RDemoRunner.hh
+//---------------------------------------------------------------------------//
+#pragma once
+
+#include <memory>
+#include "geometry/GeoParams.hh"
+#include "ImageStore.hh"
+
+namespace demo_rasterizer
+{
+//---------------------------------------------------------------------------//
+/*!
+ * Brief class description.
+ *
+ * Optional detailed class description, and possibly example usage:
+ * \code
+    RDemoRunner ...;
+   \endcode
+ */
+class RDemoRunner
+{
+  public:
+    //@{
+    //! Type aliases
+    using SPConstGeo = std::shared_ptr<const celeritas::GeoParams>;
+    using ImageStore = celeritas::ImageStore;
+    using Args       = ImageStore::Params;
+    //@}
+
+  public:
+    // Construct with geometry
+    explicit RDemoRunner(SPConstGeo geometry);
+
+    // Trace an image
+    void operator()(ImageStore* image) const;
+
+  private:
+    SPConstGeo geo_params_;
+};
+
+//---------------------------------------------------------------------------//
+} // namespace demo_rasterizer

@@ -15,7 +15,7 @@
 #include "comm/ScopedMpiInit.hh"
 #include "comm/Utils.hh"
 //#include "RDemoIO.hh"
-//#include "RDemoRunner.hh"
+#include "RDemoRunner.hh"
 
 using namespace celeritas;
 using std::cerr;

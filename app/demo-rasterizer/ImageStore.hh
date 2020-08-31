@@ -24,22 +24,27 @@ class ImageStore
   public:
     //@{
     //! Type aliases
-    using Int2    = array<int, 2>;
+    using UInt2   = array<unsigned int, 2>;
     using SpanInt = span<int>;
     //@}
 
     //! Construction arguments
     struct Params
     {
-        Real3 lower_left;
-        Real3 upper_right;
-        Real3 rightward_ax;
-        int   vertical_pixels;
+        Real3        lower_left;
+        Real3        upper_right;
+        Real3        rightward_ax;
+        unsigned int vertical_pixels;
     };
 
   public:
     // Construct with defaults
     explicit ImageStore(Params);
+
+    // >>> DEVICE ACCESSORS
+
+    //! Access image on host for initializing
+    ImageInterface host_interface();
 
     //! Access image on device for writing
     ImageInterface device_interface();
@@ -59,7 +64,7 @@ class ImageStore
     real_type pixel_width() const { return pixel_width_; }
 
     //! Dimensions {j, i} of the image
-    const Int2& dims() const { return dims_; }
+    const UInt2& dims() const { return dims_; }
 
     // Copy out the image to the host
     void image_to_host(SpanInt host_data) const;
@@ -69,7 +74,7 @@ class ImageStore
     Real3             down_ax_;
     Real3             right_ax_;
     real_type         pixel_width_;
-    Int2              dims_;
+    UInt2             dims_;
     DeviceVector<int> image_;
 };
 

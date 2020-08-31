@@ -15,7 +15,7 @@ namespace celeritas
  * Construct with defaults.
  */
 ImageView::ImageView(const ImageInterface& shared, ThreadId tid)
-    : j_index_(tid.get());
+    : shared_(shared), j_index_(tid.get())
 {
     REQUIRE(j_index_ < shared_.dims[0]);
 }
@@ -31,19 +31,20 @@ CELER_FUNCTION Real3 ImageView::start_pos() const
     {
         result[i] = shared_.origin[i] + shared_.down_ax[i] * j_index_;
     }
+    return result;
 }
 
 //---------------------------------------------------------------------------//
 /*!
  * Set the value for a pixel.
  */
-CELER_FUNCTION void ImageView::set_pixel(int i, int value)
+CELER_FUNCTION void ImageView::set_pixel(unsigned int i, int value)
 {
     REQUIRE(i >= 0 && i < shared_.dims[1]);
-    int idx = j_index_ * shared_.dims[1] + i;
+    unsigned int idx = j_index_ * shared_.dims[1] + i;
 
     CHECK(idx < shared_.image.size());
-    shared_.image[idx];
+    shared_.image[idx] = value;
 }
 
 //---------------------------------------------------------------------------//

@@ -21,11 +21,6 @@ namespace celeritas
 class ImageView
 {
   public:
-    //@{
-    //! Type aliases
-    //@}
-
-  public:
     // Construct with image data and thread ID
     inline ImageView(const ImageInterface& shared, ThreadId tid);
 
@@ -42,11 +37,11 @@ class ImageView
     }
 
     // Set pixel value
-    inline CELER_FUNCTION void set_pixel(int i, int value);
+    inline CELER_FUNCTION void set_pixel(unsigned int i, int value);
 
   private:
     const ImageInterface& shared_;
-    int                   j_index_;
+    unsigned int          j_index_;
 };
 
 //---------------------------------------------------------------------------//
