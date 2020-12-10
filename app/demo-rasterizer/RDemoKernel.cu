@@ -28,9 +28,11 @@ __global__ void trace_impl(const GeoParamsPointers geo_params,
                            const GeoStatePointers  geo_state,
                            const ImagePointers     image_state)
 {
-    auto tid = celeritas::KernelParamCalculator::thread_id();
-    if (tid.get() >= image_state.dims[0])
+    auto tid = KernelParamCalculator::thread_id(image_state.dims[0]);
+    if (!tid)
+    {
         return;
+    }
 
     ImageTrackView image(image_state, tid);
     GeoTrackView   geo(geo_params, geo_state, tid);

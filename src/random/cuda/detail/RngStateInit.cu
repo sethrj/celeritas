@@ -22,12 +22,14 @@ using namespace celeritas;
 __global__ void
 init_impl(const RngStatePointers state, const RngSeed::value_type* const seeds)
 {
-    auto tid = celeritas::KernelParamCalculator::thread_id();
-    if (tid.get() < state.size())
+    auto thread_id = KernelParamCalculator::thread_id(states.size());
+    if (!thread_id)
     {
-        RngEngine rng(state, tid);
-        rng = RngEngine::Initializer_t{seeds[tid.get()]};
+        return;
     }
+
+    RngEngine rng(state, thread_id);
+    rng = RngEngine::Initializer_t{seeds[thread_id.get()]};
 }
 //---------------------------------------------------------------------------//
 } // namespace

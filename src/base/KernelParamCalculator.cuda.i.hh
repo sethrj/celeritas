@@ -22,4 +22,20 @@ CELER_FUNCTION auto KernelParamCalculator::thread_id() -> ThreadId
 }
 
 //---------------------------------------------------------------------------//
+/*!
+ * Get the thread ID if less than the number of threads.
+ *
+ * This can be used to simplify kernels -- start by calculating thread ID and
+ * return if !thread_id. Later to encourage thread cooperation we always
+ * initialize track views and have them internally avoid data accesses as
+ * needed.
+ */
+CELER_FUNCTION auto KernelParamCalculator::thread_id(dim_type max_num_threads)
+    -> ThreadId
+{
+    ThreadId result = KernelParamCalculator::thread_id();
+    return result < max_num_threads ? result : ThreadId{};
+}
+
+//---------------------------------------------------------------------------//
 } // namespace celeritas

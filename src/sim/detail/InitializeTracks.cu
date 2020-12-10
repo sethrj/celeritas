@@ -47,50 +47,48 @@ __global__ void init_tracks_kernel(const StatePointers            states,
                                    size_type num_vacancies)
 {
     auto thread_id = KernelParamCalculator::thread_id().get();
-    if (thread_id < num_vacancies)
+    if (thread_id >= num_vacancies)
     {
-        // Get the track initializer from the back of the vector. Since new
-        // initializers are pushed to the back of the vector, these will be the
-        // most recently added and therefore the ones that still might have a
-        // parent they can copy the geometry state from.
-        const TrackInitializer& init
-            = inits.initializers[inits.initializers.size() - thread_id - 1];
+        return;
+    }
+    // Get the track initializer from the back of the vector. Since new
+    // initializers are pushed to the back of the vector, these will be the
+    // most recently added and therefore the ones that still might have a
+    // parent they can copy the geometry state from.
+    const TrackInitializer& init
+        = inits.initializers[inits.initializers.size() - thread_id - 1];
 
-        // Index of the empty slot to create the new track in
-        ThreadId slot_id(
-            inits.vacancies[inits.vacancies.size() - thread_id - 1]);
+    // Index of the empty slot to create the new track in
+    ThreadId slot_id(inits.vacancies[inits.vacancies.size() - thread_id - 1]);
 
-        // Initialize the simulation state
+    // Initialize the simulation state
+    {
+        SimTrackView sim(states.sim, slot_id);
+        sim = init.sim;
+    }
+
+    // Initialize the particle physics data
+    {
+        ParticleTrackView particle(params.particle, states.particle, slot_id);
+        particle = init.particle;
+    }
+
+    // Initialize the geometry
+    {
+        GeoTrackView geo(params.geo, states.geo, slot_id);
+        if (thread_id < inits.parent.size())
         {
-            SimTrackView sim(states.sim, slot_id);
-            sim = init.sim;
+            // Copy the geometry state from the parent for improved
+            // performance
+            TrackId::value_type parent_id
+                = inits.parent[inits.parent.size() - thread_id - 1];
+            GeoTrackView parent(params.geo, states.geo, ThreadId{parent_id});
+            geo = {parent, init.geo.dir};
         }
-
-        // Initialize the particle physics data
+        else
         {
-            ParticleTrackView particle(
-                params.particle, states.particle, slot_id);
-            particle = init.particle;
-        }
-
-        // Initialize the geometry
-        {
-            GeoTrackView geo(params.geo, states.geo, slot_id);
-            if (thread_id < inits.parent.size())
-            {
-                // Copy the geometry state from the parent for improved
-                // performance
-                TrackId::value_type parent_id
-                    = inits.parent[inits.parent.size() - thread_id - 1];
-                GeoTrackView parent(
-                    params.geo, states.geo, ThreadId{parent_id});
-                geo = {parent, init.geo.dir};
-            }
-            else
-            {
-                // Initialize it from the position (more expensive)
-                geo = init.geo;
-            }
+            // Initialize it from the position (more expensive)
+            geo = init.geo;
         }
     }
 }
@@ -105,69 +103,70 @@ __global__ void locate_alive_kernel(const StatePointers            states,
                                     const ParamPointers            params,
                                     const TrackInitializerPointers inits)
 {
-    auto thread_id = KernelParamCalculator::thread_id();
-    if (thread_id < states.size())
+    auto thread_id = KernelParamCalculator::thread_id(states.size());
+    if (!thread_id)
     {
-        // Secondary to copy to the parent's track slot if the parent has died
-        size_type secondary_id = flag_id();
+        return;
+    }
 
-        // Count how many secondaries survived cutoffs for each track
-        inits.secondary_counts[thread_id.get()] = 0;
-        Interaction& result = states.interactions[thread_id.get()];
-        for (size_type i = 0; i < result.secondaries.size(); ++i)
+    // Secondary to copy to the parent's track slot if the parent has died
+    size_type secondary_id = flag_id();
+
+    // Count how many secondaries survived cutoffs for each track
+    inits.secondary_counts[thread_id.get()] = 0;
+    Interaction& result = states.interactions[thread_id.get()];
+    for (size_type i = 0; i < result.secondaries.size(); ++i)
+    {
+        if (result.secondaries[i])
         {
-            if (result.secondaries[i])
+            if (secondary_id == flag_id())
             {
-                if (secondary_id == flag_id())
-                {
-                    secondary_id = i;
-                }
-                ++inits.secondary_counts[thread_id.get()];
+                secondary_id = i;
             }
+            ++inits.secondary_counts[thread_id.get()];
         }
+    }
 
-        SimTrackView sim(states.sim, thread_id);
-        if (sim.alive())
-        {
-            // The track is alive: mark this track slot as active
-            inits.vacancies[thread_id.get()] = flag_id();
-        }
-        else if (secondary_id != flag_id())
-        {
-            // The track is dead and produced secondaries: fill the empty track
-            // slot with the first secondary and mark the track slot as active
+    SimTrackView sim(states.sim, thread_id);
+    if (sim.alive())
+    {
+        // The track is alive: mark this track slot as active
+        inits.vacancies[thread_id.get()] = flag_id();
+    }
+    else if (secondary_id != flag_id())
+    {
+        // The track is dead and produced secondaries: fill the empty track
+        // slot with the first secondary and mark the track slot as active
 
-            // Calculate the track ID of the secondary
-            // TODO: This is nondeterministic; we need to calculate the track
-            // ID in a reproducible way.
-            CHECK(sim.event_id() < inits.track_counter.size());
-            TrackId::value_type track_id
-                = atomic_add(&inits.track_counter[sim.event_id().get()], 1u);
+        // Calculate the track ID of the secondary
+        // TODO: This is nondeterministic; we need to calculate the track
+        // ID in a reproducible way.
+        CHECK(sim.event_id() < inits.track_counter.size());
+        TrackId::value_type track_id
+            = atomic_add(&inits.track_counter[sim.event_id().get()], 1u);
 
-            // Initialize the simulation state
-            sim = {TrackId{track_id}, sim.track_id(), sim.event_id(), true};
+        // Initialize the simulation state
+        sim = {TrackId{track_id}, sim.track_id(), sim.event_id(), true};
 
-            // Initialize the particle state from the secondary
-            Secondary&        secondary = result.secondaries[secondary_id];
-            ParticleTrackView particle(
-                params.particle, states.particle, thread_id);
-            particle = {secondary.def_id, secondary.energy};
+        // Initialize the particle state from the secondary
+        Secondary&        secondary = result.secondaries[secondary_id];
+        ParticleTrackView particle(params.particle, states.particle, thread_id);
+        particle = {secondary.def_id, secondary.energy};
 
-            // Keep the parent's geometry state
-            GeoTrackView geo(params.geo, states.geo, thread_id);
-            geo = {geo, secondary.direction};
+        // Keep the parent's geometry state
+        GeoTrackView geo(params.geo, states.geo, thread_id);
+        geo = {geo, secondary.direction};
 
-            // Mark the secondary as processed and the track as active
-            --inits.secondary_counts[thread_id.get()];
-            secondary                        = Secondary{};
-            inits.vacancies[thread_id.get()] = flag_id();
-        }
-        else
-        {
-            // The track is dead and did not produce secondaries: store the
-            // index so it can be used later to initialize a new track
-            inits.vacancies[thread_id.get()] = thread_id.get();
-        }
+        // Mark the secondary as processed and the track as active
+        --inits.secondary_counts[thread_id.get()];
+        secondary                        = Secondary{};
+        inits.vacancies[thread_id.get()] = flag_id();
+    }
+    else
+    {
+        // The track is dead and did not produce secondaries: store the
+        // index so it can be used later to initialize a new track
+        inits.vacancies[thread_id.get()] = thread_id.get();
     }
 }
 
@@ -179,22 +178,24 @@ __global__ void
 process_primaries_kernel(const Span<const Primary>    primaries,
                          const Span<TrackInitializer> initializers)
 {
-    auto thread_id = KernelParamCalculator::thread_id();
-    if (thread_id < primaries.size())
+    auto thread_id = KernelParamCalculator::thread_id(primaries.size());
+    if (!thread_id)
     {
-        TrackInitializer& init    = initializers[thread_id.get()];
-        const Primary&    primary = primaries[thread_id.get()];
-
-        // Construct a track initializer from a primary particle
-        init.sim.track_id    = primary.track_id;
-        init.sim.parent_id   = TrackId{};
-        init.sim.event_id    = primary.event_id;
-        init.sim.alive       = true;
-        init.geo.pos         = primary.position;
-        init.geo.dir         = primary.direction;
-        init.particle.def_id = primary.def_id;
-        init.particle.energy = primary.energy;
+        return;
     }
+
+    TrackInitializer& init    = initializers[thread_id.get()];
+    const Primary&    primary = primaries[thread_id.get()];
+
+    // Construct a track initializer from a primary particle
+    init.sim.track_id    = primary.track_id;
+    init.sim.parent_id   = TrackId{};
+    init.sim.event_id    = primary.event_id;
+    init.sim.alive       = true;
+    init.geo.pos         = primary.position;
+    init.geo.dir         = primary.direction;
+    init.particle.def_id = primary.def_id;
+    init.particle.energy = primary.energy;
 }
 
 //---------------------------------------------------------------------------//
@@ -205,50 +206,53 @@ __global__ void process_secondaries_kernel(const StatePointers states,
                                            const ParamPointers params,
                                            const TrackInitializerPointers inits)
 {
-    auto thread_id = KernelParamCalculator::thread_id();
-    if (thread_id < states.size())
+    auto thread_id = KernelParamCalculator::thread_id(states.size());
+    if (!thread_id)
     {
-        // Construct the state accessors
-        GeoTrackView geo(params.geo, states.geo, thread_id);
-        SimTrackView sim(states.sim, thread_id);
-
-        // Offset in the vector of track initializers
-        size_type offset_id = inits.secondary_counts[thread_id.get()];
-
-        Interaction& result = states.interactions[thread_id.get()];
-        for (const auto& secondary : result.secondaries)
-        {
-            if (secondary)
-            {
-                // The secondary survived cutoffs: convert to a track
-                CHECK(offset_id < inits.initializers.size());
-                TrackInitializer& init = inits.initializers[offset_id];
-
-                // Store the thread ID of the secondary's parent
-                CHECK(offset_id < inits.parent.size());
-                inits.parent[offset_id++] = thread_id.get();
-
-                // Calculate the track ID of the secondary
-                // TODO: This is nondeterministic; we need to calculate the
-                // track ID in a reproducible way.
-                CHECK(sim.event_id() < inits.track_counter.size());
-                TrackId::value_type track_id = atomic_add(
-                    &inits.track_counter[sim.event_id().get()], 1u);
-
-                // Construct a track initializer from a secondary
-                init.sim.track_id    = TrackId{track_id};
-                init.sim.parent_id   = sim.track_id();
-                init.sim.event_id    = sim.event_id();
-                init.sim.alive       = true;
-                init.geo.pos         = geo.pos();
-                init.geo.dir         = secondary.direction;
-                init.particle.def_id = secondary.def_id;
-                init.particle.energy = secondary.energy;
-            }
-        }
-        // Clear the secondaries from the interaction
-        result.secondaries = {};
+        return;
     }
+
+    // Construct the state accessors
+    GeoTrackView geo(params.geo, states.geo, thread_id);
+    SimTrackView sim(states.sim, thread_id);
+
+    // Offset in the vector of track initializers
+    size_type offset_id = inits.secondary_counts[thread_id.get()];
+
+    Interaction& result = states.interactions[thread_id.get()];
+    for (const auto& secondary : result.secondaries)
+    {
+        if (secondary)
+        {
+            // The secondary survived cutoffs: convert to a track
+            CHECK(offset_id < inits.initializers.size());
+            TrackInitializer& init = inits.initializers[offset_id];
+
+            // Store the thread ID of the secondary's parent
+            CHECK(offset_id < inits.parent.size());
+            inits.parent[offset_id++] = thread_id.get();
+
+            // Calculate the track ID of the secondary
+            // TODO: This is nondeterministic; we need to calculate the
+            // track ID in a reproducible way.
+            CHECK(sim.event_id() < inits.track_counter.size());
+            TrackId::value_type track_id
+                = atomic_add(&inits.track_counter[sim.event_id().get()], 1u);
+
+            // Construct a track initializer from a secondary
+            init.sim.track_id    = TrackId{track_id};
+            init.sim.parent_id   = sim.track_id();
+            init.sim.event_id    = sim.event_id();
+            init.sim.alive       = true;
+            init.geo.pos         = geo.pos();
+            init.geo.dir         = secondary.direction;
+            init.particle.def_id = secondary.def_id;
+            init.particle.energy = secondary.energy;
+        }
+    }
+    // Clear the secondaries from the interaction
+    // TODO: may not be necessary
+    result.secondaries = {};
 }
 } // end namespace
 

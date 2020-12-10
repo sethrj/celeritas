@@ -21,12 +21,14 @@ using namespace celeritas;
  */
 __global__ void init_impl(const SimStatePointers state)
 {
-    auto tid = celeritas::KernelParamCalculator::thread_id();
-    if (tid.get() < state.size())
+    auto tid = celeritas::KernelParamCalculator::thread_id(state.size());
+    if (!tid)
     {
-        SimTrackView sim_view(state, tid);
-        sim_view = SimTrackView::Initializer_t{};
+        return;
     }
+
+    SimTrackView sim_view(state, tid);
+    sim_view = SimTrackView::Initializer_t{};
 }
 //---------------------------------------------------------------------------//
 } // namespace

@@ -33,7 +33,7 @@ class KernelParamCalculator
   public:
     //!@{
     //! Type aliases
-    using dim_type = unsigned int;
+    using dim_type = ThreadId::value_type;
     //!@}
 
     //! Parameters needed for a CUDA lauch call
@@ -48,10 +48,13 @@ class KernelParamCalculator
     explicit KernelParamCalculator(dim_type block_size = 256u);
 
     // Get launch parameters
-    LaunchParams operator()(size_type min_num_threads) const;
+    LaunchParams operator()(size_type num_threads) const;
 
     // Get the thread ID
     inline CELER_FUNCTION static ThreadId thread_id();
+
+    // Get the thread ID if valid (less than number of launch threads)
+    inline CELER_FUNCTION static ThreadId thread_id(dim_type num_threads);
 
   private:
     //! Default threads per block
