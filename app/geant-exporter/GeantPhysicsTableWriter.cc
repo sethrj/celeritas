@@ -86,7 +86,7 @@ ImportProcessType to_import_process_type(G4ProcessType g4_process_type)
         case G4ProcessType::fUCN:
             return ImportProcessType::ucn;
     }
-    CHECK_UNREACHABLE;
+    CELER_ASSERT_UNREACHABLE();
 }
 
 //---------------------------------------------------------------------------//
@@ -188,7 +188,7 @@ to_import_physics_vector_type(G4PhysicsVectorType g4_vector_type)
         case T_G4LPhysicsFreeVector:
             return ImportPhysicsVectorType::free;
     }
-    CHECK_UNREACHABLE;
+    CELER_ASSERT_UNREACHABLE();
 }
 
 //---------------------------------------------------------------------------//
@@ -212,7 +212,7 @@ real_type units_to_scaling(ImportUnits units)
         case ImportUnits::cm:
             return 1 / cm;
     }
-    CHECK_UNREACHABLE;
+    CELER_ASSERT_UNREACHABLE();
 }
 
 } // namespace
@@ -225,7 +225,7 @@ GeantPhysicsTableWriter::GeantPhysicsTableWriter(TFile*         root_file,
                                                  TableSelection which_tables)
     : root_file_(root_file), which_tables_(which_tables)
 {
-    REQUIRE(root_file);
+    CELER_EXPECT(root_file);
     this->tree_process_ = std::make_unique<TTree>("processes", "processes");
     tree_process_->Branch("ImportProcess", &process_);
 }

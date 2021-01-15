@@ -32,7 +32,7 @@ RootImporter::RootImporter(const char* filename)
 {
     CELER_LOG(status) << "Opening ROOT file";
     root_input_.reset(TFile::Open(filename, "read"));
-    ENSURE(root_input_);
+    CELER_ENSURE(root_input_);
 }
 
 //---------------------------------------------------------------------------//
@@ -66,9 +66,9 @@ RootImporter::result_type RootImporter::operator()()
                   });
     }
 
-    ENSURE(geant_data.particle_params);
-    ENSURE(geant_data.geometry);
-    ENSURE(geant_data.material_params);
+    CELER_ENSURE(geant_data.particle_params);
+    CELER_ENSURE(geant_data.geometry);
+    CELER_ENSURE(geant_data.material_params);
     return geant_data;
 }
 
@@ -82,10 +82,10 @@ std::shared_ptr<ParticleParams> RootImporter::load_particle_data()
     // Open the 'particles' branch and reserve size for the converted data
     std::unique_ptr<TTree> tree_particles(
         root_input_->Get<TTree>("particles"));
-    CHECK(tree_particles);
+    CELER_ASSERT(tree_particles);
 
     ParticleParams::Input defs(tree_particles->GetEntries());
-    CHECK(!defs.empty());
+    CELER_ASSERT(!defs.empty());
 
     // Load the particle data
     ImportParticle  particle;
@@ -96,12 +96,12 @@ std::shared_ptr<ParticleParams> RootImporter::load_particle_data()
         // Load a single entry into particle
         particle.name.clear();
         tree_particles->GetEntry(i);
-        CHECK(!particle.name.empty());
+        CELER_ASSERT(!particle.name.empty());
 
         // Convert metadata
         defs[i].name     = particle.name;
         defs[i].pdg_code = PDGNumber{particle.pdg};
-        CHECK(defs[i].pdg_code);
+        CELER_ASSERT(defs[i].pdg_code);
 
         // Convert data
         defs[i].mass           = units::MevMass{particle.mass};
@@ -140,8 +140,8 @@ std::vector<ImportProcess> RootImporter::load_processes()
     CELER_LOG(status) << "Loading physics processes";
     std::unique_ptr<TTree> tree_processes(
         root_input_->Get<TTree>("processes"));
-    CHECK(tree_processes);
-    CHECK(tree_processes->GetEntries());
+    CELER_ASSERT(tree_processes);
+    CELER_ASSERT(tree_processes->GetEntries());
 
     // Load branch
     ImportProcess  process;
@@ -173,8 +173,8 @@ std::shared_ptr<GdmlGeometryMap> RootImporter::load_geometry_data()
     CELER_LOG(status) << "Loading geometry data";
     // Open geometry branch
     std::unique_ptr<TTree> tree_geometry(root_input_->Get<TTree>("geometry"));
-    CHECK(tree_geometry);
-    CHECK(tree_geometry->GetEntries()); // Must be 1
+    CELER_ASSERT(tree_geometry);
+    CELER_ASSERT(tree_geometry->GetEntries()); // Must be 1
 
     // Load branch and fetch data
     GdmlGeometryMap  geometry;
@@ -195,8 +195,8 @@ std::shared_ptr<MaterialParams> RootImporter::load_material_data()
     CELER_LOG(status) << "Loading material data";
     // Open geometry branch
     std::unique_ptr<TTree> tree_geometry(root_input_->Get<TTree>("geometry"));
-    CHECK(tree_geometry);
-    CHECK(tree_geometry->GetEntries()); // Must be 1
+    CELER_ASSERT(tree_geometry);
+    CELER_ASSERT(tree_geometry->GetEntries()); // Must be 1
 
     // Load branch and fetch data
     GdmlGeometryMap  geometry;
@@ -263,7 +263,7 @@ MatterState RootImporter::to_matter_state(const ImportMaterialState state)
         case ImportMaterialState::gas:
             return MatterState::gas;
     }
-    CHECK_UNREACHABLE;
+    CELER_ASSERT_UNREACHABLE();
 }
 
 //---------------------------------------------------------------------------//

@@ -65,8 +65,8 @@ using std::endl;
  */
 void store_particles(TFile* root_file, G4ParticleTable* particle_table)
 {
-    REQUIRE(root_file);
-    REQUIRE(particle_table);
+    CELER_EXPECT(root_file);
+    CELER_EXPECT(particle_table);
 
     CELER_LOG(status) << "Exporting particles";
     TTree tree_particles("particles", "particles");
@@ -119,8 +119,8 @@ void store_particles(TFile* root_file, G4ParticleTable* particle_table)
  */
 void store_physics_tables(TFile* root_file, G4ParticleTable* particle_table)
 {
-    REQUIRE(root_file);
-    REQUIRE(particle_table);
+    CELER_EXPECT(root_file);
+    CELER_EXPECT(particle_table);
 
     CELER_LOG(status) << "Exporting physics tables";
 
@@ -220,7 +220,7 @@ ImportMaterialState to_material_state(const G4State& g4_material_state)
         case G4State::kStateGas:
             return ImportMaterialState::gas;
     }
-    CHECK_UNREACHABLE;
+    CELER_ASSERT_UNREACHABLE();
 }
 
 //---------------------------------------------------------------------------//
@@ -233,7 +233,7 @@ void store_geometry(TFile*                       root_file,
                     const G4ProductionCutsTable& g4production_cuts,
                     const G4VPhysicalVolume&     world_volume)
 {
-    REQUIRE(root_file);
+    CELER_EXPECT(root_file);
 
     CELER_LOG(status) << "Exporting material and volume information";
 
@@ -247,7 +247,7 @@ void store_geometry(TFile*                       root_file,
     const auto g4element_table = *G4Element::GetElementTable();
     for (const auto& g4element : g4element_table)
     {
-        CHECK(g4element);
+        CELER_ASSERT(g4element);
         ImportElement element;
         elem_id       elid            = g4element->GetIndex();
         element.name                  = g4element->GetName();
@@ -269,9 +269,9 @@ void store_geometry(TFile*                       root_file,
         const auto& g4material = g4material_cuts->GetMaterial();
         const auto& g4elements = g4material->GetElementVector();
 
-        CHECK(g4material_cuts);
-        CHECK(g4material);
-        CHECK(g4elements);
+        CELER_ASSERT(g4material_cuts);
+        CELER_ASSERT(g4material);
+        CELER_ASSERT(g4elements);
 
         // Populate material information
         ImportMaterial material;
@@ -290,7 +290,7 @@ void store_geometry(TFile*                       root_file,
         for (auto j : celeritas::range(g4elements->size()))
         {
             const auto& g4element = g4elements->at(j);
-            CHECK(g4element);
+            CELER_ASSERT(g4element);
             elem_id   elid               = g4element->GetIndex();
             real_type elem_mass_fraction = g4material->GetFractionVector()[j];
             real_type elem_num_density

@@ -18,17 +18,17 @@ namespace celeritas
  */
 EPlusGGModel::EPlusGGModel(ModelId id, const ParticleParams& particles)
 {
-    REQUIRE(id);
+    CELER_EXPECT(id);
     interface_.model_id    = id;
     interface_.positron_id = particles.find(pdg::positron());
     interface_.gamma_id    = particles.find(pdg::gamma());
 
-    INSIST(interface_.positron_id && interface_.gamma_id,
-           "Electron and gamma particles must be enabled to use the "
-           "Klein-Nishina Model.");
+    CELER_INSIST(interface_.positron_id && interface_.gamma_id,
+                 "Electron and gamma particles must be enabled to use the "
+                 "Klein-Nishina Model.");
     interface_.electron_mass
         = particles.get(interface_.positron_id).mass.value();
-    ENSURE(interface_);
+    CELER_ENSURE(interface_);
 }
 
 //---------------------------------------------------------------------------//
@@ -58,7 +58,7 @@ void EPlusGGModel::interact(
     CELER_MAYBE_UNUSED const ModelInteractPointers& pointers) const
 {
     // TODO: implement me
-    CHECK_UNREACHABLE;
+    CELER_ASSERT_UNREACHABLE();
 }
 
 //---------------------------------------------------------------------------//

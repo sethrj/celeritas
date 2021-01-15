@@ -66,19 +66,19 @@ ValueGridXsBuilder::from_geant(SpanConstReal lambda_energy,
                                SpanConstReal lambda_prim_energy,
                                SpanConstReal lambda_prim)
 {
-    REQUIRE(is_contiguous_increasing(lambda_energy, lambda_prim_energy));
-    REQUIRE(has_same_log_spacing(lambda_prim, lambda_prim_energy));
-    REQUIRE(lambda.size() == lambda_energy.size());
-    REQUIRE(lambda_prim.size() == lambda_prim_energy.size());
-    REQUIRE(soft_equal(lambda.back(),
-                       lambda_prim.front() * lambda_prim_energy.front()));
-    REQUIRE(is_nonnegative(lambda) && is_nonnegative(lambda_prim));
+    CELER_EXPECT(is_contiguous_increasing(lambda_energy, lambda_prim_energy));
+    CELER_EXPECT(has_same_log_spacing(lambda_prim, lambda_prim_energy));
+    CELER_EXPECT(lambda.size() == lambda_energy.size());
+    CELER_EXPECT(lambda_prim.size() == lambda_prim_energy.size());
+    CELER_EXPECT(soft_equal(lambda.back(),
+                            lambda_prim.front() * lambda_prim_energy.front()));
+    CELER_EXPECT(is_nonnegative(lambda) && is_nonnegative(lambda_prim));
 
     // Concatenate the two XS vectors
     std::vector<real_type> xs(lambda.size() + lambda_prim.size() - 1);
     auto dst = std::copy(lambda.begin(), lambda.end(), xs.begin());
     dst      = std::copy(lambda_prim.begin(), lambda_prim.end(), dst);
-    CHECK(dst == xs.end());
+    CELER_ASSERT(dst == xs.end());
 
     // Construct the grid
     return {lambda_energy.front(),
@@ -100,11 +100,11 @@ ValueGridXsBuilder::ValueGridXsBuilder(real_type              emin,
     , log_emax_(std::log(emax))
     , xs_(std::move(xs))
 {
-    REQUIRE(emin > 0);
-    REQUIRE(eprime > emin);
-    REQUIRE(emax > eprime);
-    REQUIRE(xs_.size() >= 2);
-    REQUIRE(
+    CELER_EXPECT(emin > 0);
+    CELER_EXPECT(eprime > emin);
+    CELER_EXPECT(emax > eprime);
+    CELER_EXPECT(xs_.size() >= 2);
+    CELER_EXPECT(
         is_on_grid_point(log_eprime_, log_emin_, log_emax_, xs_.size() - 1));
 }
 
@@ -133,7 +133,7 @@ auto ValueGridXsBuilder::value_storage() const -> ValueStorage
 void ValueGridXsBuilder::build(ValueGridStore*) const
 {
     // TODO: finish implementation
-    CHECK_UNREACHABLE;
+    CELER_ASSERT_UNREACHABLE();
 }
 
 //---------------------------------------------------------------------------//
