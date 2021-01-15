@@ -172,3 +172,27 @@
 #else
 #    define CELER_DEVICE_PREFIX(TOK) DEVICE_UNAVAILABLE
 #endif
+
+/*!
+ * \def CELER_DEPRECATED
+ *
+ * Mark a function, type, or variable as deprecated with a helpful message.
+ * This is useful when making sweeping changes across the codebase if other
+ * developers are actively working on the code. It gives them the chance to
+ * turn off `-Werror` and keep working, and informs them of the correct way to
+ * update any deprecated calls that are in play.
+ *
+ * Example:
+ * \code
+   CELER_DEPRECATED("replaced by new_fn")
+   int old_fn();
+
+   CELER_DEPRECATED("no more ints for you")
+   typedef int OldInt;
+   \endcode
+ */
+#if CELERITAS_DEPRECATED
+#    define CELER_DEPRECATED(MSG) [[deprecated(MSG)]]
+#else
+#    define CELER_DEPRECATED(MSG)
+#endif

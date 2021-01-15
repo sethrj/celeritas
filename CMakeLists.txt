@@ -88,6 +88,7 @@ endif()
 
 # Build flags
 option(CELERITAS_DEBUG "Enable runtime assertions" ON)
+option(CELERITAS_DEPRECATED "Show deprecation warnings" ${CELERITAS_DEBUG})
 if(DEFINED CMAKE_BUILD_TYPE AND NOT CMAKE_BUILD_TYPE)
   if(CELERITAS_DEBUG)
     set(_default_build_type "Debug")
