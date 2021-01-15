@@ -55,6 +55,7 @@ endif()
 
 # Build flags
 option(CELERITAS_DEBUG "Enable runtime assertions" ON)
+option(CELERITAS_DEPRECATED "Show deprecation warnings" ${CELERITAS_DEBUG})
 if(NOT CMAKE_BUILD_TYPE AND (CMAKE_GENERATOR STREQUAL "Ninja"
     OR CMAKE_GENERATOR STREQUAL "Unix Makefiles"))
   set(CMAKE_BUILD_TYPE "Debug" CACHE STRING
