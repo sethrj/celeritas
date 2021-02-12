@@ -9,27 +9,57 @@ CeleritasUtils
 
 CMake utility functions for Celeritas.
 
-.. command:: set_required
+.. command:: celeritas_check_python_module
 
-  Pass the given compiler-dependent warning flags to a library target::
+   Determine whether a given Python module is available with the current
+   environment. ::
 
-    set_required(<OUTPUT_VAR>
-                 <OPTION_VAR>)
+     celeritas_check_python_module(<variable> <module>)
 
-  ``OUTPUT_VAR``
-    Set variable in the parent scope to "REQUIRED" or empty.
+   ``<variable>``
+     Variable name that will be set to whether the module exists
 
-  ``OPTION_VAR``
-    Variable to test.
+   ``<module>``
+     Python module name, e.g. "numpy" or "scipy.linalg"
+
+   Note that because this function caches the Python script result to save
+   reconfigure time (or when multiple scripts check for the same module),
+   changing the Python executable or installed modules may mean
+   having to delete or modify your CMakeCache.txt file.
+
+   Example::
+
+      celeritas_check_python_module(has_numpy "numpy")
 
 #]=======================================================================]
 
-function(set_required OUTPUT_VAR INPUT_VAR)
-  if (INPUT_VAR)
-    set(OUTPUT_VAR REQUIRED PARENT_SCOPE)
+function(celeritas_check_python_module result_var module_name)
+  set(_cache_name CELERITAS_CHECK_PYTHON_MODULE_${module_name})
+  if(DEFINED ${_cache_name})
+    # We've already checked for this module
+    set(_found "${${_cache_name}}")
   else()
-    set(OUTPUT_VAR "" PARENT_SCOPE)
+    message(STATUS "Check Python module ${module_name}")
+    set(_cmd "${Python_EXECUTABLE}" -c "import ${module_name}")
+    execute_process(COMMAND
+      ${_cmd}
+      RESULT_VARIABLE _result
+      ERROR_QUIET # hide error message if module unavailable
+    )
+    if(_result)
+      set(_msg "not found")
+      set(_found FALSE)
+    else()
+      set(_msg "found")
+      set(_found TRUE)
+    endif()
+    message(STATUS "Check Python module ${module_name} -- ${_msg}")
+    set(${_cache_name} "${_found}" CACHE INTERNAL
+      "Whether Python module ${module_name} is available")
   endif()
+
+  # Save outgoing variable
+  set(${result_var} "${_found}" PARENT_SCOPE)
 endfunction()
 
 #-----------------------------------------------------------------------------#

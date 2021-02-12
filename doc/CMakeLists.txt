@@ -4,6 +4,14 @@
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 #-----------------------------------------------------------------------------#
 
+if(Python_FOUND)
+  celeritas_check_python_module(PY_SPHINX_FOUND sphinx)
+  celeritas_check_python_module(PY_BREATHE_FOUND breathe)
+  if(PY_SPHINX_FOUND AND PY_BREATHE_FOUND)
+    set(_USE_BREATHE TRUE)
+  endif()
+endif()
+
 #-----------------------------------------------------------------------------#
 # DOXYGEN
 #-----------------------------------------------------------------------------#
@@ -52,5 +60,14 @@ doxygen_add_docs(doc
   WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
   COMMENT "Processing C++ documentation with Doxygen"
 )
+
+#-----------------------------------------------------------------------------#
+# SPHINX/BREATHE
+#-----------------------------------------------------------------------------#
+
+# if(NOT _USE_BREATHE)
+#   message(SEND_ERROR "The sphinx, breathe, and exhale Python modules "
+#     "must be enabled to build documentation")
+# endif()
 
 #-----------------------------------------------------------------------------#

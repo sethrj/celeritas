@@ -150,6 +150,10 @@ if(CELERITAS_BUILD_TESTS AND CELERITAS_BUILD_DEMOS)
 endif()
 
 if(CELERITAS_BUILD_DOCS)
+  if(NOT Python_FOUND)
+    # Python is optional when documentation is enabled
+    find_package(Python 3.6 COMPONENTS Interpreter)
+  endif()
   find_package(Doxygen REQUIRED)
 endif()
 

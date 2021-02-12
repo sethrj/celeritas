@@ -95,7 +95,7 @@ if(CELERITAS_BUILD_DEMOS)
 
     if(CELERITAS_BUILD_TESTS)
       add_test(NAME "app/demo-interactor"
-        COMMAND "${Python_EXECUTABLE}"
+        COMMAND "$<TARGET_FILE:Python::Interpreter>"
           "${CMAKE_CURRENT_SOURCE_DIR}/demo-interactor/simple-driver.py"
       )
       set(_env
@@ -122,7 +122,7 @@ if(CELERITAS_BUILD_DEMOS)
 
   if(CELERITAS_BUILD_TESTS)
     add_test(NAME "app/host-demo-interactor"
-      COMMAND "${Python_EXECUTABLE}"
+      COMMAND "$<TARGET_FILE:Python::Interpreter>"
         "${CMAKE_CURRENT_SOURCE_DIR}/demo-interactor/simple-driver.py"
     )
     set(_env
@@ -175,7 +175,7 @@ if(CELERITAS_BUILD_DEMOS AND CELERITAS_USE_CUDA AND CELERITAS_USE_VecGeom)
 
   if(CELERITAS_BUILD_TESTS)
     add_test(NAME "app/demo-rasterizer"
-      COMMAND "${Python_EXECUTABLE}"
+      COMMAND "$<TARGET_FILE:Python::Interpreter>"
         "${CMAKE_CURRENT_SOURCE_DIR}/demo-rasterizer/simple-driver.py"
     )
     set(_env
