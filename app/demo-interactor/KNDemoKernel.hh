@@ -25,10 +25,9 @@ using celeritas::Ownership;
 
 //---------------------------------------------------------------------------//
 //! Kernel thread dimensions
-struct CudaGridParams
+struct CudaOptions
 {
     unsigned int block_size = 256; //!< Threads per block
-    unsigned int grid_size  = 32;  //!< Blocks per grid
     bool         sync = false; //!< Call synchronize after every kernel
 };
 
@@ -124,14 +123,14 @@ using StateDeviceRef = StateData<Ownership::reference, MemSpace::device>;
 
 //---------------------------------------------------------------------------//
 // Initialize particle states
-void initialize(const CudaGridParams&  grid,
+void initialize(const CudaOptions&  grid,
                 const ParamsDeviceRef& params,
                 const StateDeviceRef&  state,
                 const InitialPointers& initial);
 
 //---------------------------------------------------------------------------//
 // Run an iteration
-void iterate(const CudaGridParams&                        grid,
+void iterate(const CudaOptions&                        grid,
              const ParamsDeviceRef&                       params,
              const StateDeviceRef&                        state,
              const celeritas::SecondaryAllocatorPointers& secondaries,
@@ -139,7 +138,7 @@ void iterate(const CudaGridParams&                        grid,
 
 //---------------------------------------------------------------------------//
 // Sum the total number of living particles
-celeritas::size_type reduce_alive(celeritas::Span<bool> alive, const CudaGridParams&              grid);
+celeritas::size_type reduce_alive(const CudaOptions& opts, celeritas::Span<bool> alive);
 
 //---------------------------------------------------------------------------//
 } // namespace demo_interactor

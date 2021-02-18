@@ -46,8 +46,8 @@ struct KNDemoResult
 // JSON I/O functions
 //---------------------------------------------------------------------------//
 
-void to_json(nlohmann::json& j, const CudaGridParams& value);
-void from_json(const nlohmann::json& j, CudaGridParams& value);
+void to_json(nlohmann::json& j, const CudaOptions& value);
+void from_json(const nlohmann::json& j, CudaOptions& value);
 
 void to_json(nlohmann::json& j, const KNDemoRunArgs& value);
 void from_json(const nlohmann::json& j, KNDemoRunArgs& value);

@@ -40,7 +40,7 @@ class KNDemoRunner
     // Construct with parameters
     KNDemoRunner(constSPParticleParams particles,
                  constSPXsGridParams   xs,
-                 CudaGridParams        solver);
+                 CudaOptions        solver);
 
     // Run with a given particle vector size and max iterations
     result_type operator()(KNDemoRunArgs args);
@@ -48,7 +48,7 @@ class KNDemoRunner
   private:
     constSPParticleParams                   pparams_;
     constSPXsGridParams                     xsparams_;
-    CudaGridParams                          launch_params_;
+    CudaOptions                          cuda_opts_;
     celeritas::detail::KleinNishinaPointers kn_pointers_;
 };
 

@@ -24,15 +24,14 @@ namespace demo_interactor
  */
 KNDemoRunner::KNDemoRunner(constSPParticleParams particles,
                            constSPXsGridParams   xs,
-                           CudaGridParams        solver)
+                           CudaOptions        solver)
     : pparams_(std::move(particles))
     , xsparams_(std::move(xs))
-    , launch_params_(std::move(solver))
+    , cuda_opts_(std::move(solver))
 {
     CELER_EXPECT(pparams_);
     CELER_EXPECT(xsparams_);
-    CELER_EXPECT(launch_params_.block_size > 0);
-    CELER_EXPECT(launch_params_.grid_size > 0);
+    CELER_EXPECT(cuda_opts_.block_size > 0);
 
     // Set up KN interactor data;
     namespace pdg            = celeritas::pdg;
@@ -93,7 +92,7 @@ auto KNDemoRunner::operator()(KNDemoRunArgs args) -> result_type
     state.alive     = alive.device_pointers();
 
     // Initialize particle states
-    initialize(launch_params_, params, state, initial);
+    initialize(cuda_opts_, params, state, initial);
     result.alive.push_back(args.num_tracks);
 
     size_type remaining_steps = args.max_steps;
@@ -101,14 +100,14 @@ auto KNDemoRunner::operator()(KNDemoRunArgs args) -> result_type
     {
         // Launch the kernel
         Stopwatch elapsed_time;
-        iterate(launch_params_,
+        iterate(cuda_opts_,
                 params,
                 state,
                 secondaries.device_pointers(),
                 detector.device_pointers());
 
         // Save the wall time
-        if (launch_params_.sync)
+        if (cuda_opts_.sync)
         {
             result.time.push_back(elapsed_time());
         }
@@ -121,7 +120,7 @@ auto KNDemoRunner::operator()(KNDemoRunArgs args) -> result_type
         detector.bin_buffer();
 
         // Calculate and save number of living particles
-        result.alive.push_back(reduce_alive(alive.device_pointers(), launch_params_));
+        result.alive.push_back(reduce_alive(cuda_opts_, alive.device_pointers()));
 
         if (--remaining_steps == 0)
         {

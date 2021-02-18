@@ -13,8 +13,7 @@ from sys import exit
 
 inp = {
     'grid_params': {
-        'block_size': 128,
-        'grid_size': 32,
+        'block_size': 256,
         'sync': False,
     },
     'run': {

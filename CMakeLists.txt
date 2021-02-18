@@ -7,6 +7,7 @@
 cmake_minimum_required(VERSION 3.12)
 
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/CgvFindVersion.cmake")
+set(Celeritas_GIT_DESCRIBE "")
 cgv_find_version(Celeritas)
 project(Celeritas VERSION "${Celeritas_VERSION}" LANGUAGES CXX)
 cmake_policy(VERSION 3.12...3.18)
