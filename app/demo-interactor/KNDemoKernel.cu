@@ -32,12 +32,6 @@ namespace
 //---------------------------------------------------------------------------//
 /*!
  * Kernel to initialize particle data.
- *
- * For testing purposes (this might not be the case for the final app) we use a
- * grid-stride loop rather than requiring that each thread correspond exactly
- * to a particle track. In other words, this method allows a single warp to
- * operate on two 32-thread chunks of data.
- *  https://developer.nvidia.com/blog/cuda-pro-tip-write-flexible-kernels-grid-stride-loops/
  */
 __global__ void initialize_kernel(ParamsDeviceRef const params,
                                   StateDeviceRef const  states,
@@ -80,7 +74,7 @@ __global__ void iterate_kernel(ParamsDeviceRef const            params,
     SecondaryAllocatorView allocate_secondaries(secondaries);
     DetectorView           detector_hit(detector);
     PhysicsGridCalculator  calc_xs(params.tables.xs, params.tables.reals);
-    const auto tid = KernelParamCalculator::thread_id();
+    const auto             tid = KernelParamCalculator::thread_id();
 
     // Exit if already dead
     if (!(tid < states.size() && states.alive[tid.get()]))
@@ -155,8 +149,8 @@ __global__ void iterate_kernel(ParamsDeviceRef const            params,
 /*!
  * Initialize particle states.
  */
-void initialize(const CudaOptions &              opts,
-    const ParamsDeviceRef& params,
+void initialize(const CudaOptions&     opts,
+                const ParamsDeviceRef& params,
                 const StateDeviceRef&  states,
                 const InitialPointers& initial)
 {
@@ -175,7 +169,7 @@ void initialize(const CudaOptions &              opts,
 /*!
  * Run an iteration.
  */
-void iterate(const CudaOptions &              opts,
+void iterate(const CudaOptions&                 opts,
              const ParamsDeviceRef&             params,
              const StateDeviceRef&              states,
              const SecondaryAllocatorPointers&  secondaries,

@@ -16,6 +16,7 @@ CELERITAS_ENV=$SPACK_ROOT/var/spack/environments/celeritas/.spack-env/view
 export PATH=$CELERITAS_ENV/bin:${PATH}
 export CMAKE_PREFIX_PATH=$CELERITAS_ENV:${CMAKE_PREFIX_PATH}
 export CXX=/usr/bin/g++
+export CXXFLAGS="-Wall -Wextra -Werror -pedantic -fdiagnostics-color=always"
 
 cmake -G Ninja \
   -DCMAKE_INSTALL_PREFIX:PATH=${INSTALL_DIR} \
