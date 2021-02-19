@@ -81,27 +81,27 @@ __global__ void iterate_kernel(ParamsDeviceRef const            params,
         return;
     }
 
+    // Load global memory into local
+    Real3     dir  = states.direction[tid.get()];
+    Real3     pos  = states.position[tid.get()];
+    real_type time = states.time[tid.get()];
+
     // Construct particle accessor from immutable and thread-local data
     ParticleTrackView particle(params.particle, states.particle, tid);
     RngEngine         rng(states.rng, tid);
 
     // Move to collision
-    demo_interactor::move_to_collision(particle,
-                                       calc_xs,
-                                       states.direction[tid.get()],
-                                       &states.position[tid.get()],
-                                       &states.time[tid.get()],
-                                       rng);
-
-    Hit h;
-    h.pos    = states.position[tid.get()];
-    h.thread = tid;
-    h.time   = states.time[tid.get()];
+    demo_interactor::move_to_collision(
+        particle, calc_xs, dir, &pos, &time, rng);
 
     if (particle.energy() < units::MevEnergy{0.01})
     {
         // Particle is below interaction energy
-        h.dir              = states.direction[tid.get()];
+        Hit h;
+        h.dir              = dir;
+        h.pos              = pos;
+        h.thread           = tid;
+        h.time             = time;
         h.energy_deposited = particle.energy();
 
         // Deposit energy and kill
@@ -111,10 +111,8 @@ __global__ void iterate_kernel(ParamsDeviceRef const            params,
     }
 
     // Construct RNG and interaction interfaces
-    KleinNishinaInteractor interact(params.kn_interactor,
-                                    particle,
-                                    states.direction[tid.get()],
-                                    allocate_secondaries);
+    KleinNishinaInteractor interact(
+        params.kn_interactor, particle, dir, allocate_secondaries);
 
     // Perform interaction: should emit a single particle (an electron)
     Interaction interaction = interact(rng);
@@ -125,13 +123,19 @@ __global__ void iterate_kernel(ParamsDeviceRef const            params,
     // cutoff)
     {
         const auto& secondary = interaction.secondaries.front();
-        h.dir                 = secondary.direction;
-        h.energy_deposited    = secondary.energy;
+        Hit         h;
+        h.pos              = pos;
+        h.thread           = tid;
+        h.time             = time;
+        h.dir              = secondary.direction;
+        h.energy_deposited = secondary.energy;
         detector_hit(h);
     }
 
     // Update post-interaction state (apply interaction)
+    states.position[tid.get()]  = pos;
     states.direction[tid.get()] = interaction.direction;
+    states.time[tid.get()]      = time;
     particle.energy(interaction.energy);
 }
 } // namespace
