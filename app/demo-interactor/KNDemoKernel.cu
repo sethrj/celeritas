@@ -65,10 +65,8 @@ __global__ void initialize_kernel(ParamsDeviceRef const params,
  * - Kills the secondary, depositing its local energy
  * - Applies the interaction (updating track direction and energy)
  */
-__global__ void iterate_kernel(ParamsDeviceRef const            params,
-                               StateDeviceRef const             states,
-                               SecondaryAllocatorPointers const secondaries,
-                               DetectorPointers const           detector)
+__global__ void
+move_kernel(ParamsDeviceRef const params, StateDeviceRef const states)
 {
     const auto tid = KernelParamCalculator::thread_id();
 
@@ -78,28 +76,56 @@ __global__ void iterate_kernel(ParamsDeviceRef const            params,
         return;
     }
 
-    // Load global memory into local
-    Real3     dir  = states.direction[tid.get()];
-    Real3     pos  = states.position[tid.get()];
-    real_type time = states.time[tid.get()];
-
     // Construct particle accessor from immutable and thread-local data
     ParticleTrackView particle(params.particle, states.particle, tid);
     RngEngine         rng(states.rng, tid);
 
     // Move to collision
     PhysicsGridCalculator calc_xs(params.tables.xs, params.tables.reals);
-    demo_interactor::move_to_collision(
-        particle, calc_xs, dir, &pos, &time, rng);
+    demo_interactor::move_to_collision(particle,
+                                       calc_xs,
+                                       states.direction[tid.get()],
+                                       &states.position[tid.get()],
+                                       &states.time[tid.get()],
+                                       rng);
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Perform the iteraction plus cleanup.
+ *
+ * The interaction:
+ * - Allocates and emits a secondary
+ * - Kills the secondary, depositing its local energy
+ * - Applies the interaction (updating track direction and energy)
+ */
+__global__ void interact_kernel(ParamsDeviceRef const            params,
+                                StateDeviceRef const             states,
+                                SecondaryAllocatorPointers const secondaries,
+                                DetectorPointers const           detector)
+{
+    const auto tid = KernelParamCalculator::thread_id();
+
+    // Exit if already dead
+    if (!(tid < states.size() && states.alive[tid.get()]))
+    {
+        return;
+    }
+
+    // Hit stores pre-interaction state
+    Hit h;
+    h.dir    = states.direction[tid.get()];
+    h.pos    = states.position[tid.get()];
+    h.thread = tid;
+    h.time   = states.time[tid.get()];
+
+    // Construct particle accessor from immutable and thread-local data
+    ParticleTrackView particle(params.particle, states.particle, tid);
+    RngEngine         rng(states.rng, tid);
 
     if (particle.energy() < units::MevEnergy{0.01})
     {
         // Particle is below interaction energy
-        Hit h;
-        h.dir              = dir;
-        h.pos              = pos;
-        h.thread           = tid;
-        h.time             = time;
         h.energy_deposited = particle.energy();
 
         // Deposit energy and kill
@@ -112,7 +138,7 @@ __global__ void iterate_kernel(ParamsDeviceRef const            params,
     // Construct RNG and interaction interfaces
     SecondaryAllocatorView allocate_secondaries(secondaries);
     KleinNishinaInteractor interact(
-        params.kn_interactor, particle, dir, allocate_secondaries);
+        params.kn_interactor, particle, h.dir, allocate_secondaries);
 
     // Perform interaction: should emit a single particle (an electron)
     Interaction interaction = interact(rng);
@@ -123,20 +149,15 @@ __global__ void iterate_kernel(ParamsDeviceRef const            params,
     // cutoff)
     {
         const auto& secondary = interaction.secondaries.front();
-        Hit         h;
-        h.pos              = pos;
-        h.thread           = tid;
-        h.time             = time;
-        h.dir              = secondary.direction;
-        h.energy_deposited = secondary.energy;
+        h.dir                 = secondary.direction;
+        h.energy_deposited    = secondary.energy;
+
         DetectorView detector_hit(detector);
         detector_hit(h);
     }
 
     // Update post-interaction state (apply interaction)
-    states.position[tid.get()]  = pos;
     states.direction[tid.get()] = interaction.direction;
-    states.time[tid.get()]      = time;
     particle.energy(interaction.energy);
 }
 } // namespace
@@ -173,12 +194,16 @@ void iterate(const CudaOptions&                 opts,
              const SecondaryAllocatorPointers&  secondaries,
              const celeritas::DetectorPointers& detector)
 {
-    static const KernelParamCalculator calc_kernel_params(
-        iterate_kernel, "iterate", opts.block_size);
+    static const KernelParamCalculator calc_move_params(
+        move_kernel, "move", opts.block_size);
+    auto grid = calc_move_params(states.size());
+    move_kernel<<<grid.grid_size, grid.block_size>>>(params, states);
+    CELER_CUDA_CHECK_ERROR();
 
-    auto grid = calc_kernel_params(states.size());
-
-    iterate_kernel<<<grid.grid_size, grid.block_size>>>(
+    static const KernelParamCalculator calc_interact_params(
+        interact_kernel, "interact", opts.block_size);
+    grid = calc_interact_params(states.size());
+    interact_kernel<<<grid.grid_size, grid.block_size>>>(
         params, states, secondaries, detector);
     CELER_CUDA_CHECK_ERROR();
 
