@@ -15,10 +15,21 @@ namespace celeritas
  * Construct from state.
  */
 CELER_FUNCTION
-RngEngine::RngEngine(const RngStatePointers& view, const ThreadId& id)
-    : state_(view.rng[id.get()])
+RngEngine::RngEngine(const RngStatePointers& states, ThreadId tid)
+    : states_(states), thread_(tid)
 {
-    CELER_EXPECT(id < view.rng.size());
+    CELER_EXPECT(thread_ < states_.rng.size());
+    state_ = states_.rng[thread_.get()];
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Write back out to global memory on destruction.
+ */
+CELER_FUNCTION
+RngEngine::~RngEngine()
+{
+    states_.rng[thread_.get()] = state_;
 }
 
 //---------------------------------------------------------------------------//
