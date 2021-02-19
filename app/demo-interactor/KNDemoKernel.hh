@@ -12,6 +12,7 @@
 #include "base/Types.hh"
 #include "physics/base/ParticleInterface.hh"
 #include "physics/base/SecondaryAllocatorInterface.hh"
+#include "physics/base/Interaction.hh"
 #include "physics/em/detail/KleinNishina.hh"
 #include "physics/grid/XsGridInterface.hh"
 #include "random/cuda/RngInterface.hh"
@@ -104,11 +105,12 @@ struct StateData
     celeritas::Span<celeritas::Real3>     direction;
     celeritas::Span<celeritas::real_type> time;
     celeritas::Span<bool>                 alive;
+    celeritas::Span<celeritas::Interaction>          interactions;
 
     explicit CELER_FUNCTION operator bool() const
     {
         return particle && rng && !position.empty() && !direction.empty()
-               && !time.empty() && !alive.empty();
+               && !time.empty() && !alive.empty() && !interactions.empty();
     }
 
     //! Number of tracks
@@ -130,7 +132,7 @@ void initialize(const CudaOptions&  grid,
 
 //---------------------------------------------------------------------------//
 // Run an iteration
-void iterate(const CudaOptions&                        grid,
+void iterate(const CudaOptions&                           grid,
              const ParamsDeviceRef&                       params,
              const StateDeviceRef&                        state,
              const celeritas::SecondaryAllocatorPointers& secondaries,

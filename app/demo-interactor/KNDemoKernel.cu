@@ -101,8 +101,43 @@ move_kernel(ParamsDeviceRef const params, StateDeviceRef const states)
  */
 __global__ void interact_kernel(ParamsDeviceRef const            params,
                                 StateDeviceRef const             states,
-                                SecondaryAllocatorPointers const secondaries,
-                                DetectorPointers const           detector)
+                                SecondaryAllocatorPointers const secondaries)
+{
+    const auto tid = KernelParamCalculator::thread_id();
+
+    // Exit if already dead
+    if (!(tid < states.size() && states.alive[tid.get()]))
+    {
+        return;
+    }
+
+    // Construct particle accessor from immutable and thread-local data
+    ParticleTrackView particle(params.particle, states.particle, tid);
+    RngEngine         rng(states.rng, tid);
+
+    // Construct RNG and interaction interfaces
+    SecondaryAllocatorView allocate_secondaries(secondaries);
+    KleinNishinaInteractor interact(
+        params.kn_interactor, particle, states.direction[tid.get()], allocate_secondaries);
+
+    // Perform interaction: should emit a single particle (an electron)
+    Interaction interaction = interact(rng);
+    CELER_ASSERT(interaction);
+    CELER_ASSERT(interaction.secondaries.size() == 1);
+    states.interactions[tid.get()] = interaction;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Perform the cutoff and detection.
+ *
+ * The interaction:
+ * - Kills the secondary, depositing its local energy
+ * - Applies the interaction (updating track direction and energy)
+ */
+__global__ void cutoff_kernel(ParamsDeviceRef const  params,
+                              StateDeviceRef const   states,
+                              DetectorPointers const detector)
 {
     const auto tid = KernelParamCalculator::thread_id();
 
@@ -119,29 +154,11 @@ __global__ void interact_kernel(ParamsDeviceRef const            params,
     h.thread = tid;
     h.time   = states.time[tid.get()];
 
-    // Construct particle accessor from immutable and thread-local data
-    ParticleTrackView particle(params.particle, states.particle, tid);
-    RngEngine         rng(states.rng, tid);
-
-    if (particle.energy() < units::MevEnergy{0.01})
-    {
-        // Particle is below interaction energy
-        h.energy_deposited = particle.energy();
-
-        // Deposit energy and kill
-        DetectorView detector_hit(detector);
-        detector_hit(h);
-        states.alive[tid.get()] = false;
-        return;
-    }
-
-    // Construct RNG and interaction interfaces
-    SecondaryAllocatorView allocate_secondaries(secondaries);
-    KleinNishinaInteractor interact(
-        params.kn_interactor, particle, h.dir, allocate_secondaries);
+    // Construct views
+    DetectorView detector_hit(detector);
 
     // Perform interaction: should emit a single particle (an electron)
-    Interaction interaction = interact(rng);
+    Interaction interaction = states.interactions[tid.get()];
     CELER_ASSERT(interaction);
     CELER_ASSERT(interaction.secondaries.size() == 1);
 
@@ -151,15 +168,29 @@ __global__ void interact_kernel(ParamsDeviceRef const            params,
         const auto& secondary = interaction.secondaries.front();
         h.dir                 = secondary.direction;
         h.energy_deposited    = secondary.energy;
-
-        DetectorView detector_hit(detector);
         detector_hit(h);
     }
 
-    // Update post-interaction state (apply interaction)
-    states.direction[tid.get()] = interaction.direction;
-    particle.energy(interaction.energy);
+    // Apply interaction
+    if (interaction.energy < units::MevEnergy{0.01})
+    {
+        // Particle is below cutoff
+        h.energy_deposited = interaction.energy;
+
+        // Deposit energy and kill
+        detector_hit(h);
+        states.alive[tid.get()] = false;
+    }
+    else
+    {
+        // Apply interaction
+        states.direction[tid.get()] = interaction.direction;
+
+        ParticleTrackView particle(params.particle, states.particle, tid);
+        particle.energy(interaction.energy);
+    }
 }
+
 } // namespace
 
 //---------------------------------------------------------------------------//
@@ -204,7 +235,14 @@ void iterate(const CudaOptions&                 opts,
         interact_kernel, "interact", opts.block_size);
     grid = calc_interact_params(states.size());
     interact_kernel<<<grid.grid_size, grid.block_size>>>(
-        params, states, secondaries, detector);
+        params, states, secondaries);
+    CELER_CUDA_CHECK_ERROR();
+
+    static const KernelParamCalculator calc_cutoff_params(
+        cutoff_kernel, "cutoff", opts.block_size);
+    grid = calc_cutoff_params(states.size());
+    cutoff_kernel<<<grid.grid_size, grid.block_size>>>(
+        params, states, detector);
     CELER_CUDA_CHECK_ERROR();
 
     if (opts.sync)

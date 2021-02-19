@@ -68,7 +68,8 @@ auto KNDemoRunner::operator()(KNDemoRunArgs args) -> result_type
     DeviceVector<Real3>     direction(args.num_tracks);
     DeviceVector<double>    time(args.num_tracks);
     DeviceVector<bool>      alive(args.num_tracks);
-    DetectorStore           detector(args.num_tracks, args.tally_grid);
+    DeviceVector<Interaction> interactions(args.num_tracks);
+    DetectorStore           detector(2 * args.num_tracks, args.tally_grid);
 
     ParticleStateData<Ownership::value, MemSpace::device> track_states;
     resize(&track_states, pparams_->host_pointers(), args.num_tracks);
@@ -90,6 +91,7 @@ auto KNDemoRunner::operator()(KNDemoRunArgs args) -> result_type
     state.direction = direction.device_pointers();
     state.time      = time.device_pointers();
     state.alive     = alive.device_pointers();
+    state.interactions = interactions.device_pointers();
 
     // Initialize particle states
     initialize(cuda_opts_, params, state, initial);
