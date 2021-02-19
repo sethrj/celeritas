@@ -70,10 +70,7 @@ __global__ void iterate_kernel(ParamsDeviceRef const            params,
                                SecondaryAllocatorPointers const secondaries,
                                DetectorPointers const           detector)
 {
-    SecondaryAllocatorView allocate_secondaries(secondaries);
-    DetectorView           detector_hit(detector);
-    PhysicsGridCalculator  calc_xs(params.tables.xs, params.tables.reals);
-    const auto             tid = KernelParamCalculator::thread_id();
+    const auto tid = KernelParamCalculator::thread_id();
 
     // Exit if already dead
     if (!(tid < states.size() && states.alive[tid.get()]))
@@ -91,6 +88,7 @@ __global__ void iterate_kernel(ParamsDeviceRef const            params,
     RngEngine         rng(states.rng, tid);
 
     // Move to collision
+    PhysicsGridCalculator calc_xs(params.tables.xs, params.tables.reals);
     demo_interactor::move_to_collision(
         particle, calc_xs, dir, &pos, &time, rng);
 
@@ -105,12 +103,14 @@ __global__ void iterate_kernel(ParamsDeviceRef const            params,
         h.energy_deposited = particle.energy();
 
         // Deposit energy and kill
+        DetectorView detector_hit(detector);
         detector_hit(h);
         states.alive[tid.get()] = false;
         return;
     }
 
     // Construct RNG and interaction interfaces
+    SecondaryAllocatorView allocate_secondaries(secondaries);
     KleinNishinaInteractor interact(
         params.kn_interactor, particle, dir, allocate_secondaries);
 
@@ -129,6 +129,7 @@ __global__ void iterate_kernel(ParamsDeviceRef const            params,
         h.time             = time;
         h.dir              = secondary.direction;
         h.energy_deposited = secondary.energy;
+        DetectorView detector_hit(detector);
         detector_hit(h);
     }
 
