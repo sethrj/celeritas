@@ -16,9 +16,9 @@
 #include "physics/base/SecondaryAllocatorView.hh"
 #include "physics/em/detail/KleinNishinaInteractor.hh"
 #include "random/cuda/RngEngine.hh"
-#include "random/distributions/ExponentialDistribution.hh"
 #include "physics/grid/PhysicsGridCalculator.hh"
 #include "DetectorView.hh"
+#include "KernelUtils.hh"
 
 using namespace celeritas;
 using celeritas::detail::KleinNishinaInteractor;
@@ -44,8 +44,7 @@ __global__ void initialize_kernel(ParamsDeviceRef const params,
         return;
     }
 
-    ParticleTrackView particle(
-        params.particle, states.particle, tid);
+    ParticleTrackView particle(params.particle, states.particle, tid);
     particle = init.particle;
 
     // Particles begin alive and in the +z direction
@@ -83,22 +82,16 @@ __global__ void iterate_kernel(ParamsDeviceRef const            params,
     }
 
     // Construct particle accessor from immutable and thread-local data
-    ParticleTrackView particle(
-        params.particle, states.particle, tid);
-    RngEngine rng(states.rng, tid);
+    ParticleTrackView particle(params.particle, states.particle, tid);
+    RngEngine         rng(states.rng, tid);
 
     // Move to collision
-    {
-        // Calculate cross section at the particle's energy
-        real_type sigma = calc_xs(particle.energy());
-        ExponentialDistribution<real_type> sample_distance(sigma);
-        // Sample distance-to-collision
-        real_type distance = sample_distance(rng);
-        // Move particle
-        axpy(distance, states.direction[tid.get()], &states.position[tid.get()]);
-        // Update time
-        states.time[tid.get()] += distance * unit_cast(particle.speed());
-    }
+    demo_interactor::move_to_collision(particle,
+                                       calc_xs,
+                                       states.direction[tid.get()],
+                                       &states.position[tid.get()],
+                                       &states.time[tid.get()],
+                                       rng);
 
     Hit h;
     h.pos    = states.position[tid.get()];
@@ -177,18 +170,17 @@ void iterate(const CudaOptions&                 opts,
 {
     static const KernelParamCalculator calc_kernel_params(
         iterate_kernel, "iterate", opts.block_size);
-    
+
     auto grid = calc_kernel_params(states.size());
 
     iterate_kernel<<<grid.grid_size, grid.block_size>>>(
         params, states, secondaries, detector);
     CELER_CUDA_CHECK_ERROR();
 
-
     if (opts.sync)
     {
-        // Note: the device synchronize is useful for debugging and necessary for
-        // timing diagnostics.
+        // Note: the device synchronize is useful for debugging and necessary
+        // for timing diagnostics.
         CELER_CUDA_CALL(cudaDeviceSynchronize());
     }
 }
