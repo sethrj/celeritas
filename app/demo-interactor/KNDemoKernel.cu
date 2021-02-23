@@ -125,13 +125,13 @@ __global__ void interact_kernel(ParamsDeviceRef const  params,
 
         Hit h;
         h.pos    = states.position[tid];
+        h.dir    = states.direction[tid];
         h.thread = ThreadId(tid);
         h.time   = states.time[tid];
 
         if (particle.energy() < units::MevEnergy{0.01})
         {
             // Particle is below interaction energy
-            h.dir              = states.direction[tid];
             h.energy_deposited = particle.energy();
 
             // Deposit energy and kill
@@ -141,8 +141,7 @@ __global__ void interact_kernel(ParamsDeviceRef const  params,
         }
 
         // Construct RNG and interaction interfaces
-        KleinNishinaInteractor interact(
-            params.kn_interactor, particle, states.direction[tid]);
+        KleinNishinaInteractor interact(params.kn_interactor, particle, h.dir);
 
         // Perform interaction: should emit a single particle (an electron)
         Interaction interaction = interact(rng);
