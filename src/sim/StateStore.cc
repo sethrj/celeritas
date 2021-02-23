@@ -22,8 +22,7 @@ StateStore::StateStore(const Input& inp)
     , rng_states_(RngStateStore(inp.num_tracks, inp.host_seed))
     , interactions_(inp.num_tracks)
 {
-    make_pie_builder(&particle_states_.ids).resize(inp.num_tracks);
-    make_pie_builder(&particle_states_.energy).resize(inp.num_tracks);
+    make_pie_builder(&particle_states_.state).resize(inp.num_tracks);
     CELER_ENSURE(inp.num_tracks == this->size());
 }
 

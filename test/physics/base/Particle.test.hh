@@ -24,9 +24,9 @@ using ParticleStatePointers
 //! Input data
 struct PTVTestInput
 {
-    ParticleParamsPointers                params;
-    ParticleStatePointers                 states;
-    std::vector<ParticleStateInitializer> init;
+    ParticleParamsPointers          params;
+    ParticleStatePointers           states;
+    std::vector<ParticleTrackState> init;
 };
 
 //---------------------------------------------------------------------------//

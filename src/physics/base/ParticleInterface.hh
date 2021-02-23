@@ -95,7 +95,7 @@ struct ParticleParamsData
  * immutable: collisions and other interactions should return changes to the
  * particle state.
  */
-struct ParticleStateInitializer
+struct ParticleTrackState
 {
     ParticleId       particle_id; //!< Type of particle (electron, gamma, ...)
     units::MevEnergy energy;      //!< Kinetic energy [MeV]
@@ -116,25 +116,20 @@ struct ParticleStateData
     template<class T>
     using Data = celeritas::StatePie<T, W, M>;
 
-    Data<ParticleId> ids;
-    Data<real_type>  energy;
+    Data<ParticleTrackState> state;
 
     //! Whether the interface is assigned
-    explicit CELER_FUNCTION operator bool() const
-    {
-        return !ids.empty() && energy.size() == ids.size();
-    }
+    explicit CELER_FUNCTION operator bool() const { return !state.empty(); }
 
     //! State size
-    CELER_FUNCTION ThreadId::value_type size() const { return ids.size(); }
+    CELER_FUNCTION ThreadId::value_type size() const { return state.size(); }
 
     //! Assign from another set of data
     template<Ownership W2, MemSpace M2>
     ParticleStateData& operator=(ParticleStateData<W2, M2>& other)
     {
         CELER_EXPECT(other);
-        ids    = other.ids;
-        energy = other.energy;
+        state = other.state;
         return *this;
     }
 };
@@ -151,8 +146,7 @@ resize(ParticleStateData<Ownership::value, M>* data,
        size_type size)
 {
     CELER_EXPECT(size > 0);
-    make_pie_builder(&data->ids).resize(size);
-    make_pie_builder(&data->energy).resize(size);
+    make_pie_builder(&data->state).resize(size);
 }
 #endif
 

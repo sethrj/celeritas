@@ -35,7 +35,7 @@ class ParticleTrackView
         = ParticleParamsData<Ownership::const_reference, MemSpace::native>;
     using ParticleStateRef
         = ParticleStateData<Ownership::reference, MemSpace::native>;
-    using Initializer_t = ParticleStateInitializer;
+    using Initializer_t = ParticleTrackState;
     //!@}
 
   public:

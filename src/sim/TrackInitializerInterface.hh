@@ -23,9 +23,9 @@ namespace celeritas
  */
 struct TrackInitializer
 {
-    SimTrackState            sim;
-    GeoStateInitializer      geo;
-    ParticleStateInitializer particle;
+    SimTrackState       sim;
+    GeoStateInitializer geo;
+    ParticleTrackState  particle;
 };
 
 //---------------------------------------------------------------------------//

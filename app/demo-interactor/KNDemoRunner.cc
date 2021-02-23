@@ -81,8 +81,8 @@ auto KNDemoRunner::operator()(KNDemoRunArgs args) -> result_type
     params.kn_interactor = kn_pointers_;
 
     InitialPointers initial;
-    initial.particle = ParticleStateInitializer{kn_pointers_.gamma_id,
-                                                units::MevEnergy{args.energy}};
+    initial.particle = ParticleTrackState{kn_pointers_.gamma_id,
+                                          units::MevEnergy{args.energy}};
 
     StateDeviceRef state;
     state.particle  = track_states;

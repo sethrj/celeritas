@@ -96,7 +96,7 @@ auto HostKNDemoRunner::operator()(demo_interactor::KNDemoRunArgs args)
         auto remaining_steps = args.max_steps;
 
         // Make the initial track state
-        ParticleStateInitializer init_state
+        ParticleTrackState init_state
             = {kn_pointers_.gamma_id, units::MevEnergy(args.energy)};
 
         // Initialize particle state
