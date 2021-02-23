@@ -6,6 +6,8 @@
 
 cmake_minimum_required(VERSION 3.12)
 
+# Force update of git hash
+set(Celeritas_GIT_DESCRIBE "")
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/CgvFindVersion.cmake")
 cgv_find_version(Celeritas)
 project(Celeritas VERSION "${Celeritas_VERSION}" LANGUAGES CXX)
