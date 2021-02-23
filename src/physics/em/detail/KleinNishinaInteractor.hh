@@ -25,10 +25,10 @@ namespace detail
  * Perform Compton scattering, neglecting atomic binding energy.
  *
  * This is a model for the discrete Compton inelastic scattering process. Given
- * an incident gamma, it constructs a single secondary (electron) in the
- * interaction result with the change to the incident gamma direction and
- * energy. No cutoffs are performed for the incident energy or the exiting
- * gamma energy.
+ * an incident gamma, it adds a single secondary (electron) to the secondary
+ * stack and returns an interaction for the change to the incident gamma
+ * direction and energy. No cutoffs are performed for the incident energy or
+ * the exiting gamma energy.
  *
  * \note This performs the same sampling routine as in Geant4's
  *  G4KleinNishinaCompton, as documented in section 6.4.2 of the Geant4 Physics
@@ -41,7 +41,8 @@ class KleinNishinaInteractor
     inline CELER_FUNCTION
     KleinNishinaInteractor(const KleinNishinaPointers& shared,
                            const ParticleTrackView&    particle,
-                           const Real3&                inc_direction);
+                           const Real3&                inc_direction,
+                           SecondaryAllocatorView&     allocate);
 
     // Sample an interaction with the given RNG
     template<class Engine>
@@ -54,6 +55,8 @@ class KleinNishinaInteractor
     const units::MevEnergy inc_energy_;
     // Incident direction
     const Real3& inc_direction_;
+    // Allocate space for a secondary particle
+    SecondaryAllocatorView& allocate_;
 };
 
 //---------------------------------------------------------------------------//

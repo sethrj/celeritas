@@ -153,16 +153,17 @@ auto HostKNDemoRunner::operator()(demo_interactor::KNDemoRunArgs args)
             }
 
             // Construct the KN interactor
-            KleinNishinaInteractor interact(kn_pointers_, particle, direction);
+            KleinNishinaInteractor interact(
+                kn_pointers_, particle, direction, allocate_secondaries);
 
             // Perform interactions - emits a single particle
             auto interaction = interact(rng);
             CELER_ASSERT(interaction);
-            CELER_ASSERT(interaction.num_secondaries() == 1);
+            CELER_ASSERT(interaction.secondaries.size() == 1);
 
             // Deposit energy from the secondary (all local)
             {
-                const auto& secondary = interaction.secondary;
+                const auto& secondary = interaction.secondaries.front();
                 h.dir                 = secondary.direction;
                 h.energy_deposited    = secondary.energy;
                 detector_hit(h);
@@ -173,6 +174,11 @@ auto HostKNDemoRunner::operator()(demo_interactor::KNDemoRunArgs args)
             direction = interaction.direction;
             particle.energy(interaction.energy);
         }
+        CELER_ASSERT(num_steps < args.max_steps
+                         ? secondaries.get_size() == num_steps - 1
+                         : secondaries.get_size() == num_steps);
+        CELER_ASSERT(secondaries.get_size()
+                     == allocate_secondaries.get().size());
         CELER_ASSERT(
             StackAllocatorView<Hit>(detector.host_pointers().hit_buffer)
                 .get()

@@ -66,9 +66,8 @@ class KleinNishinaInteractorTest : public celeritas_test::InteractorHostTestBase
         EXPECT_EQ(celeritas::Action::scattered, interaction.action);
 
         // Check secondaries
-        ASSERT_TRUE(interaction.secondary);
-        ASSERT_EQ(0, interaction.secondaries.size());
-        const auto& electron = interaction.secondary;
+        ASSERT_EQ(1, interaction.secondaries.size());
+        const auto& electron = interaction.secondaries.front();
         EXPECT_TRUE(electron);
         EXPECT_EQ(pointers_.electron_id, electron.particle_id);
         EXPECT_GT(this->particle_track().energy().value(),
@@ -93,8 +92,10 @@ TEST_F(KleinNishinaInteractorTest, ten_mev)
     this->resize_secondaries(4);
 
     // Create the interactor
-    KleinNishinaInteractor interact(
-        pointers_, this->particle_track(), this->direction());
+    KleinNishinaInteractor interact(pointers_,
+                                    this->particle_track(),
+                                    this->direction(),
+                                    this->secondary_allocator());
     RandomEngine&          rng_engine = this->rng();
 
     std::vector<double> energy;
@@ -103,22 +104,24 @@ TEST_F(KleinNishinaInteractorTest, ten_mev)
     std::vector<double> costheta_electron;
 
     // Produce four samples from the original incident energy/dir
-    for (CELER_MAYBE_UNUSED int i : celeritas::range(4))
+    for (int i : celeritas::range(4))
     {
         Interaction result = interact(rng_engine);
         SCOPED_TRACE(result);
         this->sanity_check(result);
+        EXPECT_EQ(result.secondaries.data(),
+                  this->secondary_allocator().get().data() + i);
 
         // Add actual results to vector
         energy.push_back(result.energy.value());
         costheta.push_back(
             celeritas::dot_product(result.direction, this->direction()));
-        energy_electron.push_back(result.secondary.energy.value());
+        energy_electron.push_back(result.secondaries.front().energy.value());
         costheta_electron.push_back(celeritas::dot_product(
-            result.secondary.direction, this->direction()));
+            result.secondaries.front().direction, this->direction()));
     }
 
-    EXPECT_EQ(0, this->secondary_allocator().get().size());
+    EXPECT_EQ(4, this->secondary_allocator().get().size());
 
     // Note: these are "gold" values based on the host RNG.
     const double expected_energy[]
@@ -134,6 +137,13 @@ TEST_F(KleinNishinaInteractorTest, ten_mev)
     EXPECT_VEC_SOFT_EQ(expected_energy_electron, energy_electron);
     EXPECT_VEC_SOFT_EQ(expected_costheta_electron, costheta_electron);
     // PRINT_EXPECTED(energy_electron);
+
+    // Next sample should fail because we're out of secondary buffer space
+    {
+        Interaction result = interact(rng_engine);
+        EXPECT_EQ(0, result.secondaries.size());
+        EXPECT_EQ(celeritas::Action::failed, result.action);
+    }
 }
 
 TEST_F(KleinNishinaInteractorTest, stress_test)
@@ -156,10 +166,13 @@ TEST_F(KleinNishinaInteractorTest, stress_test)
         {
             SCOPED_TRACE("Incident direction: " + to_string(inc_dir));
             this->set_inc_direction(inc_dir);
+            this->resize_secondaries(num_samples);
 
             // Create interactor
-            KleinNishinaInteractor interact(
-                pointers_, this->particle_track(), this->direction());
+            KleinNishinaInteractor interact(pointers_,
+                                            this->particle_track(),
+                                            this->direction(),
+                                            this->secondary_allocator());
 
             // Loop over many particles
             for (int i = 0; i < num_samples; ++i)
@@ -168,6 +181,7 @@ TEST_F(KleinNishinaInteractorTest, stress_test)
                 // SCOPED_TRACE(result);
                 this->sanity_check(result);
             }
+            EXPECT_EQ(num_samples, this->secondary_allocator().get().size());
             num_particles_sampled += num_samples;
         }
         avg_engine_samples.push_back(double(rng_engine.count())
@@ -191,10 +205,13 @@ TEST_F(KleinNishinaInteractorTest, distributions)
     Real3        inc_direction = {0, 0, 1};
     this->set_inc_particle(pdg::gamma(), MevEnergy{inc_energy});
     this->set_inc_direction(inc_direction);
+    this->resize_secondaries(num_samples);
 
     // Create interactor
-    KleinNishinaInteractor interact(
-        pointers_, this->particle_track(), this->direction());
+    KleinNishinaInteractor interact(pointers_,
+                                    this->particle_track(),
+                                    this->direction(),
+                                    this->secondary_allocator());
 
     int              nbins = 10;
     std::vector<int> eps_dist(nbins);
@@ -220,6 +237,7 @@ TEST_F(KleinNishinaInteractorTest, distributions)
             ++costheta_dist[ct_bin];
         }
     }
+    EXPECT_EQ(num_samples, this->secondary_allocator().get().size());
     // PRINT_EXPECTED(eps_dist);
     // PRINT_EXPECTED(costheta_dist);
     const int expected_eps_dist[]

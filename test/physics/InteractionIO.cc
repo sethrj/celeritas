@@ -24,16 +24,8 @@ std::ostream& operator<<(std::ostream& os, const Interaction& i)
     if (i)
     {
         os << "Action{" << static_cast<int>(i.action) << "}, "
-           << i.energy.value() << " MeV, " << i.direction << ",";
-        if (i.secondary)
-        {
-            os << '{' << i.secondary;
-            for (const Secondary& s : i.secondaries)
-            {
-                os << ',' << s;
-            }
-            os << '}';
-        }
+           << i.energy.value() << " MeV, " << i.direction << ", {"
+           << i.secondaries << '}';
         if (i.energy_deposition > zero_quantity())
         {
             os << " + " << i.energy_deposition.value() << " MeV";
