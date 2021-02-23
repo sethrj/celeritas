@@ -35,7 +35,8 @@ ParticleTrackView::operator=(const Initializer_t& other)
 {
     CELER_EXPECT(other.particle_id < params_.particles.size());
     CELER_EXPECT(other.energy >= zero_quantity());
-    states_.state[thread_] = other;
+    states_.ids[thread_]    = other.particle_id;
+    states_.energy[thread_] = other.energy.value();
     return *this;
 }
 
@@ -51,7 +52,7 @@ void ParticleTrackView::energy(units::MevEnergy quantity)
 {
     CELER_EXPECT(this->particle_id());
     CELER_EXPECT(quantity >= zero_quantity());
-    states_.state[thread_].energy = quantity;
+    states_.energy[thread_] = quantity.value();
 }
 
 //---------------------------------------------------------------------------//
@@ -62,7 +63,7 @@ void ParticleTrackView::energy(units::MevEnergy quantity)
  */
 CELER_FUNCTION ParticleId ParticleTrackView::particle_id() const
 {
-    return states_.state[thread_].particle_id;
+    return states_.ids[thread_];
 }
 
 //---------------------------------------------------------------------------//
@@ -71,7 +72,7 @@ CELER_FUNCTION ParticleId ParticleTrackView::particle_id() const
  */
 CELER_FUNCTION units::MevEnergy ParticleTrackView::energy() const
 {
-    return states_.state[thread_].energy;
+    return units::MevEnergy{states_.energy[thread_]};
 }
 
 //---------------------------------------------------------------------------//
@@ -91,7 +92,7 @@ CELER_FUNCTION bool ParticleTrackView::is_stopped() const
  */
 CELER_FUNCTION ParticleView ParticleTrackView::particle_view() const
 {
-    return ParticleView(params_, states_.state[thread_].particle_id);
+    return ParticleView(params_, this->particle_id());
 }
 
 //---------------------------------------------------------------------------//

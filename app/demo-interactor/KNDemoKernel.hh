@@ -92,7 +92,7 @@ using ParamsDeviceRef
 //! Pointers to initial conditions
 struct InitialPointers
 {
-    celeritas::ParticleTrackState particle;
+    celeritas::ParticleStateInitializer particle;
 };
 
 //! Pointers to thread-dependent state data
