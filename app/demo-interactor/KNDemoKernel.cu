@@ -102,14 +102,13 @@ __global__ void iterate_kernel(ParamsDeviceRef const            params,
         demo_interactor::move_to_collision(
             particle, calc_xs, dir, &pos, &time, rng);
 
-        Hit h;
-        h.pos    = pos;
-        h.thread = ThreadId(tid);
-        h.time   = time;
-
         if (particle.energy() < units::MevEnergy{0.01})
         {
             // Particle is below interaction energy
+            Hit h;
+            h.pos              = pos;
+            h.thread           = ThreadId(tid);
+            h.time             = time;
             h.dir              = dir;
             h.energy_deposited = particle.energy();
 
@@ -131,6 +130,10 @@ __global__ void iterate_kernel(ParamsDeviceRef const            params,
         // Deposit energy from the secondary (effectively, an infinite energy
         // cutoff)
         {
+            Hit h;
+            h.pos                 = pos;
+            h.thread              = ThreadId(tid);
+            h.time                = time;
             const auto& secondary = interaction.secondaries.front();
             h.dir                 = secondary.direction;
             h.energy_deposited    = secondary.energy;
