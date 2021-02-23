@@ -104,7 +104,6 @@ auto KNDemoRunner::operator()(KNDemoRunArgs args) -> result_type
         iterate(launch_params_,
                 params,
                 state,
-                secondaries.device_pointers(),
                 detector.device_pointers());
 
         // Save the wall time
