@@ -106,9 +106,9 @@ CELER_FUNCTION Interaction BetheHeitlerInteractor::operator()(Engine& rng)
                 CELER_ASSERT(delta <= delta_max && delta >= delta_min);
                 // Calculate g1 "rejection" function
                 reject_threshold
-                    = celeritas::max(this->screening_phi1_aux(delta), 0.0)
-                      / celeritas::max(f10, 0.0);
-                CELER_ASSERT(reject_threshold > 0.0 && reject_threshold <= 1.0);
+                    = celeritas::clamp_nonneg(this->screening_phi1_aux(delta))
+                      / celeritas::clamp_nonneg(f10);
+                CELER_ASSERT(reject_threshold > 0 && reject_threshold <= 1);
             }
             else
             {
@@ -122,9 +122,9 @@ CELER_FUNCTION Interaction BetheHeitlerInteractor::operator()(Engine& rng)
                 CELER_ASSERT(delta <= delta_max && delta >= delta_min);
                 // Calculate g2 "rejection" function
                 reject_threshold
-                    = celeritas::max(this->screening_phi2_aux(delta), 0.0)
-                      / celeritas::max(f20, 0.0);
-                CELER_ASSERT(reject_threshold > 0.0 && reject_threshold <= 1.0);
+                    = celeritas::clamp_nonneg(this->screening_phi2_aux(delta))
+                      / celeritas::clamp_nonneg(f20);
+                CELER_ASSERT(reject_threshold > 0 && reject_threshold <= 1);
             }
         } while (BernoulliDistribution(1.0 - reject_threshold)(rng));
     }

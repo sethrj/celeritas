@@ -32,6 +32,13 @@ TEST(AlgorithmsTest, ipow)
     EXPECT_TRUE((std::is_same<int, decltype(celeritas::ipow<4>(5))>::value));
 }
 
+TEST(AlgorithmsTest, clamp)
+{
+    EXPECT_DOUBLE_EQ(0.0, celeritas::clamp_nonneg(-100.0));
+    EXPECT_DOUBLE_EQ(0.0, celeritas::clamp_nonneg(0.0));
+    EXPECT_DOUBLE_EQ(123, celeritas::clamp_nonneg(123));
+}
+
 TEST(AlgorithmsTest, lower_bound)
 {
     // Test empty vector

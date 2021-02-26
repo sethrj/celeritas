@@ -33,6 +33,18 @@ CELER_CONSTEXPR_FUNCTION const T& max(const T& a, const T& b)
 
 //---------------------------------------------------------------------------//
 /*!
+ * Clamp the given value to a nonnegative number.
+ *
+ * This is equivalent to max<T>(inp, 0) or [C++17] clamp(inp, 0, inf).
+ */
+template<class T>
+CELER_CONSTEXPR_FUNCTION T clamp_nonneg(T v)
+{
+    return (v > 0) ? v : 0;
+}
+
+//---------------------------------------------------------------------------//
+/*!
  * Return an integer power of the input value.
  *
  * Example: \code
