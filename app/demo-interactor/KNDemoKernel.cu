@@ -13,7 +13,6 @@
 #include "base/Assert.hh"
 #include "base/KernelParamCalculator.cuda.hh"
 #include "physics/base/ParticleTrackView.hh"
-#include "physics/base/SecondaryAllocatorView.hh"
 #include "physics/em/detail/KleinNishinaInteractor.hh"
 #include "random/cuda/RngEngine.hh"
 #include "physics/grid/PhysicsGridCalculator.hh"
@@ -93,13 +92,11 @@ move_kernel(ParamsDeviceRef const params, StateDeviceRef const states)
  * - Kills the secondary, depositing its local energy
  * - Applies the interaction (updating track direction and energy)
  */
-__global__ void interact_kernel(ParamsDeviceRef const            params,
-                                StateDeviceRef const             states,
-                                SecondaryAllocatorPointers const secondaries,
-                                DetectorPointers const           detector)
+__global__ void interact_kernel(ParamsDeviceRef const  params,
+                                StateDeviceRef const   states,
+                                DetectorPointers const detector)
 {
-    SecondaryAllocatorView allocate_secondaries(secondaries);
-    unsigned int           tid = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
 
     // Exit if out of range or already dead
     if (tid >= states.size() || !states.alive[tid])
@@ -130,19 +127,20 @@ __global__ void interact_kernel(ParamsDeviceRef const            params,
     }
 
     // Construct RNG and interaction interfaces
-    KleinNishinaInteractor interact(
-        params.kn_interactor, particle, h.dir, allocate_secondaries);
+    KleinNishinaInteractor interact(params.kn_interactor, particle, h.dir);
 
     // Perform interaction: should emit a single particle (an electron)
     Interaction interaction = interact(rng);
     CELER_ASSERT(interaction);
+    CELER_ASSERT(interaction.num_secondaries() == 1);
 
     // Deposit energy from the secondary (effectively, an infinite energy
     // cutoff)
     {
-        const auto& secondary = interaction.secondaries.front();
-        h.dir                 = secondary.direction;
-        h.energy_deposited    = secondary.energy;
+        const auto& secondary = interaction.secondary;
+        CELER_ASSERT(secondary);
+        h.dir              = secondary.direction;
+        h.energy_deposited = secondary.energy;
         detector_hit(h);
     }
 
@@ -181,7 +179,6 @@ void initialize(const CudaGridParams&  opts,
 void iterate(const CudaGridParams&              opts,
              const ParamsDeviceRef&             params,
              const StateDeviceRef&              states,
-             const SecondaryAllocatorPointers&  secondaries,
              const celeritas::DetectorPointers& detector)
 {
     static const KernelParamCalculator calc_kernel_params(
@@ -195,7 +192,7 @@ void iterate(const CudaGridParams&              opts,
         interact_kernel, "interact", opts.block_size);
     grid = calc_interact_params(states.size());
     interact_kernel<<<grid.grid_size, grid.block_size>>>(
-        params, states, secondaries, detector);
+        params, states, detector);
     CELER_CUDA_CHECK_ERROR();
 
     if (opts.sync)

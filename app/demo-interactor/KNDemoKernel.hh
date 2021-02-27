@@ -133,7 +133,6 @@ void initialize(const CudaGridParams&  grid,
 void iterate(const CudaGridParams&                        grid,
              const ParamsDeviceRef&                       params,
              const StateDeviceRef&                        state,
-             const celeritas::SecondaryAllocatorPointers& secondaries,
              const celeritas::DetectorPointers&           detector);
 
 //---------------------------------------------------------------------------//

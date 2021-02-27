@@ -28,13 +28,11 @@ namespace detail
 CELER_FUNCTION MollerBhabhaInteractor::MollerBhabhaInteractor(
     const MollerBhabhaPointers& shared,
     const ParticleTrackView&    particle,
-    const Real3&                inc_direction,
-    SecondaryAllocatorView&     allocate)
+    const Real3&                inc_direction)
     : shared_(shared)
     , inc_energy_(particle.energy().value())
     , inc_momentum_(particle.momentum().value())
     , inc_direction_(inc_direction)
-    , allocate_(allocate)
     , inc_particle_is_electron_(particle.particle_id() == shared_.electron_id)
 {
     CELER_EXPECT(particle.particle_id() == shared_.electron_id
@@ -51,15 +49,6 @@ CELER_FUNCTION MollerBhabhaInteractor::MollerBhabhaInteractor(
 template<class Engine>
 CELER_FUNCTION Interaction MollerBhabhaInteractor::operator()(Engine& rng)
 {
-    // Allocate memory for the produced electron
-    Secondary* electron_secondary = this->allocate_(1);
-
-    if (electron_secondary == nullptr)
-    {
-        // Fail to allocate space for a secondary
-        return Interaction::from_failure();
-    }
-
     real_type epsilon;
 
     if (inc_particle_is_electron_)
@@ -116,13 +105,12 @@ CELER_FUNCTION Interaction MollerBhabhaInteractor::operator()(Engine& rng)
     Interaction     result;
     result.action      = Action::scattered;
     result.energy      = units::MevEnergy{inc_exiting_energy};
-    result.secondaries = {electron_secondary, 1};
     result.direction   = inc_exiting_direction;
 
     // Assign values to the secondary particle
-    electron_secondary[0].particle_id = shared_.electron_id;
-    electron_secondary[0].energy      = units::MevEnergy{secondary_energy};
-    electron_secondary[0].direction   = secondary_direction;
+    result.secondary.particle_id = shared_.electron_id;
+    result.secondary.energy      = units::MevEnergy{secondary_energy};
+    result.secondary.direction   = secondary_direction;
 
     return result;
 }

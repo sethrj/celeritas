@@ -87,8 +87,8 @@ class MollerBhabhaInteractorTest : public celeritas_test::InteractorHostTestBase
         EXPECT_EQ(celeritas::Action::scattered, interaction.action);
 
         // Check secondaries
-        ASSERT_EQ(1, interaction.secondaries.size());
-        const auto& electron = interaction.secondaries.front();
+        EXPECT_EQ(0, interaction.secondaries.size());
+        const auto& electron = interaction.secondary;
         EXPECT_TRUE(electron);
         EXPECT_EQ(pointers_.electron_id, electron.particle_id);
         EXPECT_GT(this->particle_track().energy().value(),
@@ -104,29 +104,26 @@ class MollerBhabhaInteractorTest : public celeritas_test::InteractorHostTestBase
     celeritas::detail::MollerBhabhaPointers pointers_;
 };
 
+struct SampleResult
+{
+    std::vector<double> inc_exit_cost;
+    std::vector<double> inc_exit_e;
+    std::vector<double> inc_edep;
+    std::vector<double> sec_cost;
+    std::vector<double> sec_e;
+};
+
 //---------------------------------------------------------------------------//
 // TESTS
 //---------------------------------------------------------------------------//
-
 TEST_F(MollerBhabhaInteractorTest, basic)
 {
     // Sample 4 Moller and 4 Bhabha interactors
     this->resize_secondaries(8);
     RandomEngine& rng_engine = this->rng();
 
-    // Sampled Moller results
-    std::vector<double> m_inc_exit_cost;
-    std::vector<double> m_inc_exit_e;
-    std::vector<double> m_inc_edep;
-    std::vector<double> m_sec_cost;
-    std::vector<double> m_sec_e;
-
-    // Sampled Bhabha results
-    std::vector<double> b_inc_exit_cost;
-    std::vector<double> b_inc_exit_e;
-    std::vector<double> b_inc_edep;
-    std::vector<double> b_sec_cost;
-    std::vector<double> b_sec_e;
+    // Sampled results
+    SampleResult m_results, b_results;
 
     // Selected energies for the incident particle's interactor test [MeV]
     real_type inc_energies[4] = {1, 10, 1e3, 1e5};
@@ -147,45 +144,25 @@ TEST_F(MollerBhabhaInteractorTest, basic)
     {
         this->set_inc_direction(inc_direction[i]);
 
-        //// Sample Moller
-        this->set_inc_particle(pdg::electron(), MevEnergy{inc_energies[i]});
+        for (auto p : {pdg::electron(), pdg::positron()})
+        {
+            this->set_inc_particle(p, MevEnergy{inc_energies[i]});
 
-        MollerBhabhaInteractor m_interactor(pointers_,
-                                            this->particle_track(),
-                                            this->direction(),
-                                            this->secondary_allocator());
+            MollerBhabhaInteractor mb_interact(
+                pointers_, this->particle_track(), this->direction());
 
-        Interaction m_result = m_interactor(rng_engine);
-        this->sanity_check(m_result);
+            Interaction result = mb_interact(rng_engine);
+            this->sanity_check(result);
 
-        m_inc_exit_cost.push_back(
-            dot_product(m_result.direction, this->direction()));
-        m_inc_exit_e.push_back(m_result.energy.value());
-        m_inc_edep.push_back(m_result.energy_deposition.value());
-        EXPECT_EQ(1, m_result.secondaries.size());
-        m_sec_cost.push_back(
-            dot_product(m_result.secondaries[0].direction, this->direction()));
-        m_sec_e.push_back(m_result.secondaries[0].energy.value());
-
-        //// Sample Bhabha
-        this->set_inc_particle(pdg::positron(), MevEnergy{inc_energies[i]});
-
-        MollerBhabhaInteractor b_interactor(pointers_,
-                                            this->particle_track(),
-                                            this->direction(),
-                                            this->secondary_allocator());
-
-        Interaction b_result = b_interactor(rng_engine);
-        this->sanity_check(b_result);
-
-        b_inc_exit_cost.push_back(
-            dot_product(b_result.direction, this->direction()));
-        b_inc_exit_e.push_back(b_result.energy.value());
-        b_inc_edep.push_back(b_result.energy_deposition.value());
-        EXPECT_EQ(1, b_result.secondaries.size());
-        b_sec_cost.push_back(
-            dot_product(b_result.secondaries[0].direction, this->direction()));
-        b_sec_e.push_back(b_result.secondaries[0].energy.value());
+            SampleResult& r = (p == pdg::electron() ? m_results : b_results);
+            r.inc_exit_cost.push_back(
+                dot_product(result.direction, this->direction()));
+            r.inc_exit_e.push_back(result.energy.value());
+            r.inc_edep.push_back(result.energy_deposition.value());
+            r.sec_cost.push_back(
+                dot_product(result.secondary.direction, this->direction()));
+            r.sec_e.push_back(result.secondary.energy.value());
+        }
     }
 
     //// Moller
@@ -216,17 +193,17 @@ TEST_F(MollerBhabhaInteractorTest, basic)
                                        0.001350170413359};
 
     //// Moller
-    EXPECT_VEC_SOFT_EQ(expected_m_inc_exit_cost, m_inc_exit_cost);
-    EXPECT_VEC_SOFT_EQ(expected_m_inc_exit_e, m_inc_exit_e);
-    EXPECT_VEC_SOFT_EQ(expected_m_inc_edep, m_inc_edep);
-    EXPECT_VEC_SOFT_EQ(expected_m_sec_cost, m_sec_cost);
-    EXPECT_VEC_SOFT_EQ(expected_m_sec_e, m_sec_e);
+    EXPECT_VEC_SOFT_EQ(expected_m_inc_exit_cost, m_results.inc_exit_cost);
+    EXPECT_VEC_SOFT_EQ(expected_m_inc_exit_e, m_results.inc_exit_e);
+    EXPECT_VEC_SOFT_EQ(expected_m_inc_edep, m_results.inc_edep);
+    EXPECT_VEC_SOFT_EQ(expected_m_sec_cost, m_results.sec_cost);
+    EXPECT_VEC_SOFT_EQ(expected_m_sec_e, m_results.sec_e);
     //// Bhabha
-    EXPECT_VEC_SOFT_EQ(expected_b_inc_exit_cost, b_inc_exit_cost);
-    EXPECT_VEC_SOFT_EQ(expected_b_inc_exit_e, b_inc_exit_e);
-    EXPECT_VEC_SOFT_EQ(expected_b_inc_edep, b_inc_edep);
-    EXPECT_VEC_SOFT_EQ(expected_b_sec_cost, b_sec_cost);
-    EXPECT_VEC_SOFT_EQ(expected_b_sec_e, b_sec_e);
+    EXPECT_VEC_SOFT_EQ(expected_b_inc_exit_cost, b_results.inc_exit_cost);
+    EXPECT_VEC_SOFT_EQ(expected_b_inc_exit_e, b_results.inc_exit_e);
+    EXPECT_VEC_SOFT_EQ(expected_b_inc_edep, b_results.inc_edep);
+    EXPECT_VEC_SOFT_EQ(expected_b_sec_cost, b_results.sec_cost);
+    EXPECT_VEC_SOFT_EQ(expected_b_sec_e, b_results.sec_e);
 }
 
 TEST_F(MollerBhabhaInteractorTest, stress_test)
@@ -259,10 +236,8 @@ TEST_F(MollerBhabhaInteractorTest, stress_test)
 
                 // Create interactor
                 this->set_inc_particle(particle, MevEnergy{inc_e});
-                MollerBhabhaInteractor mb_interact(pointers_,
-                                                   this->particle_track(),
-                                                   this->direction(),
-                                                   this->secondary_allocator());
+                MollerBhabhaInteractor mb_interact(
+                    pointers_, this->particle_track(), this->direction());
 
                 // Loop over half the sample size
                 for (int i = 0; i < num_samples; ++i)
@@ -270,9 +245,6 @@ TEST_F(MollerBhabhaInteractorTest, stress_test)
                     Interaction result = mb_interact(rng);
                     this->sanity_check(result);
                 }
-
-                EXPECT_EQ(num_samples,
-                          this->secondary_allocator().get().size());
                 num_particles_sampled += num_samples;
             }
             avg_engine_samples.push_back(double(rng.count())

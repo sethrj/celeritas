@@ -13,7 +13,6 @@
 #include "physics/base/ModelInterface.hh"
 #include "physics/base/ParticleTrackView.hh"
 #include "physics/base/PhysicsTrackView.hh"
-#include "physics/base/SecondaryAllocatorView.hh"
 #include "KleinNishinaInteractor.hh"
 
 namespace celeritas
@@ -35,7 +34,6 @@ __global__ void klein_nishina_interact_kernel(const KleinNishinaPointers  kn,
     if (tid.get() >= ptrs.states.size())
         return;
 
-    SecondaryAllocatorView allocate_secondaries(ptrs.secondaries);
     ParticleTrackView particle(ptrs.params.particle, ptrs.states.particle, tid);
 
     PhysicsTrackView physics(ptrs.params.physics,
@@ -49,7 +47,7 @@ __global__ void klein_nishina_interact_kernel(const KleinNishinaPointers  kn,
         return;
 
     KleinNishinaInteractor interact(
-        kn, particle, ptrs.states.direction[tid.get()], allocate_secondaries);
+        kn, particle, ptrs.states.direction[tid.get()]);
 
     RngEngine rng(ptrs.states.rng, tid);
     ptrs.result[tid.get()] = interact(rng);
