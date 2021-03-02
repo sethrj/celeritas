@@ -24,12 +24,9 @@ using namespace celeritas;
 //! Interactor
 struct Interactor
 {
-    CELER_FUNCTION Interactor(SecondaryAllocatorView& allocate_secondaries,
-                              size_type               alloc_size,
-                              char                    alive)
-        : allocate_secondaries(allocate_secondaries)
-        , alloc_size(alloc_size)
-        , alive(alive)
+    CELER_FUNCTION
+    Interactor(SecondaryAllocatorView& alloc, size_type size, char alv)
+        : allocate_secondaries(alloc), alloc_size(size), alive(alv)
     {
     }
 
@@ -44,15 +41,23 @@ struct Interactor
         }
 
         // Create secondaries
-        if (alloc_size > 0)
+        size_type stack_size = alloc_size;
+        if (stack_size > 0)
         {
-            Secondary* allocated = this->allocate_secondaries(alloc_size);
+            result.secondary.particle_id = ParticleId(0);
+            result.secondary.energy      = units::MevEnergy(5.);
+            result.secondary.direction   = {1., 0., 0.};
+            --stack_size;
+        }
+        if (stack_size > 0)
+        {
+            Secondary* allocated = this->allocate_secondaries(stack_size);
             if (!allocated)
             {
                 return Interaction::from_failure();
             }
 
-            result.secondaries = {allocated, alloc_size};
+            result.secondaries = {allocated, stack_size};
             for (auto& secondary : result.secondaries)
             {
                 secondary.particle_id = ParticleId(0);
