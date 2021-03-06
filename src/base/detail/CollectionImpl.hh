@@ -24,36 +24,36 @@ namespace detail
 template<class T, Ownership W>
 struct CollectionTraits
 {
-    using SpanT                = Span<T>;
-    using SpanConstT           = Span<const T>;
-    using pointer              = T*;
-    using const_pointer        = const T*;
-    using reference_type       = T&;
-    using const_reference_type = const T&;
+    using SpanT           = Span<T>;
+    using SpanConstT      = Span<const T>;
+    using pointer         = T*;
+    using const_pointer   = const T*;
+    using reference       = T&;
+    using const_reference = const T&;
 };
 
 //---------------------------------------------------------------------------//
 template<class T>
 struct CollectionTraits<T, Ownership::reference>
 {
-    using SpanT                = Span<T>;
-    using SpanConstT           = Span<T>;
-    using pointer              = T*;
-    using const_pointer        = T*;
-    using reference_type       = T&;
-    using const_reference_type = T&;
+    using SpanT           = Span<T>;
+    using SpanConstT      = Span<T>;
+    using pointer         = T*;
+    using const_pointer   = T*;
+    using reference       = T&;
+    using const_reference = T&;
 };
 
 //---------------------------------------------------------------------------//
 template<class T>
 struct CollectionTraits<T, Ownership::const_reference>
 {
-    using SpanT                = Span<const T>;
-    using SpanConstT           = Span<const T>;
-    using pointer              = const T*;
-    using const_pointer        = const T*;
-    using reference_type       = const T&;
-    using const_reference_type = const T&;
+    using SpanT           = Span<const T>;
+    using SpanConstT      = Span<const T>;
+    using pointer         = const T*;
+    using const_pointer   = const T*;
+    using reference       = const T&;
+    using const_reference = const T&;
 };
 
 //---------------------------------------------------------------------------//

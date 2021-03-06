@@ -25,13 +25,13 @@ namespace celeritas
 template<class T, Ownership W, MemSpace M>
 struct StackAllocatorData
 {
-    celeritas::Collection<T, W, M>         storage; //!< Allocated capacity
-    celeritas::Collection<size_type, W, M> size;    //!< Stored size
+    Collection<T, W, M>         storage; //!< Allocated capacity
+    Collection<size_type, W, M> size;    //!< Stored size
 
     // Whether the interface is initialized
     explicit inline CELER_FUNCTION operator bool() const
     {
-        return !storage.empty() && !size.empty();
+        return !storage.empty() && size.size() == 1;
     }
 
     //! Total capacity of stack
@@ -51,6 +51,18 @@ struct StackAllocatorData
 #ifndef __CUDA_ARCH__
 //---------------------------------------------------------------------------//
 /*!
+ * Clear a stack allocator in host code.
+ */
+template<class T, MemSpace M>
+inline void
+clear(StackAllocatorData<T, Ownership::value, M>* data, size_type capacity)
+{
+    CELER_EXPECT(capacity > 0);
+    celeritas::fill(size_type(0), &data->size);
+}
+
+//---------------------------------------------------------------------------//
+/*!
  * Resize a stack allocator in host code.
  */
 template<class T, MemSpace M>
@@ -60,7 +72,7 @@ resize(StackAllocatorData<T, Ownership::value, M>* data, size_type capacity)
     CELER_EXPECT(capacity > 0);
     make_builder(&data->storage).resize(capacity);
     make_builder(&data->size).resize(1);
-    celeritas::fill(size_type(0), &data->size);
+    clear(data);
 }
 #endif
 

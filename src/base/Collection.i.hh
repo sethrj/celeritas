@@ -70,8 +70,7 @@ Collection<T, W, M, I>::operator=(Collection<T, W2, M, I>& other)
  * Access a single element.
  */
 template<class T, Ownership W, MemSpace M, class I>
-CELER_FUNCTION auto Collection<T, W, M, I>::operator[](ItemIdT i)
-    -> reference_type
+CELER_FUNCTION auto Collection<T, W, M, I>::operator[](ItemIdT i) -> reference
 {
     CELER_EXPECT(i < this->size());
     return this->storage()[i.get()];
@@ -83,7 +82,7 @@ CELER_FUNCTION auto Collection<T, W, M, I>::operator[](ItemIdT i)
  */
 template<class T, Ownership W, MemSpace M, class I>
 CELER_FUNCTION auto Collection<T, W, M, I>::operator[](ItemIdT i) const
-    -> const_reference_type
+    -> const_reference
 {
     CELER_EXPECT(i < this->size());
     return this->storage()[i.get()];

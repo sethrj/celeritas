@@ -68,14 +68,18 @@ class Range
   public:
     //// CONSTRUCTORS ////
 
-    //! Empty constructor for empty range
-    CELER_FUNCTION Range() : begin_{}, end_{} {}
+    //! Construct from start/stop
+    CELER_FUNCTION Range(T begin, T end) : begin_(begin), end_(end)
+    {
+        CELER_EXPECT((TraitsT::is_valid(begin_) && TraitsT::is_valid(end_))
+                     || (begin_ == end_));
+    }
 
     //! Construct from stop
-    CELER_FUNCTION Range(T end) : begin_{}, end_(end) {}
+    CELER_FUNCTION Range(T end) : Range{{}, end} {}
 
-    //! Construct from start/stop
-    CELER_FUNCTION Range(T begin, T end) : begin_(begin), end_(end) {}
+    //! Empty constructor for empty range
+    CELER_FUNCTION Range() : Range{{}, {}} {}
 
     //// CONTAINER-LIKE ACCESS ////
 

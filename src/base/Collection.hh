@@ -58,6 +58,36 @@ using ItemRange = Range<OpaqueId<T, Size>>;
 
 //---------------------------------------------------------------------------//
 /*!
+ * Index and size, rather than start and stop.
+ *
+ * \todo This could be extended so that it can take compile-time size for
+ * reduced memory usage and improved (compile-time) error checking.
+ */
+template<class I>
+struct ItemSpan
+{
+    using value_type = typename I::value_type;
+    using size_type  = typename I::size_type;
+
+    I         start{};
+    size_type size{};
+
+    //! Implicitly convert to an ItemRrange
+    CELER_FUNCTION operator ItemRange<value_type, size_type>() const
+    {
+        CELER_EXPECT(bool(start) == (size > 0));
+        return {start, start.unchecked_get() + size};
+    }
+
+    //! Whether this span points to a valid range.
+    explicit CELER_CONSTEXPR_FUNCTION operator bool() const
+    {
+        return size > 0;
+    }
+};
+
+//---------------------------------------------------------------------------//
+/*!
  * Sentinel class for obtaining a view to all items of a collection.
  */
 template<class T, MemSpace M = MemSpace::native>
@@ -105,15 +135,14 @@ class Collection
   public:
     //!@{
     //! Type aliases
-    using SpanT          = typename CollectionTraitsT::SpanT;
-    using SpanConstT     = typename CollectionTraitsT::SpanConstT;
-    using reference_type = typename CollectionTraitsT::reference_type;
-    using const_reference_type =
-        typename CollectionTraitsT::const_reference_type;
-    using size_type  = typename I::size_type;
-    using ItemIdT    = I;
-    using ItemRangeT = Range<ItemIdT>;
-    using AllItemsT  = AllItems<T, M>;
+    using size_type       = typename I::size_type;
+    using reference       = typename CollectionTraitsT::reference;
+    using const_reference = typename CollectionTraitsT::const_reference;
+    using SpanT           = typename CollectionTraitsT::SpanT;
+    using SpanConstT      = typename CollectionTraitsT::SpanConstT;
+    using ItemIdT         = I;
+    using ItemRangeT      = Range<ItemIdT>;
+    using AllItemsT       = AllItems<T, M>;
     //!@}
 
   public:
@@ -151,8 +180,8 @@ class Collection
     //// ACCESS ////
 
     // Access a single element
-    inline CELER_FUNCTION reference_type       operator[](ItemIdT i);
-    inline CELER_FUNCTION const_reference_type operator[](ItemIdT i) const;
+    inline CELER_FUNCTION reference       operator[](ItemIdT i);
+    inline CELER_FUNCTION const_reference operator[](ItemIdT i) const;
 
     // Access a subset of the data with a slice
     inline CELER_FUNCTION SpanT      operator[](ItemRangeT ps);

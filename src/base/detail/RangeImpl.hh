@@ -126,7 +126,6 @@ class range_iter : public std::iterator<std::input_iterator_tag, T>
     CELER_FUNCTION range_iter(value_type value = TraitsT::zero())
         : value_(value)
     {
-        CELER_EXPECT(TraitsT::is_valid(value_));
     }
 
     //// ACCESSORS ////
