@@ -28,7 +28,7 @@ class LivermorePEMacroXsCalculator
     using Energy              = detail::LivermorePEMicroXsCalculator::Energy;
     using MicroXsUnits        = detail::LivermorePEMicroXsCalculator::XsUnits;
     using XsUnits             = units::NativeUnit;
-    using LivermorePEPointers = detail::LivermorePEPointers;
+    using LivermorePEPointers = detail::LivermorePEData;
     //!@}
 
   public:

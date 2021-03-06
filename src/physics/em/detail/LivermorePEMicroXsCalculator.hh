@@ -27,6 +27,7 @@ class LivermorePEMicroXsCalculator
   public:
     //!@{
     //! Type aliases
+    using LivermorePEPointers = LivermorePEData;
     using XsUnits = LivermoreSubshell::XsUnits;
     using Energy  = Quantity<LivermoreSubshell::EnergyUnits>;
     //!@}
