@@ -89,8 +89,8 @@ void MaterialParams::append_element_def(const ElementInput& inp,
 /*!
  * Process and store element components to the internal list.
  *
- * \todo It's the caller's responsibility to ensure that element IDs
- * aren't duplicated.
+ * \todo It's the caller's responsibility to ensure that each element in a
+ * material is unique.
  */
 ItemRange<MatElementComponent>
 MaterialParams::extend_elcomponents(const MaterialInput& inp,

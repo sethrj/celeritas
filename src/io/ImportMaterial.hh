@@ -7,10 +7,9 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
+#include <map>
 #include <string>
 #include <vector>
-
-#include "ImportElement.hh"
 
 namespace celeritas
 {
@@ -25,6 +24,43 @@ enum class ImportMaterialState
     solid,
     liquid,
     gas
+};
+
+//---------------------------------------------------------------------------//
+/*!
+ * Store element data.
+ *
+ * Used by ImportMaterial and GdmlGeometryMap.
+ *
+ * The data is exported via the app/geant-exporter. For further expanding this
+ * struct, add the appropriate variables here and fetch the new values in
+ * \c app/geant-exporter.cc : store_geometry(...).
+ *
+ * Units are defined at export time in the aforementioned function.
+ */
+struct ImportElement
+{
+    std::string name;
+    int         atomic_number;
+    double      atomic_mass;           // [atomic mass unit]
+    double      radiation_length_tsai; // [g/cm^2]
+    double      coulomb_factor;
+};
+
+//---------------------------------------------------------------------------//
+/*!
+ * Components of an element.
+ *
+ * The atom and mass fractions should be redundant.
+ *
+ * \todo CURRENTLY UNUSED: replace elements_fractions and
+ * elements_num_fractions below.
+ */
+struct ImportMatElementComponent
+{
+    unsigned int element_id;
+    double       mass_frac;
+    double       atom_frac;
 };
 
 //---------------------------------------------------------------------------//

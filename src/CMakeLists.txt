@@ -195,7 +195,6 @@ if(CELERITAS_USE_ROOT)
 
   root_generate_dictionary(CeleritasRootInterface
     io/GdmlGeometryMap.hh
-    io/ImportElement.hh
     io/ImportMaterial.hh
     io/ImportParticle.hh
     io/ImportPhysicsTable.hh
