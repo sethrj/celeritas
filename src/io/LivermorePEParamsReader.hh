@@ -15,6 +15,9 @@ namespace celeritas
 //---------------------------------------------------------------------------//
 /*!
  * Load the Livermore EPICS2014 photoelectric data.
+ *
+ * \todo Define an "ImportLivermore" class (or something) instead of including
+ * the physics.
  */
 class LivermorePEParamsReader
 {
