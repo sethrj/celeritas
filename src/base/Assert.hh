@@ -72,6 +72,12 @@
     {                            \
         assert(COND);            \
     } while (0)
+#define CELER_CUDA_NDEBUG_ASSERT_(COND) \
+    do                                  \
+    {                                   \
+        if (CELER_UNLIKELY(!(COND)))    \
+            __trap();                   \
+    } while (0)
 #define CELER_DEBUG_ASSERT_(COND, WHICH)                                        \
     do                                                                          \
     {                                                                           \
@@ -103,21 +109,34 @@
     } while (0)
 //! \endcond
 
-#if CELERITAS_DEBUG && defined(__CUDA_ARCH__)
-#    define CELER_EXPECT(COND) CELER_CUDA_ASSERT_(COND)
-#    define CELER_ASSERT(COND) CELER_CUDA_ASSERT_(COND)
-#    define CELER_ENSURE(COND) CELER_CUDA_ASSERT_(COND)
-#    define CELER_ASSERT_UNREACHABLE() CELER_CUDA_ASSERT_(false)
-#elif CELERITAS_DEBUG && !defined(__CUDA_ARCH__)
-#    define CELER_EXPECT(COND) CELER_DEBUG_ASSERT_(COND, precondition)
-#    define CELER_ASSERT(COND) CELER_DEBUG_ASSERT_(COND, internal)
-#    define CELER_ENSURE(COND) CELER_DEBUG_ASSERT_(COND, postcondition)
-#    define CELER_ASSERT_UNREACHABLE() CELER_DEBUG_FAIL_("", unreachable)
-#else
+#if !CELERITAS_DEBUG
+// Host *or* device code: no debug checking
 #    define CELER_EXPECT(COND) CELER_NOASSERT_(COND)
 #    define CELER_ASSERT(COND) CELER_NOASSERT_(COND)
 #    define CELER_ENSURE(COND) CELER_NOASSERT_(COND)
 #    define CELER_ASSERT_UNREACHABLE() CELER_UNREACHABLE
+#elif !defined(__CUDA_ARCH__)
+// Host code with debug checking enabled (CELERITAS_DEBUG)
+#    define CELER_EXPECT(COND) CELER_DEBUG_ASSERT_(COND, precondition)
+#    define CELER_ASSERT(COND) CELER_DEBUG_ASSERT_(COND, internal)
+#    define CELER_ENSURE(COND) CELER_DEBUG_ASSERT_(COND, postcondition)
+#    define CELER_ASSERT_UNREACHABLE() CELER_DEBUG_FAIL_("", unreachable)
+#elif !defined(NDEBUG)
+// Device code: Debug && CELERITAS_DEBUG:
+// Check the assertion condition but don't print thread ID or context if it
+// fails. This should allow assertion checking with lower overhead.
+#    define CELER_EXPECT(COND) CELER_CUDA_ASSERT_(COND)
+#    define CELER_ASSERT(COND) CELER_CUDA_ASSERT_(COND)
+#    define CELER_ENSURE(COND) CELER_CUDA_ASSERT_(COND)
+#    define CELER_ASSERT_UNREACHABLE() CELER_CUDA_ASSERT_(false)
+#else
+// Device code: (Release || RelWithDebinfo) && CELERITAS_DEBUG:
+// Check the assertion condition but don't print thread ID or context if it
+// fails. This should allow assertion checking with lower overhead.
+#    define CELER_EXPECT(COND) CELER_CUDA_NDEBUG_ASSERT_(COND)
+#    define CELER_ASSERT(COND) CELER_CUDA_NDEBUG_ASSERT_(COND)
+#    define CELER_ENSURE(COND) CELER_CUDA_NDEBUG_ASSERT_(COND)
+#    define CELER_ASSERT_UNREACHABLE() CELER_CUDA_NDEBUG_ASSERT_(false)
 #endif
 
 #ifndef __CUDA_ARCH__
