@@ -12,13 +12,14 @@
 
 #include "ImportMaterial.hh"
 #include "ImportVolume.hh"
-#include "GdmlGeometryMapTypes.hh"
 
 namespace celeritas
 {
 //---------------------------------------------------------------------------//
 /*!
  * Store material, element, and volume information.
+ *
+ * \todo Delete this class in favor of ImportFile.
  *
  * - The material id maps materials in the global material map. It also
  *   represents the position of the material in the vector<ImportPhysicsVector>
@@ -34,6 +35,9 @@ class GdmlGeometryMap
     //!@{
     //! Type aliases
     using size_type = std::size_t;
+    using mat_id    = unsigned int;
+    using elem_id   = unsigned int;
+    using vol_id    = unsigned int;
     //!@}
 
   public:

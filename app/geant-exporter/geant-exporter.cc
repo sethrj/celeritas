@@ -44,16 +44,13 @@
 
 using namespace geant_exporter;
 namespace celer_pdg = celeritas::pdg;
-using celeritas::elem_id;
 using celeritas::GdmlGeometryMap;
 using celeritas::ImportElement;
 using celeritas::ImportMaterial;
 using celeritas::ImportMaterialState;
 using celeritas::ImportParticle;
 using celeritas::ImportVolume;
-using celeritas::mat_id;
 using celeritas::real_type;
-using celeritas::vol_id;
 using std::cout;
 using std::endl;
 
@@ -183,8 +180,8 @@ void loop_volumes(GdmlGeometryMap&       geometry,
                   const G4LogicalVolume& logical_volume)
 {
     ImportVolume volume;
-    vol_id       volume_id;
-    mat_id       material_id;
+    unsigned int volume_id;
+    unsigned int material_id;
 
     volume.name       = logical_volume.GetName();
     volume.solid_name = logical_volume.GetSolid()->GetName();
@@ -252,7 +249,7 @@ void store_geometry(TFile*                       root_file,
     {
         CELER_ASSERT(g4element);
         ImportElement element;
-        elem_id       elid            = g4element->GetIndex();
+        unsigned int  elid            = g4element->GetIndex();
         element.name                  = g4element->GetName();
         element.atomic_number         = g4element->GetZ();
         element.atomic_mass           = g4element->GetAtomicMassAmu();
@@ -294,7 +291,7 @@ void store_geometry(TFile*                       root_file,
         {
             const auto& g4element = g4elements->at(j);
             CELER_ASSERT(g4element);
-            elem_id   elid               = g4element->GetIndex();
+            unsigned int elid               = g4element->GetIndex();
             real_type elem_mass_fraction = g4material->GetFractionVector()[j];
             real_type elem_num_density
                 = g4material->GetVecNbOfAtomsPerVolume()[j] / (1. / cm3);

@@ -47,9 +47,15 @@ namespace celeritas
  * This method will probably have to be improved.
  *
  * Material and volume information are stored in a GdmlGeometryMap object.
- * The GdmlGeometryMap::mat_id value returned from a given vol_id represents
+ * The mat_id value returned from a given vol_id represents
  * the position of said material in the ImportPhysicsTable vectors:
  * \c ImportPhysicsTable.physics_vectors.at(mat_id_value).
+ *
+ * \todo: Refactor so that this just loads and returns ImportFile. A helper
+ * class (which can be reused if we allow other data sources) or the
+ * downstream celeritas classes themselves will be responsible for converting
+ * the input data. Basically, physics and io subdirectories shouldn't have the
+ * interdependency that they do now.
  */
 class RootImporter
 {

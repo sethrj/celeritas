@@ -162,12 +162,12 @@ TEST_F(RootImporterTest, import_geometry)
     EXPECT_EQ(map.size(), 5);
 
     // Fetch a given ImportVolume provided a vol_id
-    vol_id       volid  = 0;
+    unsigned int volid  = 0;
     ImportVolume volume = data.geometry->get_volume(volid);
     EXPECT_EQ(volume.name, "box");
 
     // Fetch respective mat_id and ImportMaterial from the given vol_id
-    mat_id         matid    = data.geometry->get_matid(volid);
+    unsigned int   matid    = data.geometry->get_matid(volid);
     ImportMaterial material = data.geometry->get_material(matid);
 
     // Test material

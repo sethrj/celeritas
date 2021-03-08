@@ -9,8 +9,6 @@
 
 #include <string>
 
-#include "base/Types.hh"
-
 namespace celeritas
 {
 //---------------------------------------------------------------------------//
@@ -27,6 +25,7 @@ struct ImportVolume
 {
     std::string name;
     std::string solid_name;
+    // TODO: unsigned int material_id{-1};
 };
 
 //---------------------------------------------------------------------------//

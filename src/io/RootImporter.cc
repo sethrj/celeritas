@@ -224,7 +224,7 @@ std::shared_ptr<GdmlGeometryMap> RootImporter::load_geometry_data()
 
 //---------------------------------------------------------------------------//
 /*!
- * Load GdmlGeometryMap from the ROOT file and populate MaterialParams
+ * Load GdmlGeometryMap from the ROOT file and populate MaterialParams.
  */
 std::shared_ptr<MaterialParams> RootImporter::load_material_data()
 {

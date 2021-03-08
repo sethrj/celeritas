@@ -11,8 +11,6 @@
 #include <vector>
 
 #include "ImportElement.hh"
-#include "GdmlGeometryMapTypes.hh"
-#include "base/Types.hh"
 
 namespace celeritas
 {
@@ -43,16 +41,19 @@ enum class ImportMaterialState
  */
 struct ImportMaterial
 {
+    using elem_id = unsigned int;
+
     std::string                  name;
     ImportMaterialState          state;
-    real_type                    temperature;            // [K]
-    real_type                    density;                // [g/cm^3]
-    real_type                    electron_density;       // [1/cm^3]
-    real_type                    number_density;         // [1/cm^3]
-    real_type                    radiation_length;       // [cm]
-    real_type                    nuclear_int_length;     // [cm]
-    std::map<elem_id, real_type> elements_fractions;     // Mass fractions
-    std::map<elem_id, real_type> elements_num_fractions; // Number fractions
+    double                       temperature;        // [K]
+    double                       density;            // [g/cm^3]
+    double                       electron_density;   // [1/cm^3]
+    double                       number_density;     // [1/cm^3]
+    double                       radiation_length;   // [cm]
+    double                       nuclear_int_length; // [cm]
+    // TODO: use vector of ImportMatElementComponent below
+    std::map<elem_id, double> elements_fractions;     // Mass fractions
+    std::map<elem_id, double> elements_num_fractions; // Number fractions
 };
 
 //---------------------------------------------------------------------------//

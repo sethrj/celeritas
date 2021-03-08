@@ -10,6 +10,11 @@
 #include <algorithm>
 #include "base/Assert.hh"
 
+// TODO: delete me
+using mat_id  = celeritas::GdmlGeometryMap::mat_id;
+using elem_id = celeritas::GdmlGeometryMap::elem_id;
+using vol_id  = celeritas::GdmlGeometryMap::vol_id;
+
 namespace celeritas
 {
 //---------------------------------------------------------------------------//
