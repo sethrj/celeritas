@@ -76,6 +76,21 @@ CELER_FUNCTION auto ParticleTrackView::energy() const -> Energy
 
 //---------------------------------------------------------------------------//
 /*!
+ * Logarithm of the kinetic energy in MeV, .
+ *
+ * Numerous physics algorithms and data tables store energy grids as a
+ * logarithm of MeV.
+ *
+ * \todo Test performance implications of storing the value independently and
+ * resetting it when the particle energy changes.
+ */
+CELER_FUNCTION auto ParticleTrackView::log_energy() const -> LogEnergy
+{
+    return std::log(states_.state[thread_].energy);
+}
+
+//---------------------------------------------------------------------------//
+/*!
  * Whether the track is stopped (zero kinetic energy).
  */
 CELER_FUNCTION bool ParticleTrackView::is_stopped() const

@@ -36,6 +36,7 @@ class ParticleTrackView
     using ParticleStateRef
         = ParticleStateData<Ownership::reference, MemSpace::native>;
     using Energy        = units::MevEnergy;
+    using LogEnergy     = units::LogMevEnergy;
     using Initializer_t = ParticleTrackState;
     //!@}
 
@@ -59,6 +60,9 @@ class ParticleTrackView
 
     // Kinetic energy [MeV]
     CELER_FORCEINLINE_FUNCTION Energy energy() const;
+
+    // Logarithm of kinetic energy / MeV [unitless]
+    inline CELER_FUNCTION LogEnergy log_energy() const;
 
     // Whether the particle is stopped (zero kinetic energy)
     CELER_FORCEINLINE_FUNCTION bool is_stopped() const;

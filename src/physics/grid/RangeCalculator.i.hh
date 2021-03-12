@@ -27,28 +27,37 @@ RangeCalculator::RangeCalculator(const XsGridData& grid, const Values& values)
 
 //---------------------------------------------------------------------------//
 /*!
- * Calculate the range.
+ * Calculate the range from the given energy.
  */
 CELER_FUNCTION real_type RangeCalculator::operator()(Energy energy) const
 {
-    UniformGrid     loge_grid(data_.log_energy);
-    const real_type loge = std::log(energy.value());
+    return (*this)(energy, LogEnergy{std::log(energy.value())});
+}
 
-    if (loge <= loge_grid.front())
+//---------------------------------------------------------------------------//
+/*!
+ * Calculate the range using a precalculated log(E).
+ */
+CELER_FUNCTION real_type RangeCalculator::operator()(Energy    energy,
+                                                     LogEnergy loge) const
+{
+    UniformGrid     loge_grid(data_.log_energy);
+
+    if (loge.value() <= loge_grid.front())
     {
         real_type result = this->get(0);
         // Scale by sqrt(E/Emin) = exp(.5 (log E - log Emin))
-        result *= std::exp(real_type(.5) * (loge - loge_grid.front()));
+        result *= std::exp(real_type(.5) * (loge.value() - loge_grid.front()));
         return result;
     }
-    else if (loge >= loge_grid.back())
+    else if (loge.value() >= loge_grid.back())
     {
         // Clip to highest range value
         return this->get(loge_grid.size() - 1);
     }
 
     // Locate the energy bin
-    auto idx = loge_grid.find(loge);
+    auto idx = loge_grid.find(loge.value());
     CELER_ASSERT(idx + 1 < loge_grid.size());
 
     // Interpolate *linearly* on energy

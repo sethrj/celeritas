@@ -32,7 +32,8 @@ class RangeCalculator
   public:
     //!@{
     //! Type aliases
-    using Energy = Quantity<XsGridData::EnergyUnits>;
+    using LogEnergy = Quantity<XsGridData::EnergyUnits>;
+    using Energy    = MevEnergy;
     using Values
         = Collection<real_type, Ownership::const_reference, MemSpace::native>;
     //!@}
@@ -44,6 +45,10 @@ class RangeCalculator
 
     // Find and interpolate from the energy
     inline CELER_FUNCTION real_type operator()(Energy energy) const;
+
+    // Find and interpolate from the logarithm of the energy
+    inline CELER_FUNCTION real_type operator()(Energy    energy,
+                                               LogEnergy loge) const;
 
   private:
     const XsGridData& data_;
