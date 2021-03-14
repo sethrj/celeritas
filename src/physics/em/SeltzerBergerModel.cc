@@ -69,15 +69,17 @@ SeltzerBergerModel::SeltzerBergerModel(ModelId               id,
  */
 auto SeltzerBergerModel::applicability() const -> SetApplicability
 {
+    // TODO: these energy ranges need to be the intersection of SB table data
+    // and available cross sections.
+    CELER_NOT_IMPLEMENTED("SeltzerBergerModel::applicability");
+
     Applicability electron_applic;
     electron_applic.particle = this->host_pointers().ids.electron;
     electron_applic.lower    = units::MevEnergy{1};
     electron_applic.upper    = units::MevEnergy{1e5};
 
-    Applicability positron_applic;
+    Applicability positron_applic = electron_applic;
     positron_applic.particle = this->host_pointers().ids.positron;
-    positron_applic.lower    = units::MevEnergy{1};
-    positron_applic.upper    = units::MevEnergy{1e5};
 
     return {electron_applic, positron_applic};
 }
