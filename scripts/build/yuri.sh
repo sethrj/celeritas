@@ -15,6 +15,7 @@ export CMAKE_PREFIX_PATH=$CELERITAS_ENV:${CMAKE_PREFIX_PATH}
 
 cmake -C ${BUILDSCRIPT_DIR}/yuri.cmake -G Ninja \
   -DCMAKE_INSTALL_PREFIX:PATH=$SOURCE_DIR/install \
+  -DUSE_Git=OFF \
   ..
 ninja -v
 ctest --output-on-failure

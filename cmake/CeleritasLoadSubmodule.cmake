@@ -19,8 +19,10 @@ Utility commands for the submodule checkouts.
     Subdirectory of the current directory that is a git subrepositoy.
 
 The behavior of this command depends on the ``CELERITAS_GIT_SUBMODULE``
-variable: if false, no git commands will be run. This variable defaults to True
-only when the celeritas source directory contains a top-level ``.git`` directory.
+variable: if false, no git commands will be run. This variable defaults to any
+value of ``USE_Git`` that may be set. If not specified, it otherwise defaults to
+True only when the Celeritas source directory contains a top-level ``.git``
+directory.
 
 When that variable is set, another variable,
 ``CELERITAS_GIT_SUBMODULE_AGGRESSIVE``, will be exposed: it will always
@@ -43,14 +45,22 @@ endif()
 #-----------------------------------------------------------------------------#
 
 # Clone submodules by default only if we're a git repository
+if(DEFINED USE_Git)
+  set(_default_git_submodule "${USE_Git}")
+else()
+  set(_default_git_submodule "${IS_GIT_REPOSITORY}")
+endif()
+
 option(CELERITAS_GIT_SUBMODULE
   "Automatically download Git submodules during configuration"
-  ${IS_GIT_REPOSITORY})
+  ${_default_git_submodule})
+
+unset(_default_git_submodule)
 
 # Default to keeping submodules in sync
-cmake_dependent_option(${PROJECT_NAME}_GIT_SUBMODULE_AGGRESSIVE "Try to update
+cmake_dependent_option(CELERITAS_GIT_SUBMODULE_AGGRESSIVE "Try to update
   Git submodules during *every* configuration" ON
-  "${PROJECT_NAME}_GIT_SUBMODULE" OFF
+  "CELERITAS_GIT_SUBMODULE" OFF
 )
 
 #-----------------------------------------------------------------------------#

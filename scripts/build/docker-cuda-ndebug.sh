@@ -26,15 +26,15 @@ git -C ${SOURCE_DIR} fetch -f --tags
 # Note: cuda_arch must match the spack.yaml file for the docker image, which
 # must match the hardware being used.
 cmake -G Ninja \
-  -DCELERITAS_BUILD_DEMOS:BOOL=ON \
-  -DCELERITAS_BUILD_TESTS:BOOL=ON \
-  -DCELERITAS_USE_CUDA:BOOL=ON \
-  -DCELERITAS_USE_Geant4:BOOL=ON \
-  -DCELERITAS_USE_HepMC3:BOOL=ON \
-  -DCELERITAS_USE_MPI:BOOL=ON \
-  -DCELERITAS_USE_ROOT:BOOL=ON \
-  -DCELERITAS_USE_VecGeom:BOOL=ON \
-  -DCELERITAS_DEBUG:BOOL=OFF \
+  -DBUILD_DEMOS:BOOL=ON \
+  -DBUILD_TESTS:BOOL=ON \
+  -DUSE_CUDA:BOOL=ON \
+  -DUSE_Geant4:BOOL=ON \
+  -DUSE_HepMC3:BOOL=ON \
+  -DUSE_MPI:BOOL=ON \
+  -DUSE_ROOT:BOOL=ON \
+  -DUSE_VecGeom:BOOL=ON \
+  -DDEBUG:BOOL=OFF \
   -DCMAKE_BUILD_TYPE:STRING="Release" \
   -DCMAKE_CUDA_ARCHITECTURES:STRING="70" \
   -DCMAKE_CUDA_FLAGS:STRING="--use_fast_math" \

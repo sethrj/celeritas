@@ -21,22 +21,26 @@ include(CeleritasUtils)
 
 #----------------------------------------------------------------------------#
 # OPTIONS
+#
+# Cache variable names are prefixed with ``CELERITAS_`` but if we're the primary
+# project, the user can set the shorter variable name. The rest of the CMake
+# script should reference the prefixed values.
 #----------------------------------------------------------------------------#
 
 # Components
-option(CELERITAS_BUILD_DEMOS "Build Celeritas demonstration mini-apps" ON)
-option(CELERITAS_BUILD_DOCS  "Build Celeritas documentation" OFF)
-option(CELERITAS_BUILD_TESTS "Build Celeritas unit tests" ON)
+celeritas_option(BUILD_DEMOS "Build Celeritas demonstration mini-apps" ON)
+celeritas_option(BUILD_DOCS  "Build Celeritas documentation" OFF)
+celeritas_option(BUILD_TESTS "Build Celeritas unit tests" ON)
 
 # TPLs
-option(CELERITAS_USE_CUDA "Enable GPU transport" ON)
-option(CELERITAS_USE_Geant4 "Enable Geant4 adapter tools" OFF)
-option(CELERITAS_USE_HepMC3 "Enable HepMC3 event record reader" OFF)
-option(CELERITAS_USE_JSON "Enable JSON I/O" "${CELERITAS_BUILD_DEMOS}")
-option(CELERITAS_USE_MPI "Enable distributed memory parallelism" ON)
-option(CELERITAS_USE_ROOT "Enable ROOT I/O" OFF)
-option(CELERITAS_USE_SWIG_Python "Enable SWIG Python bindings" OFF)
-option(CELERITAS_USE_VecGeom "Enable VecGeom geometry" ON)
+celeritas_option(USE_CUDA "Enable GPU transport" ON)
+celeritas_option(USE_Geant4 "Enable Geant4 adapter tools" OFF)
+celeritas_option(USE_HepMC3 "Enable HepMC3 event record reader" OFF)
+celeritas_option(USE_JSON "Enable JSON I/O" "${CELERITAS_BUILD_DEMOS}")
+celeritas_option(USE_MPI "Enable distributed memory parallelism" ON)
+celeritas_option(USE_ROOT "Enable ROOT I/O" OFF)
+celeritas_option(USE_SWIG_Python "Enable SWIG Python bindings" OFF)
+celeritas_option(USE_VecGeom "Enable VecGeom geometry" ON)
 
 if(CMAKE_VERSION VERSION_LESS 3.13 AND CELERITAS_USE_CUDA AND CELERITAS_USE_MPI)
   message(FATAL_ERROR "Celeritas requires CMake 3.13 or higher "
@@ -68,7 +72,7 @@ if(APPLE)
 endif()
 
 # Build flags
-option(CELERITAS_DEBUG "Enable runtime assertions" ON)
+celeritas_option(DEBUG "Enable runtime assertions" ON)
 if(NOT CMAKE_BUILD_TYPE AND (CMAKE_GENERATOR STREQUAL "Ninja"
     OR CMAKE_GENERATOR STREQUAL "Unix Makefiles"))
   set(CMAKE_BUILD_TYPE "Debug" CACHE STRING

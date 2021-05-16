@@ -66,12 +66,12 @@ Example build scripts are available in `scripts/build`; an example CMake
 command looks like:
 ```sh
 cmake  \
-  -D CELERITAS_USE_CUDA=ON \
-  -D CELERITAS_USE_MPI=OFF \
-  -D CELERITAS_USE_VECGEOM=ON \
+  -D USE_CUDA=ON \
+  -D USE_MPI=OFF \
+  -D USE_VecGeom=ON \
   -D CMAKE_BUILD_TYPE="RelWithDebInfo" \
   -D CMAKE_CXX_FLAGS="-Wall -Wextra -pedantic -Werror" \
-  -D CMAKE_CUDA_FLAGS="-arch=sm_80" \
+  -D CMAKE_CUDA_ARCHITECTURES:STRING="70" \
   ${SOURCE_DIR}
 ```
 

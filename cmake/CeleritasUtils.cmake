@@ -9,6 +9,17 @@ CeleritasUtils
 
 CMake utility functions for Celeritas.
 
+.. command:: celeritas_option
+
+  ::
+
+    celeritas_option(<short_variable> "<description>" <value>)
+
+  Define an option named ``CELERITAS_<short_variable>`` that defaults to the
+  value of ``<short_variable>``. This is designed to simplify user configuration
+  scripts while allowing the CMake project to play nicely in the context of a
+  larger build system.
+
 .. command:: celeritas_find_package_config
 
   ::
@@ -36,6 +47,15 @@ CMake utility functions for Celeritas.
 
 #]=======================================================================]
 include(FindPackageHandleStandardArgs)
+
+function(celeritas_option var description default)
+  if(DEFINED ${var})
+    # Override the *default* based on the parent value. If the prefixed variable
+    # name is already set, then the short variable has no effect.
+    set(default ${${var}})
+  endif()
+  option(CELERITAS_${var} "${description}" "${default}")
+endfunction()
 
 macro(celeritas_find_package_config _package)
   find_package(${_package} CONFIG ${ARGN})
