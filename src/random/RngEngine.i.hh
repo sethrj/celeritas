@@ -16,10 +16,10 @@ namespace celeritas
  */
 CELER_FUNCTION
 RngEngine::RngEngine(const StateRef& state, const ThreadId& id)
-    : state_(state), id_(id)
 {
-    CELER_EXPECT(id_ < state_.rng.size());
-    local_state_ = state_.rng[id_].state;
+    CELER_EXPECT(id < state.rng.size());
+    state_       = &state.rng[id].state;
+    local_state_ = *state_;
 }
 
 //---------------------------------------------------------------------------//
@@ -29,7 +29,7 @@ RngEngine::RngEngine(const StateRef& state, const ThreadId& id)
 CELER_FUNCTION
 RngEngine::~RngEngine()
 {
-    state_.rng[id_].state = local_state_;
+    *state_ = local_state_;
 }
 
 //---------------------------------------------------------------------------//

@@ -45,8 +45,7 @@ class RngEngine
     inline CELER_FUNCTION result_type operator()();
 
   private:
-    const StateRef& state_;
-    const ThreadId  id_;
+    curandState_t* state_;
     curandState_t  local_state_;
 
     template<class Generator, class RealType>
