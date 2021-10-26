@@ -35,6 +35,9 @@ class RngEngine
     // Construct from state
     inline CELER_FUNCTION RngEngine(const StateRef& state, const ThreadId& id);
 
+    // Store to global on destruction
+    inline CELER_FUNCTION ~RngEngine();
+
     // Initialize state from seed
     inline CELER_FUNCTION RngEngine& operator=(const Initializer_t& s);
 
@@ -43,6 +46,7 @@ class RngEngine
 
   private:
     curandState_t* state_;
+    curandState_t  local_state_;
 
     template<class Generator, class RealType>
     friend class GenerateCanonical;

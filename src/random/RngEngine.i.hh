@@ -19,6 +19,17 @@ RngEngine::RngEngine(const StateRef& state, const ThreadId& id)
 {
     CELER_EXPECT(id < state.rng.size());
     state_ = &state.rng[id].state;
+    local_state_ = *state_;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Store to global memory on destruct.
+ */
+CELER_FUNCTION
+RngEngine::~RngEngine()
+{
+    *state_ = local_state_;
 }
 
 //---------------------------------------------------------------------------//
@@ -27,7 +38,7 @@ RngEngine::RngEngine(const StateRef& state, const ThreadId& id)
  */
 CELER_FUNCTION RngEngine& RngEngine::operator=(const Initializer_t& s)
 {
-    curand_init(s.seed, 0, 0, state_);
+    curand_init(s.seed, 0, 0, &local_state_);
     return *this;
 }
 
@@ -37,7 +48,7 @@ CELER_FUNCTION RngEngine& RngEngine::operator=(const Initializer_t& s)
  */
 CELER_FUNCTION auto RngEngine::operator()() -> result_type
 {
-    return curand(state_);
+    return curand(&local_state_);
 }
 
 //---------------------------------------------------------------------------//
@@ -49,7 +60,7 @@ CELER_FUNCTION auto RngEngine::operator()() -> result_type
 CELER_FUNCTION float
 GenerateCanonical<RngEngine, float>::operator()(RngEngine& rng)
 {
-    return curand_uniform(rng.state_);
+    return curand_uniform(&rng.local_state_);
 }
 
 //---------------------------------------------------------------------------//
@@ -59,7 +70,7 @@ GenerateCanonical<RngEngine, float>::operator()(RngEngine& rng)
 CELER_FUNCTION double
 GenerateCanonical<RngEngine, double>::operator()(RngEngine& rng)
 {
-    return curand_uniform_double(rng.state_);
+    return curand_uniform_double(&rng.local_state_);
 }
 
 //---------------------------------------------------------------------------//
