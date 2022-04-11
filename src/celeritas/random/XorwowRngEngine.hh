@@ -58,12 +58,12 @@ class XorwowRngEngine
     inline CELER_FUNCTION result_type operator()();
 
   private:
-    const StateRef&     state_;
-    ThreadId::size_type thread_;
+    const StateRef& state_;
+    const ThreadId& thread_;
 
     using uint_t = StateRef::uint_t;
 
-    CELER_FORCEINLINE_FUNCTION uint_t& get(XorwowElement i);
+    inline CELER_FUNCTION uint_t& get(XorwowElement i);
 };
 
 //---------------------------------------------------------------------------//
@@ -96,7 +96,7 @@ class GenerateCanonical<XorwowRngEngine, RealType>
  */
 CELER_FUNCTION
 XorwowRngEngine::XorwowRngEngine(const StateRef& state, const ThreadId& thread)
-    : state_(state), thread_(thread.unchecked_get())
+    : state_(state), thread_(thread)
 {
     CELER_EXPECT(thread < state.size());
 }
@@ -113,23 +113,22 @@ CELER_FUNCTION auto XorwowRngEngine::operator()() -> result_type
     this->get(XE::x) = this->get(XE::y);
     this->get(XE::y) = this->get(XE::z);
     this->get(XE::z) = this->get(XE::w);
-    uint_t v         = this->get(XE::v);
-    this->get(XE::w) = v;
-    v                = (v ^ (v << 4u)) ^ (t ^ (t << 1u));
-    this->get(XE::v) = v;
-    uint_t d         = this->get(XE::d) + 362437u;
-    this->get(XE::d) = d;
-    return d + v;
+    this->get(XE::w) = this->get(XE::v);
+    this->get(XE::v) = (this->get(XE::v) ^ (this->get(XE::v) << 4u))
+                       ^ (t ^ (t << 1u));
+    this->get(XE::v) = this->get(XE::v);
+    this->get(XE::d) += 362437u;
+    return this->get(XE::d) + this->get(XE::v);
 }
 
 //---------------------------------------------------------------------------//
 /*!
  * Access an element of the xorwow state.
  */
-CELER_FORCEINLINE_FUNCTION auto XorwowRngEngine::get(XorwowElement i) -> uint_t&
+CELER_FUNCTION auto XorwowRngEngine::get(XorwowElement i) -> uint_t&
 {
-    return state_.state[AllItems<uint_t>{}]
-                       [static_cast<size_type>(i) * state_.pitch + thread_];
+    return state_.state[AllItems<uint_t>{}][static_cast<size_type>(i) * state_.pitch
+                                            + thread_.unchecked_get()];
 }
 
 //---------------------------------------------------------------------------//
