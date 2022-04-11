@@ -179,7 +179,7 @@ class XorwowRngEngineTest : public celeritas_test::Test
     using HostStore = CollectionStateStore<XorwowRngStateData, MemSpace::host>;
     using DeviceStore
         = CollectionStateStore<XorwowRngStateData, MemSpace::device>;
-    using uint_t = XorwowState::uint_t;
+    using uint_t = unsigned int;
 
     void SetUp() override
     {
@@ -198,18 +198,8 @@ TEST_F(XorwowRngEngineTest, host)
     // Construct and initialize
     HostStore states(*params, 8);
 
-    Span<XorwowState> state_ref = states.ref().state[AllItems<XorwowState>{}];
-
-    // Check that initial states are reproducibly random by reading the data as
-    // a raw array of uints
-    std::vector<uint_t> flattened(8 * 6);
-    ASSERT_EQ(flattened.size() * sizeof(uint_t),
-              state_ref.size() * sizeof(XorwowState));
-    ASSERT_TRUE(std::is_standard_layout<XorwowState>::value);
-    ASSERT_EQ(0, offsetof(XorwowState, xorstate));
-    ASSERT_EQ(5 * sizeof(uint_t), offsetof(XorwowState, weylstate));
-    std::copy_n(
-        &state_ref.begin()->xorstate[0], flattened.size(), flattened.begin());
+    // Check that initial states are reproducibly random
+    Span<uint_t> flattened = states.ref().state[AllItems<uint_t>{}];
 
     static const unsigned int expected_flattened[]
         = {2421091215u, 3647994171u, 2504472727u, 1236778574u, 4083156575u,
@@ -247,8 +237,8 @@ TEST_F(XorwowRngEngineTest, moments)
 TEST_F(XorwowRngEngineTest, TEST_IF_CELER_DEVICE(device))
 {
     // Create and initialize states
-    DeviceStore rng_store(*params, 1024);
-    // Copy to host and check
-    StateCollection<XorwowState, Ownership::value, MemSpace::host> host_state;
-    host_state = rng_store.ref().state;
+    DeviceStore rng_store(*params, 1000);
+    // Check pitch
+    EXPECT_EQ(1024, rng_store.ref().pitch);
+    EXPECT_EQ(1000, rng_store.ref().size());
 }

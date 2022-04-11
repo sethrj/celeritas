@@ -58,7 +58,12 @@ class XorwowRngEngine
     inline CELER_FUNCTION result_type operator()();
 
   private:
-    XorwowState* state_;
+    const StateRef&     state_;
+    ThreadId::size_type thread_;
+
+    using uint_t = StateRef::uint_t;
+
+    CELER_FORCEINLINE_FUNCTION uint_t& get(XorwowElement i);
 };
 
 //---------------------------------------------------------------------------//
@@ -90,10 +95,10 @@ class GenerateCanonical<XorwowRngEngine, RealType>
  * Construct from state.
  */
 CELER_FUNCTION
-XorwowRngEngine::XorwowRngEngine(const StateRef& state, const ThreadId& id)
+XorwowRngEngine::XorwowRngEngine(const StateRef& state, const ThreadId& thread)
+    : state_(state), thread_(thread.unchecked_get())
 {
-    CELER_EXPECT(id < state.state.size());
-    state_ = &state.state[id];
+    CELER_EXPECT(thread < state.size());
 }
 
 //---------------------------------------------------------------------------//
@@ -102,17 +107,29 @@ XorwowRngEngine::XorwowRngEngine(const StateRef& state, const ThreadId& id)
  */
 CELER_FUNCTION auto XorwowRngEngine::operator()() -> result_type
 {
-    auto&      s = state_->xorstate;
-    const auto t = (s[0] ^ (s[0] >> 2u));
+    using XE     = XorwowElement;
+    const auto t = (this->get(XE::x) ^ (this->get(XE::x) >> 2u));
 
-    s[0] = s[1];
-    s[1] = s[2];
-    s[2] = s[3];
-    s[3] = s[4];
-    s[4] = (s[4] ^ (s[4] << 4u)) ^ (t ^ (t << 1u));
+    this->get(XE::x) = this->get(XE::y);
+    this->get(XE::y) = this->get(XE::z);
+    this->get(XE::z) = this->get(XE::w);
+    uint_t v         = this->get(XE::v);
+    this->get(XE::w) = v;
+    v                = (v ^ (v << 4u)) ^ (t ^ (t << 1u));
+    this->get(XE::v) = v;
+    uint_t d         = this->get(XE::d) + 362437u;
+    this->get(XE::d) = d;
+    return d + v;
+}
 
-    state_->weylstate += 362437u;
-    return state_->weylstate + s[4];
+//---------------------------------------------------------------------------//
+/*!
+ * Access an element of the xorwow state.
+ */
+CELER_FORCEINLINE_FUNCTION auto XorwowRngEngine::get(XorwowElement i) -> uint_t&
+{
+    return state_.state[AllItems<uint_t>{}]
+                       [static_cast<size_type>(i) * state_.pitch + thread_];
 }
 
 //---------------------------------------------------------------------------//

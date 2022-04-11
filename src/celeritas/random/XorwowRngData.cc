@@ -12,6 +12,7 @@
 #include "corecel/Assert.hh"
 #include "corecel/data/Collection.hh"
 #include "corecel/data/CollectionBuilder.hh"
+#include "corecel/sys/Device.hh"
 
 namespace celeritas
 {
@@ -27,38 +28,37 @@ void resize(XorwowRngStateData<Ownership::value, M>* state,
     CELER_EXPECT(size > 0);
     CELER_EXPECT(params);
 
-    using uint_t = XorwowState::uint_t;
+    XorwowRngStateData<Ownership::value, MemSpace::host> host_state;
+    host_state.num_threads = size;
+    host_state.pitch       = size;
+    if (M == MemSpace::device)
+    {
+        // Round up size to the nearest multiple of warp size for coalescing
+        size_type divisor   = celeritas::device().threads_per_warp();
+        size_type remainder = size % divisor;
+        host_state.pitch    = size + (remainder ? divisor - remainder : 0);
+        CELER_ASSERT(host_state.pitch >= size);
+    }
 
     // Seed sequence to generate well-distributed seed numbers
     std::seed_seq seeds(params.seed.begin(), params.seed.end());
     // 32-bit generator to fill initial states
     std::mt19937                          rng(seeds);
-    std::uniform_int_distribution<uint_t> sample_uniform_int;
+    std::uniform_int_distribution<unsigned int> sample_uniform_int;
 
-    // Create seeds for device in host memory
-    HostVal<XorwowRngStateData> host_state;
-    resize(&host_state.state, size);
+    // Resize initial state on host
+    make_builder(&host_state.state)
+        .resize(host_state.pitch
+                * static_cast<size_type>(XorwowElement::size_));
 
-    // Fill all seeds with random data. The xorstate is never all
-    // zeros, with probability 2^{-320}.
-    for (XorwowState& init : host_state.state[AllItems<XorwowState>{}])
+    // Fill all seeds with random data. The xorstate is never all zeros.
+    for (unsigned int& u : host_state.state[AllItems<unsigned int>{}])
     {
-        for (uint_t& u : init.xorstate)
-        {
-            u = sample_uniform_int(rng);
-        }
-        init.weylstate = sample_uniform_int(rng);
+        u = sample_uniform_int(rng);
     }
 
-    // Move or copy to input
-    if (M == MemSpace::host)
-    {
-        state->state = std::move(host_state.state);
-    }
-    else
-    {
-        *state = host_state;
-    }
+    // Copy to input
+    *state = host_state;
 
     CELER_ENSURE(*state);
     CELER_ENSURE(state->size() == size);

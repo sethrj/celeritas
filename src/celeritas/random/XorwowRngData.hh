@@ -15,6 +15,19 @@
 namespace celeritas
 {
 //---------------------------------------------------------------------------//
+//! Element index into the XORWOW state
+enum class XorwowElement
+{
+    x,
+    y,
+    z,
+    w,
+    v,
+    d, //!< Weyl state
+    size_
+};
+
+//---------------------------------------------------------------------------//
 /*!
  * Persistent data for XORWOW generator.
  *
@@ -44,17 +57,6 @@ struct XorwowRngParamsData
 };
 
 //---------------------------------------------------------------------------//
-//! Individual RNG state
-struct XorwowState
-{
-    using uint_t = unsigned int;
-    static_assert(sizeof(uint_t) == 4, "Expected 32-bit int");
-
-    Array<uint_t, 5> xorstate;  //!< x, y, z, w, v
-    uint_t           weylstate; //!< d
-};
-
-//---------------------------------------------------------------------------//
 /*!
  * XORWOW generator states for all threads.
  */
@@ -63,22 +65,30 @@ struct XorwowRngStateData
 {
     //// TYPES ////
 
+    using uint_t = unsigned int;
     template<class T>
     using Items = Collection<T, W, M>;
-    template<class T>
-    using StateItems = StateCollection<T, W, M>;
+
+    static_assert(sizeof(uint_t) == 4, "Expected 32-bit int");
 
     //// DATA ////
 
-    StateItems<XorwowState> state; //!< Track state [track]
+    Items<uint_t> state; //!< [x, y, z, w, v, d][thread/pitch]
+    size_type     pitch{};
+    size_type     num_threads{};
 
     //// METHODS ////
 
-    //! True if assigned
-    explicit CELER_FUNCTION operator bool() const { return !state.empty(); }
+    //! Number of threads per state
+    CELER_FUNCTION size_type size() const { return num_threads; }
 
-    //! State size
-    CELER_FUNCTION size_type size() const { return state.size(); }
+    //! True if assigned
+    explicit CELER_FUNCTION operator bool() const
+    {
+        return num_threads > 0 && pitch >= num_threads
+               && state.size()
+                      == pitch * static_cast<size_type>(XorwowElement::size_);
+    }
 
     //! Assign from another set of states
     template<Ownership W2, MemSpace M2>
@@ -86,6 +96,8 @@ struct XorwowRngStateData
     {
         CELER_EXPECT(other);
         state = other.state;
+        pitch       = other.pitch;
+        num_threads = other.num_threads;
         return *this;
     }
 };
