@@ -96,10 +96,13 @@ struct CollectionAssigner
     CollectionStorage<T, W, M>
     operator()(const CollectionStorage<T, W2, M2>& source)
     {
-        static_assert(W != Ownership::reference || W2 == W,
-                      "Can't create a reference from a const reference");
+        static_assert(
+            !(W == Ownership::reference && W2 != Ownership::reference),
+            "Mutable references must not be const-assigned from another "
+            "mutable reference");
         static_assert(M == M2,
-                      "Collection assignment from a different memory space");
+                      "Collections must be assigned from the same memory "
+                      "space");
         return {{source.data.data(), source.data.size()}};
     }
 
@@ -107,10 +110,11 @@ struct CollectionAssigner
     CollectionStorage<T, W, M> operator()(CollectionStorage<T, W2, M2>& source)
     {
         static_assert(M == M2,
-                      "Collection assignment from a different memory space");
+                      "Collections can only be assigned from the same memory "
+                      "space");
         static_assert(
             !(W == Ownership::reference && W2 == Ownership::const_reference),
-            "Can't create a reference from a const reference");
+            "Mutable references must not be assigned from a const reference");
         return {{source.data.data(), source.data.size()}};
     }
 };
@@ -179,7 +183,7 @@ struct CollectionAssigner<Ownership::value, MemSpace::device>
     operator()(const CollectionStorage<T, W2, M2>& source)
     {
         static_assert(M2 == MemSpace::host,
-                      "Can only assign by value from host to device");
+                      "Device values must be assigned from host data");
 
         CollectionStorage<T, Ownership::value, MemSpace::device> result{
             DeviceVector<T>(source.data.size())};
