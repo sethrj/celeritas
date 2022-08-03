@@ -39,6 +39,7 @@ class ParticleTrackView
     using ParticleParamsRef = celeritas::NativeCRef<ParticleParamsData>;
     using ParticleStateRef  = celeritas::NativeRef<ParticleStateData>;
     using Energy            = units::MevEnergy;
+    using LogEnergy         = units::LogMevEnergy;
     using Initializer_t     = ParticleTrackInitializer;
     //!@}
 
@@ -65,6 +66,9 @@ class ParticleTrackView
 
     // Kinetic energy [MeV]
     CELER_FORCEINLINE_FUNCTION Energy energy() const;
+
+    // Logarithm of kinetic energy / MeV [unitless]
+    inline CELER_FUNCTION LogEnergy log_energy() const;
 
     // Whether the particle is stopped (zero kinetic energy)
     CELER_FORCEINLINE_FUNCTION bool is_stopped() const;
@@ -179,6 +183,21 @@ CELER_FUNCTION ParticleId ParticleTrackView::particle_id() const
 CELER_FUNCTION auto ParticleTrackView::energy() const -> Energy
 {
     return Energy{states_.state[thread_].energy};
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Logarithm of the kinetic energy in MeV, .
+ *
+ * Numerous physics algorithms and data tables store energy grids as a
+ * logarithm of MeV.
+ *
+ * \todo Test performance implications of storing the value independently and
+ * resetting it when the particle energy changes.
+ */
+CELER_FUNCTION auto ParticleTrackView::log_energy() const -> LogEnergy
+{
+    return std::log(states_.state[thread_].energy);
 }
 
 //---------------------------------------------------------------------------//

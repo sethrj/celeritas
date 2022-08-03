@@ -28,7 +28,7 @@ namespace celeritas
  */
 struct XsGridData
 {
-    using EnergyUnits = units::Mev;
+    using EnergyUnits = units::LogMev;
     using XsUnits     = units::NativeUnit; // 1/cm
 
     //! "Special" value indicating none of the values are scaled by 1/E
