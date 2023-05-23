@@ -7,6 +7,8 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
+#include <iostream>
+
 #include "corecel/Macros.hh"
 #include "corecel/Types.hh"
 #include "corecel/cont/ArrayIO.hh"
@@ -19,6 +21,8 @@
 
 #include "Types.hh"
 #include "detail/FieldUtils.hh"
+using std::cout;
+using std::endl;
 
 namespace celeritas
 {
@@ -158,6 +162,9 @@ CELER_FUNCTION auto FieldPropagator<DriverT>::operator()(real_type step)
     result.boundary = geo_.is_on_boundary();
     result.distance = 0;
 
+    cout << color_code('b') << "Propagate up to " << step << color_code(' ')
+         << endl;
+
     // Break the curved steps into substeps as determined by the driver *and*
     // by the proximity of geometry boundaries. Test for intersection with the
     // geometry boundary in each substep. This loop is guaranteed to converge
@@ -172,6 +179,9 @@ CELER_FUNCTION auto FieldPropagator<DriverT>::operator()(real_type step)
         // Advance up to (but probably less than) the remaining step length
         // Due to roundoff this may be slightly more than remaining.
         DriverResult substep = driver_.advance(remaining, state_);
+
+        cout << "- advance(" << remaining << ", " << state_.pos << ") -> {"
+             << substep.step << ", " << substep.state.pos << "}" << endl;
 
         // Check whether the chord for this sub-step intersects a boundary
         auto chord = detail::make_chord(state_.pos, substep.state.pos);
@@ -201,6 +211,15 @@ CELER_FUNCTION auto FieldPropagator<DriverT>::operator()(real_type step)
         real_type const update_length = substep.step * linear_step.distance
                                         / chord.length;
 
+        cout << " + chord length " << chord.length << " => linear step "
+             << linear_step.distance;
+        if (linear_step.boundary)
+        {
+            cout << " (hit surface " << geo_.next_surface_id().unchecked_get()
+                 << ')';
+        }
+        cout << ": update length " << update_length << '\n';
+
         if (!linear_step.boundary)
         {
             // No boundary intersection along the chord: accept substep
@@ -215,6 +234,8 @@ CELER_FUNCTION auto FieldPropagator<DriverT>::operator()(real_type step)
             remaining = step - result.distance;
             geo_.move_internal(state_.pos);
             --remaining_substeps;
+            cout << " + advancing to substep end point (" << remaining_substeps
+                 << " remaining)" << endl;
         }
         else if (CELER_UNLIKELY(result.boundary
                                 && linear_step.distance < this->bump_distance()))
@@ -223,6 +244,7 @@ CELER_FUNCTION auto FieldPropagator<DriverT>::operator()(real_type step)
             // surface (this can happen when tracking through a volume at a
             // near tangent). Reduce substep size and try again.
             remaining = substep.step / 2;
+            cout << " + halving substep distance" << endl;
         }
         else if (update_length <= driver_.minimum_step()
                  || detail::is_intercept_close(state_.pos,
@@ -256,6 +278,23 @@ CELER_FUNCTION auto FieldPropagator<DriverT>::operator()(real_type step)
                 geo_.move_internal(substep.state.pos);
             }
 
+            if (result.distance + update_length <= step)
+            {
+                cout << " + next trial step exceeds driver minimum "
+                     << driver_.minimum_step();
+            }
+            else if (linear_step.distance <= chord.length)
+            {
+                cout << " + intercept is sufficiently close and less than "
+                        "chord length";
+            }
+            else
+            {
+                cout << " + intercept is close to but past boundary "
+                     << substep.state.pos;
+            }
+            cout << endl;
+
             // The update length can be slightly greater than the substep due
             // to the extra delta_intersection boost when searching. The
             // substep itself can be more than the requested step.
@@ -269,6 +308,9 @@ CELER_FUNCTION auto FieldPropagator<DriverT>::operator()(real_type step)
             // Decrease the allowed substep (curved path distance) by the
             // fraction along the chord, and retry the driver step.
             remaining = update_length;
+            cout << " + Setting remaining distance to a fraction "
+                 << linear_step.distance / chord.length << " of the substep"
+                 << endl;
         }
     } while (remaining >= driver_.minimum_step() && remaining_substeps > 0);
 
@@ -287,6 +329,8 @@ CELER_FUNCTION auto FieldPropagator<DriverT>::operator()(real_type step)
             // because of the tolerance in the intercept checks above).
             geo_.move_to_boundary();
             state_.pos = geo_.pos();
+            cout << "- Moved to boundary " << geo_.surface_id().unchecked_get()
+                 << " at position " << state_.pos << endl;
         }
         else if (CELER_UNLIKELY(result.distance < step))
         {
@@ -317,6 +361,10 @@ CELER_FUNCTION auto FieldPropagator<DriverT>::operator()(real_type step)
         axpy(result.distance, dir, &state_.pos);
         geo_.move_internal(state_.pos);
     }
+
+    cout << color_code('g') << "==> distance " << result.distance
+         << color_code(' ') << " (in "
+         << this->max_substeps() - remaining_substeps << " steps)" << endl;
 
     // Due to accumulation errors from multiple substeps or chord-finding
     // within the driver, the distance may be very slightly beyond the
