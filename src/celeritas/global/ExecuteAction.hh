@@ -16,7 +16,6 @@
 #include "CoreParams.hh"
 #include "CoreState.hh"
 #include "KernelContextException.hh"
-#include "TrackLauncher.hh"
 
 namespace celeritas
 {
