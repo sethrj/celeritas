@@ -8,12 +8,12 @@
 #include "KleinNishinaModel.hh"
 
 #include "corecel/math/Quantity.hh"
-#include "celeritas/em/executor/KleinNishinaExecutor.hh"
+#include "celeritas/em/executor/KleinNishinaExecutor.hh"  // IWYU pragma: associated
 #include "celeritas/global/ActionLauncher.hh"
 #include "celeritas/global/CoreParams.hh"
 #include "celeritas/global/CoreState.hh"
 #include "celeritas/global/TrackExecutor.hh"
-#include "celeritas/phys/InteractionApplier.hh"  // IWYU pragma: associated
+#include "celeritas/phys/InteractionApplier.hh"
 #include "celeritas/phys/PDGNumber.hh"
 #include "celeritas/phys/ParticleView.hh"
 

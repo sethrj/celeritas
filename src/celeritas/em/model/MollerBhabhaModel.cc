@@ -8,8 +8,8 @@
 #include "MollerBhabhaModel.hh"
 
 #include "celeritas/Quantities.hh"
-#include "celeritas/em/data/MollerBhabhaData.hh"
-#include "celeritas/em/executor/MollerBhabhaExecutor.hh"
+#include "celeritas/em/data/MollerBhabhaData.hh"  // IWYU pragma: associated
+#include "celeritas/em/executor/MollerBhabhaExecutor.hh"  // IWYU pragma: associated
 #include "celeritas/global/ActionLauncher.hh"
 #include "celeritas/global/CoreParams.hh"
 #include "celeritas/global/CoreState.hh"

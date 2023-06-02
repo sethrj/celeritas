@@ -14,9 +14,9 @@
 #include "corecel/data/CollectionBuilder.hh"
 #include "corecel/math/Algorithms.hh"
 #include "celeritas/Quantities.hh"
-#include "celeritas/em/data/ElectronBremsData.hh"
-#include "celeritas/em/data/RelativisticBremData.hh"
-#include "celeritas/em/executor/RelativisticBremExecutor.hh"
+#include "celeritas/em/data/ElectronBremsData.hh"  // IWYU pragma: associated
+#include "celeritas/em/data/RelativisticBremData.hh"  // IWYU pragma: associated
+#include "celeritas/em/executor/RelativisticBremExecutor.hh"  // IWYU pragma: associated
 #include "celeritas/global/ActionLauncher.hh"
 #include "celeritas/global/CoreParams.hh"
 #include "celeritas/global/TrackExecutor.hh"

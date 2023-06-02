@@ -21,7 +21,7 @@
 #include "celeritas/em/data/ElectronBremsData.hh"
 #include "celeritas/em/executor/SeltzerBergerExecutor.hh"  // IWYU pragma: associated
 #include "celeritas/em/interactor/detail/PhysicsConstants.hh"
-#include "celeritas/em/interactor/detail/SBPositronXsCorrector.hh"
+#include "celeritas/em/interactor/detail/SBPositronXsCorrector.hh"  // IWYU pragma: associated
 #include "celeritas/global/ActionLauncher.hh"
 #include "celeritas/global/CoreParams.hh"
 #include "celeritas/global/TrackExecutor.hh"

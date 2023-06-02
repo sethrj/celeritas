@@ -10,7 +10,7 @@
 #include <utility>
 
 #include "celeritas/Quantities.hh"
-#include "celeritas/em/executor/MuBremsstrahlungExecutor.hh"
+#include "celeritas/em/executor/MuBremsstrahlungExecutor.hh"  // IWYU pragma: associated
 #include "celeritas/global/ActionLauncher.hh"
 #include "celeritas/global/CoreParams.hh"
 #include "celeritas/global/TrackExecutor.hh"

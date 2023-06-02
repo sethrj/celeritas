@@ -15,14 +15,14 @@
 #include "corecel/cont/Range.hh"
 #include "corecel/data/Collection.hh"
 #include "corecel/data/CollectionBuilder.hh"
-#include "celeritas/em/data/LivermorePEData.hh"
-#include "celeritas/em/executor/LivermorePEExecutor.hh"
+#include "celeritas/em/data/LivermorePEData.hh"  // IWYU pragma: associated
+#include "celeritas/em/executor/LivermorePEExecutor.hh"  // IWYU pragma: associated
 #include "celeritas/global/ActionLauncher.hh"
 #include "celeritas/global/CoreParams.hh"
 #include "celeritas/global/CoreState.hh"
 #include "celeritas/global/TrackExecutor.hh"
 #include "celeritas/grid/XsGridData.hh"
-#include "celeritas/io/ImportLivermorePE.hh"
+#include "celeritas/io/ImportLivermorePE.hh"  // IWYU pragma: associated
 #include "celeritas/io/ImportPhysicsVector.hh"
 #include "celeritas/mat/ElementView.hh"
 #include "celeritas/mat/MaterialParams.hh"
