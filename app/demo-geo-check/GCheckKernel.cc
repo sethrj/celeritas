@@ -12,8 +12,8 @@
 
 #include "corecel/data/CollectionStateStore.hh"
 #include "corecel/sys/ThreadId.hh"
-#include "orange/OrangeData.hh"
 #include "celeritas/field/LinearPropagator.hh"
+#include "celeritas/geo/GeoData.hh"  // IWYU pragma: keep
 #include "celeritas/geo/GeoParams.hh"  // IWYU pragma: keep
 
 using std::printf;

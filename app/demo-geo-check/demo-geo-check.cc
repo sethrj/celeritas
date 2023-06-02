@@ -19,7 +19,6 @@
 
 #include "celeritas_cmake_strings.h"
 #include "corecel/Assert.hh"
-#include "corecel/Types.hh"
 #include "corecel/cont/ArrayIO.json.hh"
 #include "corecel/cont/Range.hh"
 #include "corecel/io/Label.hh"
@@ -27,7 +26,8 @@
 #include "corecel/math/ArrayUtils.hh"
 #include "corecel/sys/Device.hh"
 #include "orange/Types.hh"
-#include "celeritas/geo/GeoFwd.hh"
+#include "celeritas/geo/GeoData.hh"  // IWYU pragma: keep
+#include "celeritas/geo/GeoParamsFwd.hh"
 
 #include "GCheckRunner.hh"
 
