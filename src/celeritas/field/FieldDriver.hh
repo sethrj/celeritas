@@ -69,8 +69,14 @@ namespace celeritas
    4 h^2 + d^2 = s^2
  * \f]
  * If this relationship is not satisfied, then our step length is long or we're
- * not integrating a circle.
-
+ * not integrating a circle. We can also use that relationship to update \em s
+ * based on the calculated chord and distance.
+ *
+ * To improve performance on multiple invocations where the step length is
+ * much greater than the converged chord length, we save our estimate of the
+ * radius of curvature \f[
+  r = (h + d^2/4h) / 2
+ * \f]
  *
  * \note This class is based on G4ChordFinder and G4MagIntegratorDriver.
  */
@@ -84,7 +90,7 @@ class FieldDriver
 
     // For a given trial step, advance by a sub_step within a tolerance error
     inline CELER_FUNCTION DriverResult advance(real_type step,
-                                               OdeState const& state) const;
+                                               OdeState const& state);
 
     // An adaptive step size control from G4MagIntegratorDriver
     // Move this to private after all tests with non-uniform field are done
@@ -113,6 +119,9 @@ class FieldDriver
     // Stepper for this field driver
     StepperT apply_step_;
 
+    // Estimated radius of curvature times 2
+    real_type est_diam_{0};
+
     //// TYPES ////
 
     //! A helper output for private member functions
@@ -131,8 +140,8 @@ class FieldDriver
     //// HEPER FUNCTIONS ////
 
     // Find the next acceptable chord whose sagitta is less than delta_chord
-    inline CELER_FUNCTION ChordSearch
-    find_next_chord(real_type step, OdeState const& state) const;
+    inline CELER_FUNCTION ChordSearch find_next_chord(real_type step,
+                                                      OdeState const& state);
 
     // Advance for a given step and evaluate the next predicted step.
     inline CELER_FUNCTION Integration
@@ -190,7 +199,7 @@ FieldDriver<StepperT>::FieldDriver(FieldDriverOptions const& options,
  */
 template<class StepperT>
 CELER_FUNCTION DriverResult
-FieldDriver<StepperT>::advance(real_type step, OdeState const& state) const
+FieldDriver<StepperT>::advance(real_type step, OdeState const& state)
 {
     cout << color_code('b') << "Step up to " << step << color_code(' ')
          << " from " << state.pos << endl;
@@ -231,8 +240,7 @@ FieldDriver<StepperT>::advance(real_type step, OdeState const& state) const
  */
 template<class StepperT>
 CELER_FUNCTION auto
-FieldDriver<StepperT>::find_next_chord(real_type step,
-                                       OdeState const& state) const
+FieldDriver<StepperT>::find_next_chord(real_type step, OdeState const& state)
     -> ChordSearch
 {
     // Output with a step control error
@@ -244,38 +252,58 @@ FieldDriver<StepperT>::find_next_chord(real_type step,
     auto remaining_steps = options_.max_nsteps;
     FieldStepperResult result;
 
+    if (est_diam_ > options_.delta_chord)
+    {
+        // Use previously calculated estimate of radius, increasing by
+        // 1/min_chord_shrink to be conservative
+        real_type est_step = 2 * std::sqrt(est_diam_ * options_.delta_chord);
+        step = std::min(step, est_step / options_.min_chord_shrink);
+
+        cout << "  + estimated step " << est_step << endl;
+    }
+    else if (est_diam_ > 0)
+    {
+        // Tiny but previously estimated diameter
+        step = std::min(step, est_diam_);
+        cout << "  + estimated TINY step " << est_diam_ << endl;
+    }
+
     do
     {
         // Try with the proposed step
         result = apply_step_(step, state);
 
         // Calculate the "sagitta" (if start, mid, stop are along a true arc)
-        real_type dchord = std::sqrt(ortho_distance_sq(
-            state.pos, result.mid_state.pos, result.end_state.pos);
+        real_type const sag = std::sqrt(ortho_distance_sq(
+            state.pos, result.mid_state.pos, result.end_state.pos));
+        // Save the diameter estimate (if they *are* truly an arc)
+        est_diam_ = sag
+                    + distance_sq(state.pos, result.end_state.pos) / (4 * sag);
 
-        real_type distance_err_sq
-            = ipow<2>(step)
-              / (distance_sq(state.pos, result.end_state.pos)
-                 + ipow<2>(2 * dchord));
-
+        real_type err_long_chord
+            = std::fabs(est_diam_ * 4 * sag / ipow<2>(step) - 1);
         cout << "  + step " << step << " to " << result.end_state.pos
-             << " by way of " << result.mid_state.pos
-             << " -> dchord=" << dchord << ", dist_err_sq=" << distance_err_sq;
+             << " by way of " << result.mid_state.pos << " -> sag=" << sag
+             << ", radius estimate=" << est_diam_ / 2
+             << " (err_long_chord = " << err_long_chord << ")";
 
-        if (distance_err_sq > 1 + options_.epsilon_long_chord)
+        if (err_long_chord > ipow<2>(options_.epsilon_long_chord))
         {
-            // Step curls back on itself: update dchord estimate
-            real_type scale_step = options_.min_chord_shrink
-                                   / std::sqrt(distance_err_sq);
-            step *= scale_step;
-            cout << " -> " << color_code('y')
-                 << "way too long:" << color_code(' ') << " scale by 1 - "
-                 << (1 - scale_step);
+            // Chord and distance estimators disagree, so the step curls back
+            // on itself: update step estimate
+            real_type est_step = 2
+                                 * std::sqrt(est_diam_ * options_.delta_chord);
+            step = min(est_step / options_.min_chord_shrink,
+                       step * options_.min_chord_shrink);
+            cout << " -> " << color_code('y') << " set to " << step
+                 << color_code('x') << " (estimated step " << est_step << ")"
+                 << color_code(' ');
         }
-        else if (dchord > options_.delta_chord + options_.dchord_tol)
+        else if (sag > options_.delta_chord + options_.dchord_tol)
         {
-            // Estimate a new trial chord with a relative scale
-            real_type scale_step = max(std::sqrt(options_.delta_chord / dchord),
+            // Estimate a new trial chord with a relative scale:
+            // sqrt(delta chord / sagitta)
+            real_type scale_step = max(std::sqrt(options_.delta_chord / sag),
                                        options_.min_chord_shrink);
             step *= scale_step;
             cout << " -> scale by 1 - " << (1 - scale_step);
