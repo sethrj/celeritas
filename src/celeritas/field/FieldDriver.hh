@@ -234,9 +234,8 @@ FieldDriver<StepperT>::find_next_chord(real_type step,
         // Try with the proposed step
         result = apply_step_(step, state);
 
-        // Check whether the distance to the chord is smaller than the
-        // reference
-        real_type dchord = detail::distance_chord(
+        // Calculate the "sagitta" (if start, mid, stop are along a true arc)
+        real_type dchord = std::sqrt(ortho_distance_sq(
             state.pos, result.mid_state.pos, result.end_state.pos);
 
         real_type distance_err_sq

@@ -49,6 +49,13 @@ template<class T, size_type N>
                                                   Array<T, N> const& y);
 
 //---------------------------------------------------------------------------//
+// Calculate the distance from the beg-end line to mid
+template<class T>
+[[nodiscard]] CELER_FUNCTION T ortho_distance_sq(Array<T, 3> const& beg,
+                                                 Array<T, 3> const& mid,
+                                                 Array<T, 3> const& end);
+
+//---------------------------------------------------------------------------//
 // Calculate the Euclidian (2) distance between two points
 template<class T, size_type N>
 [[nodiscard]] inline CELER_FUNCTION T distance(Array<T, N> const& x,
@@ -143,6 +150,35 @@ CELER_FUNCTION T distance_sq(Array<T, N> const& x, Array<T, N> const& y)
         dist_sq += ipow<2>(y[i] - x[i]);
     }
     return dist_sq;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Square of the distance from the midpoint to the begin-end segment.
+ *
+ * \f[
+    d = |\vec{AM}| \sin(\theta) = \frac{\vec{AM} \times \vec{AB}}{|\vec{AB}|}
+ * \f]
+ *
+ * If beg, mid, and end are the start, midpoint, and end of an arc along a
+ * circle, then the result is the square of the sagitta.
+ */
+template<class T>
+CELER_FUNCTION T ortho_distance_sq(Array<T, 3> const& beg,
+                                   Array<T, 3> const& mid,
+                                   Array<T, 3> const& end)
+{
+    Array<T, 3> to_mid;
+    Array<T, 3> to_end;
+
+    for (size_type i = 0; i != 3; ++i)
+    {
+        to_mid[i] = mid[i] - beg[i];
+        to_end[i] = end[i] - beg[i];
+    }
+
+    auto cross = cross_product(to_end, to_mid);
+    return dot_product(cross, cross) / dot_product(to_end, to_end);
 }
 
 //---------------------------------------------------------------------------//

@@ -120,30 +120,5 @@ inline CELER_FUNCTION real_type rel_err_sq(OdeState const& err_state,
 }
 
 //---------------------------------------------------------------------------//
-/*!
- * Closest distance between the segment from beg.pos (\em A) to end.pos(\em B)
- * and the mid.pos (\em M):
- * \f[
- *   d = |\vec{AM}| \sin(\theta) = \frac{\vec{AM} \times \vec{AB}}{|\vec{AB}|}
- * \f]
- */
-inline CELER_FUNCTION real_type distance_chord(Real3 const& beg_pos,
-                                               Real3 const& mid_pos,
-                                               Real3 const& end_pos)
-{
-    Real3 beg_mid;
-    Real3 beg_end;
-
-    for (int i = 0; i < 3; ++i)
-    {
-        beg_mid[i] = mid_pos[i] - beg_pos[i];
-        beg_end[i] = end_pos[i] - beg_pos[i];
-    }
-
-    Real3 cross = cross_product(beg_end, beg_mid);
-    return std::sqrt(dot_product(cross, cross) / dot_product(beg_end, beg_end));
-}
-
-//---------------------------------------------------------------------------//
 }  // namespace detail
 }  // namespace celeritas
