@@ -19,7 +19,6 @@ namespace celeritas
  *
  * TODO: replace epsilon_rel_max with 1/epsilon_rel_max^2
  * TODO: replace safety with step_shrink_mul (or something to indicate that
- * TODO: deletee errcon
  * it's a multiplicative factor for reducing the step, not anything with
  * geometry)
  * TODO: remove errcon
@@ -69,7 +68,7 @@ struct FieldDriverOptions
     //! Chord distance fudge factor
     static constexpr inline real_type dchord_tol = 1e-5 * units::millimeter;
 
-    //! Chord distance/sagitta ratio tolerance
+    //! Chord distance/sagitta error tolerance
     static constexpr inline real_type epsilon_long_chord = 0.1;
 
     //! Lowest allowable scaling factor when searching for a chord
