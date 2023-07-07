@@ -239,27 +239,28 @@ TEST_F(FieldDriverTest, pathological_chord)
     FieldDriverOptions driver_options;
     driver_options.max_nsteps = std::numeric_limits<short int>::max();
 
-    real_type field_strength = 1.0 * units::tesla;
-    MevEnergy e{1.0};
-    real_type radius = this->calc_curvature(e, field_strength);
-
-    OdeState state;
-    state.pos = {radius, 0, 0};
-    real_type zfrac = 0.3;
-    state.mom
-        = this->calc_momentum(e, {0, std::sqrt(1 - ipow<2>(zfrac)), zfrac});
-
-    DiagnosticStepper stepper{ZHelixStepper{MagFieldEquation{
-        UniformZField{field_strength}, units::ElementaryCharge{-1}}}};
+    real_type const field_strength = 1.0 * units::tesla;
+    MevEnergy const e{1.0};
+    real_type const radius = this->calc_curvature(e, field_strength);
+    real_type const eps = 1e-10;
 
     std::vector<unsigned int> counts;
     std::vector<real_type> lengths;
 
-    real_type const eps = 0;
-    for (auto rev : {0.01, 1.0, 2.0, 4.0, 8.0})
+    for (real_type frac : {-0.1, 0.0, 0.1, 0.4, 0.8, 0.99})
     {
+        real_type theta = frac * constants::pi / 2;
+        OdeState state;
+        state.pos = {radius, 0, 0};
+        state.mom
+            = this->calc_momentum(e, {0, std::cos(theta), std::sin(theta)});
+        cout << "Starting momentum: " << state.mom << endl;
+
+        DiagnosticStepper stepper{ZHelixStepper{MagFieldEquation{
+            UniformZField{field_strength}, units::ElementaryCharge{-1}}}};
         FieldDriver driver{driver_options, stepper};
-        for (int i = 0; i < 2; ++i)
+
+        for (auto rev : {2.0, 4.0, 8.0, 1.0, 0.01})
         {
             stepper.reset_count();
             auto end = driver.advance((rev + eps) * 2 * constants::pi * radius,
@@ -269,19 +270,14 @@ TEST_F(FieldDriverTest, pathological_chord)
         }
     }
 
-    static unsigned int const expected_counts[]
-        = {2u, 1u, 6u, 4u, 7u, 4u, 8u, 4u, 9u, 4u};
-    static double const expected_lengths[] = {0.014901140823156,
-                                              0.029802281646312,
-                                              0.30936861066323,
-                                              0.30937436337832,
-                                              0.30936861066323,
-                                              0.30937436337832,
-                                              0.30936861066323,
-                                              0.30937436337832,
-                                              0.30936861066323,
-                                              0.30937436337832};
+    static unsigned int const expected_counts[] = {1u, 4u, 4u, 4u, 4u};
+    static double const expected_lengths[] = {0.029802281646312,
+                                              0.30936865386382,
+                                              0.30936877899171,
+                                              0.30936877899171,
+                                              0.3093686200038};
     EXPECT_VEC_EQ(expected_counts, counts);
+    PRINT_EXPECTED(lengths);
     EXPECT_VEC_SOFT_EQ(expected_lengths, lengths);
 }
 

@@ -290,15 +290,9 @@ FieldDriver<StepperT>::find_next_chord(real_type step, OdeState const& state)
 
         if (converged_diam > options_.epsilon_long_chord)
         {
-            // Chord and distance estimators disagree, so the step curls back
-            // on itself: update step estimate
-            real_type est_step = 2
-                                 * std::sqrt(est_diam_ * options_.delta_chord);
-            step = min(est_step / options_.min_chord_shrink,
-                       step * options_.min_chord_shrink);
-            cout << " -> " << color_code('y') << " set to " << step
-                 << color_code('x') << " (estimated step " << est_step << ")"
-                 << color_code(' ');
+            // Diameter estimate is unconverged: reduce step
+            step *= options_.min_chord_shrink;
+            cout << " -> " << color_code('y') << " halved" << color_code(' ');
         }
         else if (sag > options_.delta_chord + options_.dchord_tol)
         {

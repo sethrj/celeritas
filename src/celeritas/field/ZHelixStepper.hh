@@ -94,6 +94,9 @@ CELER_FUNCTION ZHelixStepper(EquationT&&)->ZHelixStepper<EquationT>;
  * the radius of the helix, \f$R = m gamma v/(qB)\f$ and the helicity, defined
  * as \f$ -sign(q B_z)\f$ are evaluated through the right hand side of the ODE
  * equation where q is the charge of the particle.
+ *
+ * Note that this implementation fails if the momentum is along the field
+ * vector.
  */
 template<class E>
 CELER_FUNCTION auto
@@ -109,6 +112,7 @@ ZHelixStepper<E>::operator()(real_type step, OdeState const& beg_state) const
     real_type radius = std::sqrt(dot_product(beg_state.mom, beg_state.mom)
                                  - ipow<2>(beg_state.mom[2]))
                        / norm(rhs.mom);
+    CELER_ASSERT(radius > 0);
 
     // Set the helicity: 1(-1) for negative(positive) charge with Bz > 0
     Helicity helicity = Helicity(rhs.mom[0] / rhs.pos[1] > 0);
