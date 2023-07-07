@@ -270,15 +270,23 @@ TEST_F(FieldDriverTest, pathological_chord)
         }
     }
 
-    static unsigned int const expected_counts[] = {1u, 4u, 4u, 4u, 4u};
-    static double const expected_lengths[] = {0.029802281646312,
-                                              0.30936865386382,
-                                              0.30936877899171,
-                                              0.30936877899171,
-                                              0.3093686200038};
-    EXPECT_VEC_EQ(expected_counts, counts);
-    PRINT_EXPECTED(lengths);
-    EXPECT_VEC_SOFT_EQ(expected_lengths, lengths);
+    static unsigned int const expected_counts[]
+        = {7u, 4u, 4u, 4u, 1u, 7u, 4u, 4u, 4u, 1u, 7u, 4u, 4u, 4u, 1u,
+           7u, 4u, 4u, 4u, 1u, 7u, 5u, 5u, 5u, 1u, 7u, 5u, 5u, 5u, 1u};
+    static double const expected_lengths[]
+        = {0.30937398137671,  0.30936881814545,  0.30936881814545,
+           0.30936881814545,  0.029802281944334, 0.30937398137671,
+           0.30936880719791,  0.30936880719791,  0.30936880719791,
+           0.029802281944334, 0.30937398137671,  0.30936881814545,
+           0.30936881814545,  0.30936881814545,  0.029802281944334,
+           0.30937398137671,  0.30937259356388,  0.30937259356354,
+           0.30937259356354,  0.029802281944334, 0.30937398137671,
+           0.3093685784926,   0.30936857849257,  0.30936857849257,
+           0.029802281944334, 0.30937398137669,  0.30936858890914,
+           0.30936858890911,  0.30936858890911,  0.029802281944334};
+
+    EXPECT_VEC_EQ(expected_counts, counts) << repr(counts);
+    EXPECT_VEC_SOFT_EQ(expected_lengths, lengths) << repr(lengths);
 }
 
 TEST_F(FieldDriverTest, step_counts)

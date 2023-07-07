@@ -278,21 +278,19 @@ FieldDriver<StepperT>::find_next_chord(real_type step, OdeState const& state)
             state.pos, result.mid_state.pos, result.end_state.pos));
         real_type const dist_sq = distance_sq(state.pos, result.end_state.pos);
         // Save the diameter estimate (if they *are* truly an arc)
-        real_type prev_est_diam = est_diam_;
         est_diam_ = sag + dist_sq / (4 * sag);
 
-        real_type converged_diam = std::fabs(prev_est_diam / est_diam_ - 1);
         cout << "  + step " << step << " to " << result.end_state.pos
              << " by way of " << result.mid_state.pos
              << " (distance: " << std::sqrt(dist_sq) << ") -> sag=" << sag
-             << ", radius estimate=" << est_diam_ / 2
-             << " (converged_diam = " << converged_diam << ")";
+             << ", radius estimate=" << est_diam_ / 2;
 
-        if (converged_diam > options_.epsilon_long_chord)
+        if (step > (2 * constants::pi) * est_diam_
+            && est_diam_ > options_.delta_chord)
         {
             // Diameter estimate is unconverged: reduce step
             step *= options_.min_chord_shrink;
-            cout << " -> " << color_code('y') << " halved" << color_code(' ');
+            cout << " -> " << color_code('y') << " shrunk" << color_code(' ');
         }
         else if (sag > options_.delta_chord + options_.dchord_tol)
         {
