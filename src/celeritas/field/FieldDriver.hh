@@ -285,8 +285,7 @@ FieldDriver<StepperT>::find_next_chord(real_type step, OdeState const& state)
              << " (distance: " << std::sqrt(dist_sq) << ") -> sag=" << sag
              << ", radius estimate=" << est_diam_ / 2;
 
-        if (step > (2 * constants::pi) * est_diam_
-            && est_diam_ > options_.delta_chord)
+        if (step > (2 * constants::pi) * est_diam_)
         {
             // Diameter estimate is unconverged: reduce step
             step *= options_.min_chord_shrink;

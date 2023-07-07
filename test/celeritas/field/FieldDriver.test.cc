@@ -242,7 +242,7 @@ TEST_F(FieldDriverTest, pathological_chord)
     real_type const field_strength = 1.0 * units::tesla;
     MevEnergy const e{1.0};
     real_type const radius = this->calc_curvature(e, field_strength);
-    real_type const eps = 1e-10;
+    real_type const eps = 1e-3;
 
     std::vector<unsigned int> counts;
     std::vector<real_type> lengths;
