@@ -276,20 +276,28 @@ FieldDriver<StepperT>::find_next_chord(real_type step, OdeState const& state)
         // Calculate the "sagitta" (if start, mid, stop are along a true arc)
         real_type const sag = std::sqrt(ortho_distance_sq(
             state.pos, result.mid_state.pos, result.end_state.pos));
-        real_type const dist_sq = distance_sq(state.pos, result.end_state.pos);
         // Save the diameter estimate (if they *are* truly an arc)
-        est_diam_ = sag + dist_sq / (4 * sag);
+        est_diam_ = sag
+                    + distance_sq(state.pos, result.end_state.pos) / (4 * sag);
 
+        real_type err_long_chord
+            = std::fabs(est_diam_ * 4 * sag / ipow<2>(step) - 1);
         cout << "  + step " << step << " to " << result.end_state.pos
-             << " by way of " << result.mid_state.pos
-             << " (distance: " << std::sqrt(dist_sq) << ") -> sag=" << sag
-             << ", radius estimate=" << est_diam_ / 2;
+             << " by way of " << result.mid_state.pos << " -> sag=" << sag
+             << ", radius estimate=" << est_diam_ / 2
+             << " (err_long_chord = " << err_long_chord << ")";
 
-        if (step > (2 * constants::pi) * est_diam_)
+        if (err_long_chord > ipow<2>(options_.epsilon_long_chord))
         {
-            // Diameter estimate is unconverged: reduce step
-            step *= options_.min_chord_shrink;
-            cout << " -> " << color_code('y') << " shrunk" << color_code(' ');
+            // Chord and distance estimators disagree, so the step curls back
+            // on itself: update step estimate
+            real_type est_step = 2
+                                 * std::sqrt(est_diam_ * options_.delta_chord);
+            step = min(est_step / options_.min_chord_shrink,
+                       step * options_.min_chord_shrink);
+            cout << " -> " << color_code('y') << " set to " << step
+                 << color_code('x') << " (estimated step " << est_step << ")"
+                 << color_code(' ');
         }
         else if (sag > options_.delta_chord + options_.dchord_tol)
         {
