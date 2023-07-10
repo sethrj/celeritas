@@ -181,7 +181,7 @@ TYPED_TEST(SafetyCacheTest, construction)
     SafetyCacheTrackView secondary_sft
         = this->make_safety_track_view(secondary_geo);
 
-    double x = 10;
+    double x = 16;
     for (auto primary_use_safety : {0, 1, 2})
     {
         SCOPED_TRACE(primary_use_safety == 0   ? "no parent safety"

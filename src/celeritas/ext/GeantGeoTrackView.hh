@@ -353,7 +353,8 @@ real_type GeantGeoTrackView::find_safety()
  */
 real_type GeantGeoTrackView::find_safety(real_type max_step)
 {
-    if (!this->is_on_boundary() && (safety_radius_ < max_step))
+    CELER_EXPECT(!this->is_on_boundary());
+    if (safety_radius_ < max_step)
     {
         real_type g4step = convert_to_geant(max_step, CLHEP::cm);
         g4safety_ = navi_.ComputeSafety(g4pos_, g4step);
