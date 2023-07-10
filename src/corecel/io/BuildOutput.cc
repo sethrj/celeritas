@@ -35,6 +35,7 @@ void BuildOutput::output(JsonPimpl* j) const
     {
         auto cfg = nlohmann::json::object();
 #    define CO_SAVE_CFG(NAME) cfg[#NAME] = bool(NAME)
+        CO_SAVE_CFG(CELERITAS_USE_ADIOS2);
         CO_SAVE_CFG(CELERITAS_USE_CUDA);
         CO_SAVE_CFG(CELERITAS_USE_GEANT4);
         CO_SAVE_CFG(CELERITAS_USE_HEPMC3);

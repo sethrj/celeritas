@@ -40,6 +40,7 @@ if(NOT CELERITAS_USE_CUDA)
 endif()
 
 # Dependencies
+celeritas_optional_package(ADIOS2 "Enable ADIOS2 HPC I/O")
 celeritas_optional_package(Geant4 "Enable Geant4 adapter tools")
 celeritas_optional_package(HepMC3 "Enable HepMC3 event record reader")
 celeritas_optional_package(JSON nlohmann_json "Enable JSON I/O")
@@ -163,6 +164,10 @@ set(CELERITAS_RUNTIME_OUTPUT_DIRECTORY
 #----------------------------------------------------------------------------#
 # DEPENDENCIES
 #----------------------------------------------------------------------------#
+
+if(CELERITAS_USE_ADIOS2)
+  find_package(ADIOS2 REQUIRED)
+endif()
 
 if(CELERITAS_USE_CUDA)
   # Use host compiler by default to ensure ABI consistency
@@ -410,8 +415,8 @@ endforeach()
 list(APPEND CELERITAS_EXPORT_VARIABLES "# Hints for upstream dependencies")
 foreach(_key
   MPIEXEC_EXECUTABLE CUDAToolkit_BIN_DIR
-  Geant4_DIR GTest_DIR HepMC3_DIR nlohmann_json_DIR Python_DIR ROOT_DIR
-  VecCore_DIR VecGeom_DIR
+  ADIOS2_DIR Geant4_DIR GTest_DIR HepMC3_DIR nlohmann_json_DIR Python_DIR
+  ROOT_DIR VecCore_DIR VecGeom_DIR
   CLHEP_DIR ZLIB_DIR EXPAT_DIR XercesC_DIR PTL_DIR
   EXPAT_INCLUDE_DIR EXPAT_LIBRARY
   XercesC_LIBRARY XercesC_INCLUDE_DIR

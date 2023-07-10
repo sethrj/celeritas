@@ -27,6 +27,10 @@ endif()
 
 include(CMakeFindDependencyMacro)
 
+if(CELERITAS_USE_ADIOS2)
+  find_dependency(ADIOS2 @ADIOS2_VERSION@ REQUIRED)
+endif()
+
 if(CELERITAS_USE_CUDA)
   enable_language(CUDA)
   find_dependency(CUDAToolkit REQUIRED QUIET)
