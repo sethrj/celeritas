@@ -89,8 +89,6 @@ class UrbanMscTest : public ::celeritas::test::RootTestBase
     using SimStateStore = CollectionStateStore<SimStateData, MemSpace::host>;
     using MevEnergy = units::MevEnergy;
 
-    using Action = MscInteraction::Action;
-
   protected:
     std::string_view geometry_basename() const final
     {
@@ -472,17 +470,16 @@ TEST_F(UrbanMscTest, msc_scattering)
         // geo-limited case here (see the geo->true tests above)
         UrbanMscScatter scatter(
             msc_params, helper, par, phys, mat, geo.dir(), safety, step_result);
-        MscInteraction sample_result = scatter(rng);
+        MscInteraction scat_result = scatter(rng);
 
-        angle.push_back(sample_result.action != Action::unchanged
-                            ? sample_result.direction[0]
-                            : 0);
-        displace.push_back(sample_result.action == Action::displaced
-                               ? sample_result.displacement[0]
-                               : 0);
-        action.push_back(sample_result.action == Action::displaced   ? 'd'
-                         : sample_result.action == Action::scattered ? 's'
-                                                                     : 'u');
+        angle.push_back(scat_result.scattered ? scat_result.direction[0] : 0);
+        displace.push_back(scat_result.displaced ? scat_result.displacement[0]
+                                                 : 0);
+        action.push_back(scat_result.displaced && scat_result.scattered ? 'b'
+                         : scat_result.displaced && !scat_result.scattered ? 'd'
+                         : !scat_result.displaced && scat_result.scattered
+                             ? 's'
+                             : 'u');
         avg_engine_samples.push_back(rng.count());
     };
 
@@ -541,8 +538,8 @@ TEST_F(UrbanMscTest, msc_scattering)
         9.7878389032256e-06, 0, 0, 5.3169211357544e-06, 3.04785478410349e-05,
         9.8992726876372e-05, 0, -9.0024133671603e-05, 2.9542258777685e-05, 0,
         0};
-    static char const expected_action[] = {'d', 'd', 'd', 'u', 'd', 'd', 'u',
-        'u', 'd', 'd', 'd', 'u', 'd', 'd', 'u', 'u'};
+    static char const expected_action[] = {'b', 'b', 'b', 'u', 'b', 'b', 'u',
+        'u', 'b', 'b', 'b', 'u', 'b', 'b', 'u', 'u'};
     static int const expected_avg_engine_samples[] = {12, 14, 16, 0, 16, 16, 0,
         0, 12, 14, 16, 0, 16, 16, 0, 0};
     // clang-format on

@@ -293,15 +293,16 @@ CELER_FUNCTION auto UrbanMscScatter::operator()(Engine& rng) -> MscInteraction
 {
     if (skip_sampling_)
     {
-        // Do not sample scattering at the last or at a small step
-        return {inc_direction_, {0, 0, 0}, MscInteraction::Action::unchanged};
+        // Do not sample scattering at the last or at a small step: return no
+        // change in position or direction
+        return {};
     }
 
     // Sample polar angle cosine
     real_type costheta = [this, &rng] {
         if (theta0_ <= 0)
         {
-            // Very small outgoing angular distribution
+            // Forward scatter
             return real_type{1};
         }
         if (tau_ >= shared_.params.tau_big)
@@ -326,12 +327,6 @@ CELER_FUNCTION auto UrbanMscScatter::operator()(Engine& rng) -> MscInteraction
         = UniformRealDistribution<real_type>(0, 2 * constants::pi)(rng);
 
     MscInteraction result;
-    result.action = MscInteraction::Action::scattered;
-    // This should only be needed to silence compiler warning, since the
-    // displacement should be ignored since our action result is
-    // 'scattered'
-    result.displacement = {0, 0, 0};
-
     if (is_displaced_)
     {
         // Calculate displacement length
@@ -344,12 +339,17 @@ CELER_FUNCTION auto UrbanMscScatter::operator()(Engine& rng) -> MscInteraction
             // Displacement distance is large enough to worry about
             result.displacement = this->sample_displacement_dir(rng, phi);
             result.displacement *= length;
-            result.action = MscInteraction::Action::displaced;
+            result.displaced = true;
         }
     }
 
     // Calculate direction and return
-    result.direction = rotate(from_spherical(costheta, phi), inc_direction_);
+    if (costheta != real_type{1})
+    {
+        result.direction
+            = rotate(from_spherical(costheta, phi), inc_direction_);
+        result.scattered = true;
+    }
     return result;
 }
 
@@ -429,16 +429,21 @@ CELER_FUNCTION real_type UrbanMscScatter::sample_cos_theta(Engine& rng) const
     }();
     real_type b1 = 2 + (c - xsi) * x;
     real_type d = fastpow(c * x / b1, c - 1);
-    real_type x0 = 1 - xsi * x;
 
-    // Mean of cos\theta computed from the distribution g_2(cos\theta)
-    real_type xmean_2 = (x0 + d - (c * x - b1 * d) / (c - 2)) / (1 - d);
-
-    real_type f2x0 = (c - 1) / (c * (1 - d));
-    real_type prob = f2x0 / (ea / (1 - ea) + f2x0);
+    real_type prob = [c, d, ea] {
+        real_type f2x0 = (c - 1) / (c * (1 - d));
+        return f2x0 / (ea / (1 - ea) + f2x0);
+    }();
 
     // Eq. 8.14 in the PRM: note that can be greater than 1
-    real_type qprob = xmean_ / (prob * xmean_1 + (1 - prob) * xmean_2);
+    real_type qprob = [&] {
+        real_type x0 = 1 - xsi * x;
+        // Mean of cos\theta computed from the distribution g_2(cos\theta)
+        real_type xmean_2 = (x0 + d - (c * x - b1 * d) / (c - 2)) / (1 - d);
+
+        return xmean_ / (prob * xmean_1 + (1 - prob) * xmean_2);
+    }();
+
     // Sampling of cos(theta)
     if (generate_canonical(rng) >= qprob)
     {
@@ -453,21 +458,16 @@ CELER_FUNCTION real_type UrbanMscScatter::sample_cos_theta(Engine& rng) const
         UniformRealDistribution<real_type> sample_inner(ea, 1);
         return 1 + std::log(sample_inner(rng)) * x;
     }
-    else
+
+    // Sample \f$ \cos\theta \f$ from \f$ g_2(\cos\theta) \f$
+    real_type var = (1 - d) * generate_canonical(rng);
+    if (var < real_type(0.01) * d)
     {
-        // Sample \f$ \cos\theta \f$ from \f$ g_2(\cos\theta) \f$
-        real_type var = (1 - d) * generate_canonical(rng);
-        if (var < real_type(0.01) * d)
-        {
-            var /= (d * (c - 1));
-            return -1
-                   + var * (1 - real_type(0.5) * var * c) * (2 + (c - xsi) * x);
-        }
-        else
-        {
-            return x * (c - xsi - c * fastpow(var + d, -1 / (c - 1))) + 1;
-        }
+        var /= (d * (c - 1));
+        return -1 + var * (1 - real_type(0.5) * var * c) * (2 + (c - xsi) * x);
     }
+
+    return x * (c - xsi - c * fastpow(var + d, -1 / (c - 1))) + 1;
 }
 
 //---------------------------------------------------------------------------//

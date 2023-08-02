@@ -256,12 +256,12 @@ UrbanMsc::apply_step(CoreTrackView const& track, StepLimit* step_limit)
     }();
 
     // Update direction and position
-    if (msc_result.action != MscInteraction::Action::unchanged)
+    if (msc_result.scattered)
     {
         // Changing direction during a boundary crossing is OK
         geo.set_dir(msc_result.direction);
     }
-    if (msc_result.action == MscInteraction::Action::displaced)
+    if (msc_result.displaced)
     {
         // Displacment during a boundary crossing is *not* OK
         CELER_ASSERT(!geo.is_on_boundary());

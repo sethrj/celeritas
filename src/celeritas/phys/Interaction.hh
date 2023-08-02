@@ -117,17 +117,41 @@ struct MscRange
  */
 struct MscInteraction
 {
-    //! Interaction result category
-    enum class Action
+    //! Construct from only a change in position
+    static CELER_FUNCTION MscInteraction
+    from_displacement(Real3 const& displacement)
     {
-        displaced,  //!< Direction and position changed
-        scattered,  //!< Only direction changed
-        unchanged  //!< No state change
-    };
+        MscInteraction result;
+        result.displacement = displacement;
+        result.displaced = true;
+        return result;
+    }
 
-    Real3 direction;  //!< Post-step direction
+    //! Construct from only a change in direction
+    static CELER_FUNCTION MscInteraction from_scatter(Real3 const& direction)
+    {
+        MscInteraction result;
+        result.direction = direction;
+        result.scattered = true;
+        return result;
+    }
+
+    //! Construct with "no change"
+    CELER_FUNCTION MscInteraction() : displaced{false}, scattered{false} {}
+
+    //! Construct by specifying direction and displacement
+    CELER_FUNCTION MscInteraction(Real3 const& delta_pos, Real3 const& dir)
+        : displaced{true}
+        , scattered{true}
+        , displacement{delta_pos}
+        , direction{dir}
+    {
+    }
+
+    bool displaced;  //!< True if position changed
+    bool scattered;  //!< True if direction changed
     Real3 displacement;  //!< Lateral displacement
-    Action action{Action::unchanged};  //!< Flags for interaction result
+    Real3 direction;  //!< Post-step direction
 };
 
 //---------------------------------------------------------------------------//
