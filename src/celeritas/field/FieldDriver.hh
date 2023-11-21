@@ -73,16 +73,8 @@ class FieldDriver
 
     //// ACCESSORS ////
 
-    CELER_FUNCTION real_type minimum_step() const
-    {
-        return options_.minimum_step;
-    }
-
-    // TODO: this should be field propagator data
-    CELER_FUNCTION real_type delta_intersection() const
-    {
-        return options_.delta_intersection;
-    }
+    // DEPRECATED: for backward compatibility when constructing propagator
+    FieldDriverOptions const& driver_options() const { return options_; }
 
   private:
     //// DATA ////

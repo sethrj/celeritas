@@ -15,21 +15,12 @@
 #include "orange/Types.hh"
 #include "celeritas/phys/ParticleTrackView.hh"
 
+#include "FieldSubstepper.hh"
 #include "Types.hh"
 #include "detail/FieldUtils.hh"
 
 namespace celeritas
 {
-//---------------------------------------------------------------------------//
-/*!
- * Configuration options for the field propagator.
- */
-struct FieldPropagatorOptions
-{
-    //! Limit on substeps
-    static constexpr short int max_substeps = 100;
-};
-
 //---------------------------------------------------------------------------//
 /*!
  * Propagate a charged particle in a field.
@@ -58,10 +49,21 @@ class FieldPropagator
     //!@}
 
   public:
-    // Construct with shared parameters and the field driver
-    inline CELER_FUNCTION FieldPropagator(DriverT&& driver,
+    // Construct with parameters, states, and the driver type.
+    inline CELER_FUNCTION FieldPropagator(FieldPropagatorOptions const& options,
+                                          DriverT&& driver,
                                           ParticleTrackView const& particle,
                                           GTV&& geo);
+
+    //! Compatibility construction to get field options
+    CELER_FUNCTION FieldPropagator(DriverT&& driver,
+                                   ParticleTrackView const& particle,
+                                   GTV&& geo)
+        : FieldPropagator{driver.driver_options(),
+                          ::celeritas::forward<DriverT>(driver),
+                          ::celeritas::forward<GTV>(geo)}
+    {
+    }
 
     // Move track to next volume boundary.
     inline CELER_FUNCTION result_type operator()();
@@ -72,27 +74,12 @@ class FieldPropagator
     //! Whether it's possible to have tracks that are looping
     static CELER_CONSTEXPR_FUNCTION bool tracks_can_loop() { return true; }
 
-    //! Limit on substeps
-    static CELER_CONSTEXPR_FUNCTION short int max_substeps()
-    {
-        return FieldPropagatorOptions::max_substeps;
-    }
-
-    // Intersection tolerance
-    inline CELER_FUNCTION real_type delta_intersection() const;
-
-    // Distance to bump or to consider a "zero" movement
-    inline CELER_FUNCTION real_type bump_distance() const;
-
-    // Smallest allowable inner loop distance to take
-    inline CELER_FUNCTION real_type minimum_substep() const;
-
   private:
     //// DATA ////
 
+    FieldPropagatorOptions const& options_;
     DriverT driver_;
-    GTV geo_;
-    OdeState state_;
+    GeoFieldState<GTV> state_;
 };
 
 //---------------------------------------------------------------------------//
@@ -103,6 +90,13 @@ CELER_FUNCTION FieldPropagator(DriverT&&, ParticleTrackView const&, GTV&&)
     ->FieldPropagator<DriverT, GTV>;
 
 //---------------------------------------------------------------------------//
+template<class DriverT, class GTV>
+CELER_FUNCTION FieldPropagator(FieldPropagatorOptions const&,
+                               DriverT&&,
+                               ParticleTrackView const&,
+                               GTV&&) -> FieldPropagator<DriverT, GTV>;
+
+//---------------------------------------------------------------------------//
 // INLINE DEFINITIONS
 //---------------------------------------------------------------------------//
 /*!
@@ -111,8 +105,8 @@ CELER_FUNCTION FieldPropagator(DriverT&&, ParticleTrackView const&, GTV&&)
 template<class DriverT, class GTV>
 CELER_FUNCTION FieldPropagator<DriverT, GTV>::FieldPropagator(
     DriverT&& driver, ParticleTrackView const& particle, GTV&& geo)
-    : driver_(::celeritas::forward<DriverT>(driver))
-    , geo_(::celeritas::forward<GTV>(geo))
+    : driver_{::celeritas::forward<DriverT>(driver)}
+    , state_{::celeritas::forward<GTV>(geo), geo.pos(), geo.dir()}
 {
     using MomentumUnits = OdeState::MomentumUnits;
 
@@ -161,174 +155,83 @@ CELER_FUNCTION auto FieldPropagator<DriverT, GTV>::operator()(real_type step)
     -> result_type
 {
     CELER_EXPECT(step > 0);
-    result_type result;
-    result.boundary = geo_.is_on_boundary();
-    result.distance = 0;
+
+    StepperImpl stepper{step, geo_};
+    NextStepFinder find_next_step{geo_}
 
     // Break the curved steps into substeps as determined by the driver *and*
     // by the proximity of geometry boundaries. Test for intersection with the
-    // geometry boundary in each substep. This loop is guaranteed to converge
-    // since the trial step always decreases *or* the actual position advances.
-    real_type remaining = step;
-    auto remaining_substeps = this->max_substeps();
-    do
+    // geometry boundary in each substep. Accept the substep and move
+    // internally if no boundary is nearby.
+    // This loop is guaranteed to converge since the trial step always
+    // decreases *or* the actual position advances.
+    SubstepStatus status{SubstepStatus::iterating};
+    while (status == SubstepStatus::iterating)
     {
         CELER_ASSERT(soft_zero(distance(state_.pos, geo_.pos())));
-        CELER_ASSERT(result.boundary == geo_.is_on_boundary());
+        CELER_ASSERT(stepper.boundary == geo_.is_on_boundary());
 
-        // Advance up to (but probably less than) the remaining step length
-        DriverResult substep = driver_.advance(remaining, state_);
-        CELER_ASSERT(substep.step > 0 && substep.step <= remaining);
+        // Advance up to (but probably less than) the trial step length
+        TrialState trial{options_,
+                         driver_.advance(stepper.trial_step, state_),
+                         state_.pos,
+                         find_next_step};
+        CELER_ASSERT(trial.substep() <= stepper.trial_step)
 
-        // Check whether the chord for this sub-step intersects a boundary
-        auto chord = detail::make_chord(state_.pos, substep.state.pos);
-
-        // Do a detailed check boundary check from the start position toward
-        // the substep end point. Travel to the end of the chord, plus a little
-        // extra.
-        if (chord.length >= this->minimum_substep())
+        if (trial.no_boundary())
         {
-            // Only update the direction if the chord length is nontrivial.
-            // This is usually the case but might be skipped in two cases:
-            // - if the initial step is very small compared to the
-            //   magnitude of the position (which can result in a zero length
-            //   for the chord and NaNs for the direction)
-            // - in a high-curvature track where the remaining distance is just
-            //   barely above the remaining minimum step (in which case our
-            //   boundary test does lose some accuracy)
-            geo_.set_dir(chord.dir);
+            substepper.accept_internal(trial);
         }
-        auto linear_step
-            = geo_.find_next_step(chord.length + this->delta_intersection());
-
-        // Scale the effective substep length to travel by the fraction along
-        // the chord to the boundary. This value can be slightly larger than 1
-        // because we search up a little past the endpoint (thanks to the delta
-        // intersection).
-        real_type const update_length = substep.step * linear_step.distance
-                                        / chord.length;
-
-        if (!linear_step.boundary)
+        else if (CELER_UNLIKELY(trial.stuck()))
         {
-            // No boundary intersection along the chord: accept substep
-            // movement inside the current volume and reset the remaining
-            // distance so we can continue toward the next boundary or end of
-            // caller-requested step. Reset the boundary flag to "false" only
-            // in the unlikely case that we successfully shortened the substep
-            // on a reentrant boundary crossing below.
-            state_ = substep.state;
-            result.boundary = false;
-            result.distance += substep.step;
-            remaining = step - result.distance;
-            geo_.move_internal(state_.pos);
-            --remaining_substeps;
+            substepper.retry_stuck(trial);
         }
-        else if (CELER_UNLIKELY(result.boundary
-                                && linear_step.distance < this->bump_distance()))
+        else if (trial.length_almost_boundary()
+                 || trial.endpoint_near_boundary()
+                 || CELER_UNLIKELY(trial.degenerate_chord()))
         {
-            // Likely heading back into the old volume when starting on a
-            // surface (this can happen when tracking through a volume at a
-            // near tangent). Reduce substep size and try again.
-            remaining = substep.step / 2;
-        }
-        else if (update_length <= this->minimum_substep()
-                 || detail::is_intercept_close(state_.pos,
-                                               chord.dir,
-                                               linear_step.distance,
-                                               substep.state.pos,
-                                               this->delta_intersection())
-                 || chord.length == 0)
-        {
-            // We're close enough to the boundary that the next trial step
-            // would be less than the driver's minimum step.
-            // *OR*
-            // The straight-line intersection point is a distance less than
-            // `delta_intersection` from the substep's end position.
             // Commit the proposed state's momentum, use the
             // post-boundary-crossing track position for consistency, and
             // conservatively reduce the *reported* traveled distance to avoid
             // coincident boundary crossings.
-
-            // Only cross the boundary if the intersect point is less
-            // than or exactly on the boundary, or if the crossing
-            // doesn't put us past the end of the step
-            result.boundary = (linear_step.distance <= chord.length
-                               || result.distance + update_length <= step
-                               || chord.length == 0);
-
-            if (!result.boundary)
-            {
-                // Don't move to the boundary, but instead move to the end of
-                // the substep. This should result in basically the same effect
-                // as "!linear_step.boundary" above.
-                state_.pos = substep.state.pos;
-                geo_.move_internal(substep.state.pos);
-            }
-
-            // The update length can be slightly greater than the substep due
-            // to the extra delta_intersection boost when searching. The
-            // substep itself can be more than the requested step.
-            result.distance += celeritas::min(update_length, substep.step);
-            state_.mom = substep.state.mom;
-            remaining = 0;
+            substepper.accept_likely_boundary(trial);
         }
         else
         {
-            // The straight-line intercept is too far from substep's end state.
+            // A boundary was hit but the straight-line intercept is too far
+            // from substep's end state.
             // Decrease the allowed substep (curved path distance) by the
             // fraction along the chord, and retry the driver step.
-            remaining = update_length;
+            substepper.update_trial_step(trial);
         }
-    } while (remaining > this->minimum_substep() && remaining_substeps > 0);
-
-    if (remaining_substeps == 0 && result.distance < step)
-    {
-        // Flag track as looping if the max number of substeps was reached
-        // without hitting a boundary or moving the full step length
-        result.looping = true;
-    }
-    else if (result.distance > 0)
-    {
-        if (result.boundary)
-        {
-            // We moved to a new boundary. Update the position to reflect the
-            // geometry's state (and possibly "bump" the ODE state's position
-            // because of the tolerance in the intercept checks above).
-            geo_.move_to_boundary();
-            state_.pos = geo_.pos();
-        }
-        else if (CELER_UNLIKELY(result.distance < step))
-        {
-            // Even though the track traveled the full step length, the
-            // distance might be slightly less than the step due to roundoff
-            // error. Reset the distance so the track's action isn't
-            // erroneously set as propagation-limited.
-            CELER_ASSERT(soft_equal(result.distance, step));
-            result.distance = step;
-        }
+        status = substepper.status();
     }
 
-    // Even though the along-substep movement was through chord lengths,
-    // conserve momentum through the field change by updating the final
-    // *direction* based on the state's momentum.
-    Real3 dir = make_unit_vector(state_.mom);
-    geo_.set_dir(dir);
+    if (status == Status::move_to_boundary)
+    {
+        // We moved to a new boundary. Update the position to reflect the
+        // geometry's state (and possibly "bump" the ODE state's position
+        // because of the tolerance in the intercept checks above).
+        substepper.cross_boundary();
+    }
+    else if (status == Status::moved_internal)
+    {
+        // Make sure the distance travelled is exactly the input step length
+        substepper.fixup_internal_step();
+    }
 
-    if (CELER_UNLIKELY(result.distance == 0))
+    substepper.bump();
+
+    if (status == Status::stuck)
     {
-        // We failed to move at all, which means we hit a boundary no matter
-        // what step length we took, which means we're stuck.
-        // Using the just-reapplied direction, hope that we're pointing deeper
-        // into the current volume and bump the particle.
-        result.distance = celeritas::min(this->bump_distance(), step);
-        result.boundary = false;
-        axpy(result.distance, dir, &state_.pos);
-        geo_.move_internal(state_.pos);
+        substepper.unstick();
     }
-    else
-    {
-        CELER_ENSURE(result.boundary == geo_.is_on_boundary());
-    }
+
+    // Convert the substepper inteals to the result
+    Propagation result;
+    result.distance = substepper.travelled();
+    result.boundary = state_.boundary;
+    result.looping = (status == Status::looping);
 
     // Due to accumulation errors from multiple substeps or chord-finding
     // within the driver, the distance may be very slightly beyond the
@@ -336,40 +239,9 @@ CELER_FUNCTION auto FieldPropagator<DriverT, GTV>::operator()(real_type step)
     CELER_ENSURE(
         result.distance > 0
         && (result.distance <= step || soft_equal(result.distance, step)));
+    CELER_ENSURE(result.boundary == geo_.is_on_boundary()
+                 || status == Status::stuck);
     return result;
-}
-
-//---------------------------------------------------------------------------//
-/*!
- * Distance close enough to a boundary to mark as being on the boundary.
- *
- * TODO: change delta intersection from property in FieldDriverOptions to
- * another FieldPropagatorOptions
- */
-template<class DriverT, class GTV>
-CELER_FUNCTION real_type FieldPropagator<DriverT, GTV>::delta_intersection() const
-{
-    return driver_.delta_intersection();
-}
-
-//---------------------------------------------------------------------------//
-/*!
- * Distance to bump or to consider a "zero" movement.
- */
-template<class DriverT, class GTV>
-CELER_FUNCTION real_type FieldPropagator<DriverT, GTV>::minimum_substep() const
-{
-    return driver_.minimum_step();
-}
-
-//---------------------------------------------------------------------------//
-/*!
- * Distance to bump or to consider a "zero" movement.
- */
-template<class DriverT, class GTV>
-CELER_FUNCTION real_type FieldPropagator<DriverT, GTV>::bump_distance() const
-{
-    return this->delta_intersection() * real_type(0.1);
 }
 
 //---------------------------------------------------------------------------//

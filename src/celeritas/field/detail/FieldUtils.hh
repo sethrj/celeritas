@@ -72,7 +72,6 @@ inline CELER_FUNCTION Chord make_chord(Real3 const& src, Real3 const& dst)
  * \code
      Real3 temp = pos;
      axpy(distance, dir, &pos);
-
      return distance(pos, target) <= tolerance;
  * \endcode
  */
@@ -85,7 +84,7 @@ inline CELER_FUNCTION bool is_intercept_close(Real3 const& pos,
     real_type delta_sq = 0;
     for (int i = 0; i < 3; ++i)
     {
-        delta_sq += ipow<2>(pos[i] - target[i] + distance * dir[i]);
+        delta_sq += ipow<2>(std::fma(distance, dir[i], pos[i] - target[i]));
     }
     return delta_sq <= ipow<2>(tolerance);
 }
@@ -98,6 +97,9 @@ inline CELER_FUNCTION bool is_intercept_close(Real3 const& pos,
  *
  * The return value is the square of \c dyerr in
  * \c G4MagIntegratorDriver::AccurateAdvance .
+ *
+ * \todo This function has very high register pressure. Maybe could use 2-norm
+ * instead of 1-norm?
  */
 inline CELER_FUNCTION real_type rel_err_sq(OdeState const& err_state,
                                            real_type step,

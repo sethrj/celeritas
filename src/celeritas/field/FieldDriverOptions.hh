@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
 //! \file celeritas/field/FieldDriverOptions.hh
+// TODO: rename FieldDriverTypes ? FieldDriverData?
 //---------------------------------------------------------------------------//
 #pragma once
 

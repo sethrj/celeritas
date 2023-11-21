@@ -17,6 +17,9 @@ namespace celeritas
  *
  * This declaration-only class can be used with the field propagator to
  * generate assembly output for instructive purposes.
+ *
+ * TODO: rename driver -> substepper
+ * TODO: rename advance -> operator()
  */
 class MockFieldDriver
 {
@@ -29,18 +32,6 @@ class MockFieldDriver
 
     //! For a given trial step, advance by a sub_step within a tolerance error
     CELER_FUNCTION DriverResult advance(real_type step, OdeState const& state);
-
-    //// ACCESSORS TO BE REMOVED ////
-
-    CELER_FUNCTION real_type minimum_step() const
-    {
-        return options_.minimum_step;
-    }
-
-    CELER_FUNCTION real_type delta_intersection() const
-    {
-        return options_.delta_intersection;
-    }
 
   private:
     //// DATA ////
