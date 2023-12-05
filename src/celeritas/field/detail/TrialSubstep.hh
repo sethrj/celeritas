@@ -11,6 +11,8 @@
 #include "celeritas/field/FieldPropagatorData.hh"
 #include "celeritas/field/Types.hh"
 
+#include "FieldUtils.hh"
+
 namespace celeritas
 {
 namespace detail
@@ -24,6 +26,7 @@ namespace detail
  */
 class TrialSubstep
 {
+  public:
     // Find the intercept distance during construction
     template<class F>
     CELER_FUNCTION TrialSubstep(FieldPropagatorOptions const& options,
@@ -52,10 +55,10 @@ class TrialSubstep
     inline CELER_FUNCTION bool no_boundary() const;
 
     // The particle appears stuck on a boundary.
-    inline CELER_FUNCTION bool stuck() const :
+    inline CELER_FUNCTION bool stuck() const;
 
-        // The distance to the boundary is almost the full substep.
-        inline CELER_FUNCTION bool length_almost_boundary() const;
+    // The distance to the boundary is almost the full substep.
+    inline CELER_FUNCTION bool length_almost_boundary() const;
 
     // The intercept point is spatially close to the substep end point.
     inline CELER_FUNCTION bool endpoint_near_boundary() const;
@@ -95,7 +98,7 @@ CELER_FUNCTION TrialSubstep::TrialSubstep(FieldPropagatorOptions const& options,
 
     // Calculate the straight-line distance between the start and the end
     // of the substep
-    chord_ = detail::make_chord(start_pos_, substep.state.pos);
+    chord_ = detail::make_chord(start_pos_, end_substep.state.pos);
     // Calculate the distance to the end point, searching a bit beyond
     // because of the allowable tolerance
     linear_step_ = find_next_step(chord_);

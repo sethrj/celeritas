@@ -61,6 +61,7 @@ class FieldPropagator
                                    GTV&& geo)
         : FieldPropagator{driver.driver_options(),
                           ::celeritas::forward<DriverT>(driver),
+                          particle,
                           ::celeritas::forward<GTV>(geo)}
     {
     }
@@ -110,8 +111,7 @@ CELER_FUNCTION FieldPropagator<DriverT, GTV>::FieldPropagator(
 {
     using MomentumUnits = OdeState::MomentumUnits;
 
-    state_.pos = geo_.pos();
-    state_.mom = value_as<MomentumUnits>(particle.momentum()) * geo_.dir();
+    state_.mom *= value_as<MomentumUnits>(particle.momentum());
 }
 
 //---------------------------------------------------------------------------//
@@ -220,7 +220,7 @@ CELER_FUNCTION auto FieldPropagator<DriverT, GTV>::operator()(real_type step)
         substepper.fixup_internal_step();
     }
 
-    substepper.bump();
+    substepper.restore_direction();
 
     if (status == Status::stuck)
     {
