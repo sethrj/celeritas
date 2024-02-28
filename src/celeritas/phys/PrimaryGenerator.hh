@@ -9,6 +9,7 @@
 
 #include <functional>
 #include <memory>
+#include <random>
 #include <vector>
 
 #include "celeritas/Types.hh"
@@ -38,9 +39,10 @@ class PrimaryGenerator : public EventReaderInterface
   public:
     //!@{
     //! \name Type aliases
-    using EnergySampler = std::function<real_type(PrimaryGeneratorEngine&)>;
-    using PositionSampler = std::function<Real3(PrimaryGeneratorEngine&)>;
-    using DirectionSampler = std::function<Real3(PrimaryGeneratorEngine&)>;
+    using Engine = std::mt19937;
+    using EnergySampler = std::function<real_type(Engine&)>;
+    using PositionSampler = std::function<Real3(Engine&)>;
+    using DirectionSampler = std::function<Real3(Engine&)>;
     using SPConstParticles = std::shared_ptr<ParticleParams const>;
     using result_type = std::vector<Primary>;
     //!@}
@@ -57,6 +59,15 @@ class PrimaryGenerator : public EventReaderInterface
     };
 
   public:
+    // Return a distribution for sampling the energy
+    static EnergySampler make_energy_sampler(DistributionOptions const&);
+
+    // Return a distribution for sampling the position
+    static PositionSampler make_position_sampler(DistributionOptions const&);
+
+    // Return a distribution for sampling the direction
+    static DirectionSampler make_direction_sampler(DistributionOptions const&);
+
     // Construct from user input
     static PrimaryGenerator
     from_options(SPConstParticles, PrimaryGeneratorOptions const&);
@@ -81,7 +92,8 @@ class PrimaryGenerator : public EventReaderInterface
     DirectionSampler sample_dir_;
     std::vector<ParticleId> particle_id_;
     size_type event_count_{0};
-    PrimaryGeneratorEngine rng_;
+    Engine rng_;
 };
+
 //---------------------------------------------------------------------------//
 }  // namespace celeritas

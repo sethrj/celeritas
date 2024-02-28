@@ -9,10 +9,9 @@
 
 #include <algorithm>
 #include <functional>
-#include <random>
 
+#include "corecel/Types.hh"
 #include "corecel/io/StringEnumMapper.hh"
-#include "geocel/Types.hh"
 
 #include "PDGNumber.hh"
 
@@ -81,10 +80,6 @@ struct PrimaryGeneratorOptions
     }
 };
 
-// TODO: move to PrimaryGenerator.hh
-
-using PrimaryGeneratorEngine = std::mt19937;
-
 //---------------------------------------------------------------------------//
 // FREE FUNCTIONS
 //---------------------------------------------------------------------------//
@@ -92,21 +87,5 @@ using PrimaryGeneratorEngine = std::mt19937;
 // Get a distribution name
 char const* to_cstring(DistributionSelection value);
 
-// TODO: move these to PrimaryGenerator.hh
-//! \cond
-
-// Return a distribution for sampling the energy
-std::function<real_type(PrimaryGeneratorEngine&)>
-make_energy_sampler(DistributionOptions options);
-
-// Return a distribution for sampling the position
-std::function<Real3(PrimaryGeneratorEngine&)>
-make_position_sampler(DistributionOptions options);
-
-// Return a distribution for sampling the direction
-std::function<Real3(PrimaryGeneratorEngine&)>
-make_direction_sampler(DistributionOptions options);
-
-//! \endcond
 //---------------------------------------------------------------------------//
 }  // namespace celeritas
