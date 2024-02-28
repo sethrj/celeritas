@@ -61,6 +61,9 @@ class EventReaderInterface
     //! Read all primaries from a single event
     virtual result_type operator()() = 0;
 
+    //! Read all primaries from a particular event
+    virtual result_type operator()(EventId) = 0;
+
     //! Get total number of events
     virtual size_type num_events() const = 0;
 
