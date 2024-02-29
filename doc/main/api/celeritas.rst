@@ -40,7 +40,6 @@ Problem definition
 
 .. doxygenclass:: celeritas::PhysicsParams
 
-
 .. _api_stepping:
 
 Stepping mechanics
@@ -49,6 +48,8 @@ Stepping mechanics
 .. doxygenenum:: celeritas::TrackStatus
 
 .. doxygenenum:: celeritas::ActionOrder
+
+.. doxygenclass:: celeritas::ExplicitActionInterface
 
 .. doxygenclass:: celeritas::Stepper
 

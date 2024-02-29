@@ -266,6 +266,11 @@ CPU).
 See :ref:`api_stepping` for implementation details on the ordering of actions
 and the status of a track slot during iteration.
 
+Kernel actions in Celeritas are sorted using an ActionOrder enumeration (see
+:ref:`api_stepping`).
+
+.. todo:: Add kernel order and launch diagram
+
 GPU usage
 =========
 
