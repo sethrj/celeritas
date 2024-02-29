@@ -100,6 +100,9 @@ class VecgeomTrackView
 
     // Get the volume ID in the current cell.
     CELER_FORCEINLINE_FUNCTION VolumeId volume_id() const;
+    // Get the navigation index
+    CELER_FORCEINLINE_FUNCTION VolumeInstanceId volume_instance_id() const;
+    // Get the placed volume ID
     CELER_FORCEINLINE_FUNCTION int volume_physid() const;
 
     //!@{
@@ -259,6 +262,29 @@ CELER_FUNCTION VolumeId VecgeomTrackView::volume_id() const
 {
     CELER_EXPECT(!this->is_outside());
     return VolumeId{this->volume().id()};
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Get the unique volume instance.
+ *
+ * This is a unique identifier in the expanded graph of logical volumes. It
+ * specfies not only the logical volume ID (which could have multiple
+ * placements in the geometry) but also the hierarchy of enclosing logical
+ * volumes.
+ *
+ * It is equivalent to the "navigation history" in Geant4 or the stack of local
+ * volume IDs in ORANGE.
+ */
+CELER_FUNCTION VolumeInstanceId VecgeomTrackView::volume_instance_id() const
+{
+    CELER_EXPECT(!this->is_outside());
+#ifdef VECGEOM_USE_NAVINDEX
+    return VolumeInstanceId{vgstate_.GetNavIndex()};
+#else
+    // Not implemented
+    return {};
+#endif
 }
 
 //---------------------------------------------------------------------------//

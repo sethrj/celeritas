@@ -7,6 +7,8 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
+#include <VecGeom/base/Config.h>
+
 #include "corecel/Macros.hh"
 #include "corecel/Types.hh"
 #include "corecel/cont/Array.hh"
@@ -20,6 +22,14 @@
 
 namespace celeritas
 {
+//---------------------------------------------------------------------------//
+//! Whether VecGeom can return detailed nav states
+#ifdef VECGEOM_USE_NAVINDEX
+inline constexpr bool vecgeom_has_volume_instance{true};
+#else
+inline constexpr bool vecgeom_has_volume_instance{false};
+#endif
+//
 //---------------------------------------------------------------------------//
 // PARAMS
 //---------------------------------------------------------------------------//

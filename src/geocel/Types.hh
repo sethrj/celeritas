@@ -45,6 +45,9 @@ using SurfaceId = OpaqueId<struct Surface_>;
 //! Identifier for a geometry volume
 using VolumeId = OpaqueId<struct Volume_>;
 
+//! Identifier for a unique instance of a multiply placed volume
+using VolumeInstanceId = OpaqueId<struct Volume_>;
+
 //---------------------------------------------------------------------------//
 // ENUMERATIONS
 //---------------------------------------------------------------------------//
