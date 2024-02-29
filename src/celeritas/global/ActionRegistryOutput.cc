@@ -41,6 +41,8 @@ void ActionRegistryOutput::output(JsonPimpl* j) const
 
     auto label = json::array();
     auto description = json::array();
+    auto order = json::object();
+    auto begin = json::array();
 
     for (auto id : range(ActionId{actions_->num_actions()}))
     {
@@ -48,10 +50,25 @@ void ActionRegistryOutput::output(JsonPimpl* j) const
 
         ActionInterface const& action = *actions_->action(id);
         description.push_back(action.description());
+
+        if (auto const* expl
+            = dynamic_cast<ExplicitActionInterface const*>(&action))
+        {
+            // Add explicit action to our array
+            order[label.back()] = to_cstring(expl->order());
+        }
+        if (auto const* beg
+            = dynamic_cast<BeginRunActionInterface const*>(&action))
+        {
+            // Add to list of beginning actions
+            begin.push_back(label.back());
+        }
     }
     j->obj = {
         {"label", std::move(label)},
         {"description", std::move(description)},
+        {"order", std::move(order)},
+        {"begin", std::move(begin)},
     };
 }
 
