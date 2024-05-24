@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -13,10 +13,11 @@
 #include "corecel/math/NumericLimits.hh"
 #include "celeritas/Constants.hh"
 #include "celeritas/Quantities.hh"
-#include "celeritas/em/distribution/SBEnergyDistHelper.hh"
 #include "celeritas/mat/ElementView.hh"
 
 namespace celeritas
+{
+namespace detail
 {
 //---------------------------------------------------------------------------//
 /*!
@@ -70,16 +71,13 @@ class SBPositronXsCorrector
     // Calculate cross section scaling factor for the given exiting energy
     inline CELER_FUNCTION real_type operator()(Energy energy) const;
 
-    // Get the maximum differential cross section for the incident energy
-    inline CELER_FUNCTION Xs max_xs(SBEnergyDistHelper const& helper) const;
-
   private:
     //// DATA ////
 
-    const real_type positron_mass_;
-    const real_type alpha_z_;
-    const real_type inc_energy_;
-    const real_type cutoff_invbeta_;
+    real_type const positron_mass_;
+    real_type const alpha_z_;
+    real_type const inc_energy_;
+    real_type const cutoff_invbeta_;
 
     //// HELPER FUNCTIONS ////
 
@@ -128,19 +126,6 @@ CELER_FUNCTION real_type SBPositronXsCorrector::operator()(Energy energy) const
 
 //---------------------------------------------------------------------------//
 /*!
- * Get the maximum differential cross section for the given incident energy.
- *
- * The positron cross section is always maximum at the first reduced photon
- * energy grid point.
- */
-CELER_FUNCTION auto
-SBPositronXsCorrector::max_xs(SBEnergyDistHelper const& helper) const -> Xs
-{
-    return helper.xs_zero();
-}
-
-//---------------------------------------------------------------------------//
-/*!
  * Calculate the inverse of the relativistic positron speed.
  *
  * The input here is the exiting gamma energy, so the positron energy is the
@@ -154,17 +139,12 @@ SBPositronXsCorrector::max_xs(SBEnergyDistHelper const& helper) const -> Xs
    = 1/\sqrt{1 - \left( \frac{mc^2}{K + mc^2} \right)^2}
    = 1 / \beta(K)
  * \f]
- *
- * \todo I originally wanted all these sort of calculations to be in
- * ParticleTrackView, but that class requires a full set of state, params, etc.
- * Maybe we need to refactor it so that this calculation doesn't get duplicated
- * everywhere inside the physics -- maybe a "LocalParticle" that has the same
- * functions.
  */
 CELER_FUNCTION real_type
 SBPositronXsCorrector::calc_invbeta(real_type gamma_energy) const
 {
     CELER_EXPECT(gamma_energy > 0 && gamma_energy < inc_energy_);
+    // TODO: use local data ParticleTrackView
     // Positron has all the energy except what it gave to the gamma
     real_type energy = inc_energy_ - gamma_energy;
     return (energy + positron_mass_)
@@ -172,4 +152,5 @@ SBPositronXsCorrector::calc_invbeta(real_type gamma_energy) const
 }
 
 //---------------------------------------------------------------------------//
+}  // namespace detail
 }  // namespace celeritas

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -57,10 +57,12 @@ BetheHeitlerModel::BetheHeitlerModel(ActionId id,
  */
 auto BetheHeitlerModel::applicability() const -> SetApplicability
 {
+    using Energy = units::MevEnergy;
+
     Applicability photon_applic;
     photon_applic.particle = data_.ids.gamma;
-    photon_applic.lower = zero_quantity();
-    photon_applic.upper = units::MevEnergy{1e8};
+    photon_applic.lower = Energy{2 * this->host_ref().electron_mass.value()};
+    photon_applic.upper = Energy{1e8};
 
     return {photon_applic};
 }

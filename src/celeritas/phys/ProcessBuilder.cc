@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -15,6 +15,7 @@
 #include "corecel/io/Logger.hh"
 #include "celeritas/em/process/BremsstrahlungProcess.hh"
 #include "celeritas/em/process/ComptonProcess.hh"
+#include "celeritas/em/process/CoulombScatteringProcess.hh"
 #include "celeritas/em/process/EIonizationProcess.hh"
 #include "celeritas/em/process/EPlusAnnihilationProcess.hh"
 #include "celeritas/em/process/GammaConversionProcess.hh"
@@ -23,7 +24,9 @@
 #include "celeritas/io/ImportData.hh"
 #include "celeritas/io/ImportedElementalMapLoader.hh"
 #include "celeritas/io/LivermorePEReader.hh"
+#include "celeritas/io/NeutronXsReader.hh"
 #include "celeritas/io/SeltzerBergerReader.hh"
+#include "celeritas/neutron/process/NeutronElasticProcess.hh"
 
 #include "ImportedProcessAdapter.hh"
 
@@ -48,6 +51,9 @@ auto ProcessBuilder::get_all_process_classes(
 /*!
  * Construct imported process data.
  *
+ * \pre The import data must have already been converted to the native unit
+ * system.
+ *
  * \warning If Livermore and SB data is present in the import data, their
  * lifetime must extend beyond the \c ProcessBuilder instance.
  */
@@ -65,6 +71,7 @@ ProcessBuilder::ProcessBuilder(ImportData const& data,
 {
     CELER_EXPECT(input_.material);
     CELER_EXPECT(input_.particle);
+    CELER_EXPECT(std::string(data.units) == units::NativeTraits::label());
 
     input_.imported = std::make_shared<ImportedProcesses>(data.processes);
 
@@ -75,6 +82,11 @@ ProcessBuilder::ProcessBuilder(ImportData const& data,
     if (!data.livermore_pe_data.empty())
     {
         read_livermore_ = make_imported_element_loader(data.livermore_pe_data);
+    }
+    if (!data.neutron_elastic_data.empty())
+    {
+        read_neutron_elastic_
+            = make_imported_element_loader(data.neutron_elastic_data);
     }
 }
 
@@ -114,12 +126,14 @@ auto ProcessBuilder::operator()(IPC ipc) -> SPProcess
     }
 
     using BuilderMemFn = SPProcess (ProcessBuilder::*)();
-    static const std::unordered_map<IPC, BuilderMemFn> builtin_build{
+    static std::unordered_map<IPC, BuilderMemFn> const builtin_build{
         {IPC::annihilation, &ProcessBuilder::build_annihilation},
         {IPC::compton, &ProcessBuilder::build_compton},
         {IPC::conversion, &ProcessBuilder::build_conversion},
+        {IPC::coulomb_scat, &ProcessBuilder::build_coulomb},
         {IPC::e_brems, &ProcessBuilder::build_ebrems},
         {IPC::e_ioni, &ProcessBuilder::build_eioni},
+        {IPC::neutron_elastic, &ProcessBuilder::build_neutron_elastic},
         {IPC::photoelectric, &ProcessBuilder::build_photoelectric},
         {IPC::rayleigh, &ProcessBuilder::build_rayleigh},
     };
@@ -167,6 +181,18 @@ auto ProcessBuilder::build_ebrems() -> SPProcess
 }
 
 //---------------------------------------------------------------------------//
+auto ProcessBuilder::build_neutron_elastic() -> SPProcess
+{
+    if (!read_neutron_elastic_)
+    {
+        read_neutron_elastic_ = NeutronXsReader{NeutronXsType::el};
+    }
+
+    return std::make_shared<NeutronElasticProcess>(
+        this->particle(), this->material(), read_neutron_elastic_);
+}
+
+//---------------------------------------------------------------------------//
 auto ProcessBuilder::build_photoelectric() -> SPProcess
 {
     if (!read_livermore_)
@@ -210,6 +236,17 @@ auto ProcessBuilder::build_annihilation() -> SPProcess
     return std::make_shared<EPlusAnnihilationProcess>(this->particle(),
                                                       options);
 }
+
+//---------------------------------------------------------------------------//
+auto ProcessBuilder::build_coulomb() -> SPProcess
+{
+    CoulombScatteringProcess::Options options;
+    options.use_integral_xs = use_integral_xs_;
+
+    return std::make_shared<CoulombScatteringProcess>(
+        this->particle(), this->imported(), options);
+}
+
 //---------------------------------------------------------------------------//
 /*!
  * Warn and return a null process.

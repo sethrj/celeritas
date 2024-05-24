@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -19,13 +19,11 @@ namespace app
 //! I/O routines for JSON
 void to_json(nlohmann::json& j, DeviceGridParams const& v)
 {
-    j = nlohmann::json{{"threads_per_block", v.threads_per_block},
-                       {"sync", v.sync}};
+    j = nlohmann::json{{"sync", v.sync}};
 }
 
 void from_json(nlohmann::json const& j, DeviceGridParams& v)
 {
-    j.at("threads_per_block").get_to(v.threads_per_block);
     j.at("sync").get_to(v.sync);
 }
 

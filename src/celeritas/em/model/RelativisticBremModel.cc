@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -17,6 +17,7 @@
 #include "celeritas/em/data/ElectronBremsData.hh"
 #include "celeritas/em/data/RelativisticBremData.hh"
 #include "celeritas/em/executor/RelativisticBremExecutor.hh"
+#include "celeritas/em/interactor/detail/PhysicsConstants.hh"
 #include "celeritas/global/ActionLauncher.hh"
 #include "celeritas/global/CoreParams.hh"
 #include "celeritas/global/TrackExecutor.hh"
@@ -26,8 +27,6 @@
 #include "celeritas/phys/PDGNumber.hh"
 #include "celeritas/phys/ParticleParams.hh"
 #include "celeritas/phys/ParticleView.hh"
-
-#include "../interactor/detail/PhysicsConstants.hh"
 
 namespace celeritas
 {
@@ -143,7 +142,7 @@ void RelativisticBremModel::build_data(HostValue* data,
                                        real_type particle_mass)
 {
     // Build element data for available elements
-    unsigned int num_elements = materials.num_elements();
+    auto num_elements = materials.num_elements();
 
     auto elem_data = make_builder(&data->elem_data);
     elem_data.reserve(num_elements);
@@ -205,7 +204,7 @@ auto RelativisticBremModel::compute_element_data(ElementView const& elem,
 auto RelativisticBremModel::get_form_factor(AtomicNumber z) -> FormFactor const&
 {
     CELER_EXPECT(z && z < AtomicNumber{8});
-    static const FormFactor form_factor[] = {{5.3104, 5.9173},
+    static FormFactor const form_factor[] = {{5.3104, 5.9173},
                                              {4.7935, 5.6125},
                                              {4.7402, 5.5377},
                                              {4.7112, 5.4728},

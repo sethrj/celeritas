@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -23,8 +23,8 @@
 #include "celeritas/global/CoreState.hh"
 #include "celeritas/global/TrackExecutor.hh"
 #include "celeritas/phys/ParticleParams.hh"  // IWYU pragma: keep
-#include "celeritas/user/ParticleTallyData.hh"
 
+#include "ParticleTallyData.hh"
 #include "detail/ActionDiagnosticExecutor.hh"
 
 #if CELERITAS_USE_JSON
@@ -95,7 +95,7 @@ void ActionDiagnostic::execute(CoreParams const& params,
 /*!
  * Get a long description of the action.
  */
-std::string ActionDiagnostic::description() const
+std::string_view ActionDiagnostic::description() const
 {
     return "accumulate post-step action counters";
 }
@@ -116,7 +116,7 @@ void ActionDiagnostic::output(JsonPimpl* j) const
 
     j->obj = std::move(obj);
 #else
-    (void)sizeof(j);
+    CELER_DISCARD(j);
 #endif
 }
 

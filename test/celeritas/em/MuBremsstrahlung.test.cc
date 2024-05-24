@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -140,7 +140,7 @@ TEST_F(MuBremsstrahlungInteractorTest, stress_test)
 
     for (auto particle : {pdg::mu_minus(), pdg::mu_plus()})
     {
-        for (double inc_e : {1.5e4, 5e4, 10e4, 50e4, 100e4})
+        for (real_type inc_e : {1.5e4, 5e4, 10e4, 50e4, 100e4})
         {
             SCOPED_TRACE("Incident energy: " + std::to_string(inc_e));
             this->set_inc_particle(particle, MevEnergy{inc_e});

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -76,7 +76,7 @@ MaterialParams::from_import(ImportData const& data)
         isotope_params.atomic_mass_number
             = AtomicNumber{isotope.atomic_mass_number};
         // Convert from MeV (Geant4) to MeV/c^2 (Celeritas)
-        isotope_params.nuclear_mass = units::MevMass{isotope.nuclear_mass};
+        isotope_params.nuclear_mass = units::MevMass(isotope.nuclear_mass);
 
         input.isotopes.push_back(std::move(isotope_params));
     }
@@ -86,7 +86,7 @@ MaterialParams::from_import(ImportData const& data)
     {
         MaterialParams::ElementInput element_params;
         element_params.atomic_number = AtomicNumber{element.atomic_number};
-        element_params.atomic_mass = units::AmuMass{element.atomic_mass};
+        element_params.atomic_mass = units::AmuMass(element.atomic_mass);
         element_params.label = Label::from_geant(element.name);
 
         for (auto const& key : element.isotopes_fractions)
@@ -97,6 +97,17 @@ MaterialParams::from_import(ImportData const& data)
         }
 
         input.elements.push_back(std::move(element_params));
+    }
+
+    // Create mapping from material to optical property data
+    if (!data.optical.empty())
+    {
+        input.mat_to_optical.resize(data.materials.size(), {});
+        OpticalMaterialId::size_type optical_id{0};
+        for (auto const& [mat_id, optical] : data.optical)
+        {
+            input.mat_to_optical[mat_id] = OpticalMaterialId(optical_id++);
+        }
     }
 
     // Populate input.materials
@@ -129,6 +140,8 @@ MaterialParams::MaterialParams(Input const& inp)
 {
     CELER_EXPECT(!inp.elements.empty());
     CELER_EXPECT(!inp.materials.empty());
+    CELER_EXPECT(inp.mat_to_optical.empty()
+                 || inp.mat_to_optical.size() == inp.materials.size());
 
     ScopedMem record_mem("MaterialParams.construct");
 
@@ -161,6 +174,10 @@ MaterialParams::MaterialParams(Input const& inp)
         this->append_material_def(inp.materials[i], &host_data);
     }
     mat_labels_ = LabelIdMultiMap<MaterialId>(std::move(mat_labels));
+
+    // Mapping of material to optical data
+    make_builder(&host_data.optical_id)
+        .insert_back(inp.mat_to_optical.begin(), inp.mat_to_optical.end());
 
     // Move to mirrored data, copying to device
     data_ = CollectionMirror<MaterialParamsData>{std::move(host_data)};
@@ -330,7 +347,7 @@ void MaterialParams::append_element_def(ElementInput const& inp,
         = std::max(host_data->max_isotope_components, result.isotopes.size());
 
     // Calculate various factors of the atomic number
-    const real_type z_real = result.atomic_number.unchecked_get();
+    real_type const z_real = result.atomic_number.unchecked_get();
     result.cbrt_z = std::cbrt(z_real);
     result.cbrt_zzp = std::cbrt(z_real * (z_real + 1));
     result.log_z = std::log(z_real);
@@ -381,7 +398,7 @@ MaterialParams::extend_elcomponents(MaterialInput const& inp,
     std::vector<MatElementComponent> components(inp.elements_fractions.size());
 
     // Store number fractions
-    real_type norm = 0.0;
+    real_type norm = 0;
     for (auto i : range(inp.elements_fractions.size()))
     {
         CELER_EXPECT(inp.elements_fractions[i].first
@@ -395,21 +412,21 @@ MaterialParams::extend_elcomponents(MaterialInput const& inp,
     }
 
     // Renormalize component fractions that are not unity and log them
-    if (!inp.elements_fractions.empty() && !soft_equal(norm, 1.0))
+    if (!inp.elements_fractions.empty() && !soft_equal(norm, real_type(1)))
     {
         CELER_LOG(warning) << "Element component fractions for `" << inp.label
                            << "` should sum to 1 but instead sum to " << norm
                            << " (difference = " << norm - 1 << ")";
 
         // Normalize
-        norm = 1.0 / norm;
+        norm = 1 / norm;
         real_type total_fractions = 0;
         for (MatElementComponent& comp : components)
         {
             comp.fraction *= norm;
             total_fractions += comp.fraction;
         }
-        CELER_ASSERT(soft_equal(total_fractions, 1.0));
+        CELER_ASSERT(soft_equal(total_fractions, real_type(1)));
     }
 
     // Sort elements by increasing element ID for improved access
@@ -472,9 +489,9 @@ void MaterialParams::append_material_def(MaterialInput const& inp,
     result.electron_density = result.number_density * avg_z;
     result.rad_length = 1 / (rad_coeff * result.density);
     log_mean_exc_energy = avg_z > 0 ? log_mean_exc_energy / avg_z
-                                    : -numeric_limits<real_type>::infinity();
-    result.log_mean_exc_energy = units::LogMevEnergy{log_mean_exc_energy};
-    result.mean_exc_energy = units::MevEnergy{std::exp(log_mean_exc_energy)};
+                                    : -numeric_limits<double>::infinity();
+    result.log_mean_exc_energy = units::LogMevEnergy(log_mean_exc_energy);
+    result.mean_exc_energy = units::MevEnergy(std::exp(log_mean_exc_energy));
 
     // Add to host vector
     make_builder(&host_data->materials).push_back(result);

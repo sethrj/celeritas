@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -41,9 +41,6 @@ class GeantSetup
     //!@}
 
   public:
-    // Clear Geant4's signal handlers that get installed when linking 11+
-    static void disable_signal_handler();
-
     // Construct from a GDML file and physics options
     GeantSetup(std::string const& gdml_filename, Options options);
 
@@ -53,13 +50,8 @@ class GeantSetup
     // Terminate run on destruction
     ~GeantSetup();
 
-    //!@{
     //! Prevent copying but allow moving
-    GeantSetup(GeantSetup const&) = delete;
-    GeantSetup& operator=(GeantSetup const&) = delete;
-    GeantSetup(GeantSetup&&) = default;
-    GeantSetup& operator=(GeantSetup&&) = default;
-    //!@}
+    CELER_DEFAULT_MOVE_DELETE_COPY(GeantSetup);
 
     // Get the world detector volume
     inline G4VPhysicalVolume const* world() const;
@@ -80,9 +72,6 @@ class GeantSetup
 
 //---------------------------------------------------------------------------//
 // FREE FUNCTIONS
-//---------------------------------------------------------------------------//
-// Get the number of threads in a version-portable way
-int get_num_threads(G4RunManager const&);
 
 //---------------------------------------------------------------------------//
 // INLINE DEFINITIONS
@@ -105,11 +94,6 @@ inline GeantSetup::GeantSetup(std::string const&, Options)
 inline GeantSetup::~GeantSetup() = default;
 
 inline void GeantSetup::RMDeleter::operator()(G4RunManager*) const
-{
-    CELER_ASSERT_UNREACHABLE();
-}
-
-inline int get_num_threads(G4RunManager const&)
 {
     CELER_ASSERT_UNREACHABLE();
 }

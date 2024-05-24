@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -50,6 +50,10 @@ class ImportedDataTestBase : virtual public GlobalGeoTestBase
     SPConstCutoff build_cutoff() override;
     SPConstPhysics build_physics() override;
     SPConstSim build_sim() override;
+    SPConstWentzelOKVI build_wentzel() override;
+    SPConstCerenkov build_cerenkov() override;
+    SPConstProperties build_properties() override;
+    SPConstScintillation build_scintillation() override;
 };
 
 //---------------------------------------------------------------------------//

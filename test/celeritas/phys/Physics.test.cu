@@ -1,5 +1,5 @@
 //---------------------------------*-CUDA-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -10,6 +10,7 @@
 #include "corecel/device_runtime_api.h"
 #include "corecel/sys/Device.hh"
 #include "corecel/sys/KernelParamCalculator.device.hh"
+#include "celeritas/Quantities.hh"
 #include "celeritas/phys/PhysicsStepView.hh"
 #include "celeritas/phys/PhysicsTrackView.hh"
 
@@ -25,7 +26,7 @@ namespace
 // KERNELS
 //---------------------------------------------------------------------------//
 
-__global__ void phys_test_kernel(const PTestInput inp)
+__global__ void phys_test_kernel(PTestInput const inp)
 {
     auto tid = TrackSlotId{KernelParamCalculator::thread_id().unchecked_get()};
     if (tid.get() >= inp.states.size())
@@ -36,7 +37,9 @@ __global__ void phys_test_kernel(const PTestInput inp)
     PhysicsStepView step(inp.params, inp.states, tid);
 
     phys = PhysicsTrackInitializer{};
-    inp.result[tid.get()] = calc_step(phys, step, init.energy);
+    inp.result[tid.get()]
+        = native_value_to<units::CmLength>(calc_step(phys, step, init.energy))
+              .value();
 }
 }  // namespace
 
@@ -48,8 +51,7 @@ void phys_cuda_test(PTestInput const& input)
 {
     CELER_ASSERT(input.inits.size() == input.states.size());
 
-    CELER_LAUNCH_KERNEL(
-        phys_test, device().default_block_size(), input.states.size(), 0, input);
+    CELER_LAUNCH_KERNEL(phys_test, input.states.size(), 0, input);
 }
 
 //---------------------------------------------------------------------------//

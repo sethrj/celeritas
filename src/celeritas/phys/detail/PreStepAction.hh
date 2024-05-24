@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -21,7 +21,7 @@ namespace detail
  * - Reset track properties (todo: move to track initialization?)
  * - Sample the mean free path and calculate the physics step limits.
  */
-class PreStepAction final : public ExplicitActionInterface,
+class PreStepAction final : public ExplicitCoreActionInterface,
                             public ConcreteAction
 {
   public:

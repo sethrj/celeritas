@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -7,9 +7,11 @@
 //---------------------------------------------------------------------------//
 #include "OutputInterface.hh"
 
-#include "celeritas_config.h"
-#include "corecel/io/EnumStringMapper.hh"
+#include <iostream>
 
+#include "celeritas_config.h"
+
+#include "EnumStringMapper.hh"
 #include "JsonPimpl.hh"
 #if CELERITAS_USE_JSON
 #    include <nlohmann/json.hpp>
@@ -36,18 +38,35 @@ char const* to_cstring(Category value)
 
 //---------------------------------------------------------------------------//
 /*!
- * Get the JSON representation of a single output (mostly for testing).
+ * Get the JSON representation of a single output.
+ *
+ * This is used mostly for testing, but it can also be useful for quickly
+ * generating useful JSON output from applications, e.g. with exception output.
  */
 std::string to_string(OutputInterface const& output)
+{
+    std::ostringstream os;
+    os << output;
+    return std::move(os).str();
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Stream the JSON representation of a single output.
+ */
+std::ostream& operator<<(std::ostream& os, OutputInterface const& output)
 {
 #if CELERITAS_USE_JSON
     JsonPimpl json_wrap;
     output.output(&json_wrap);
-    return json_wrap.obj.dump();
+    json_wrap.obj["_category"] = to_cstring(output.category());
+    json_wrap.obj["_label"] = output.label();
+    os << json_wrap.obj;
 #else
-    (void)sizeof(output);
-    return "\"output unavailable\"";
+    CELER_DISCARD(output);
+    os << "\"output unavailable\"";
 #endif
+    return os;
 }
 
 //---------------------------------------------------------------------------//

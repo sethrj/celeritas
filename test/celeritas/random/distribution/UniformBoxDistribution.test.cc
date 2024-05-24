@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -47,8 +47,9 @@ TEST(UniformBoxDistributionTest, all)
         double octant = static_cast<double>(count) / num_samples;
         EXPECT_SOFT_NEAR(octant, 1. / 8, 0.1);
     }
-    // 2 32-bit samples per double, 3 doubles per sample
-    EXPECT_EQ(num_samples * 6, rng.count());
+    // 3 reals per sample
+    int num_per_sample = 3 * (sizeof(real_type) / 4);
+    EXPECT_EQ(num_samples * num_per_sample, rng.count());
 }
 
 //---------------------------------------------------------------------------//

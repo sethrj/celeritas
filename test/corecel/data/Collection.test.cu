@@ -1,5 +1,5 @@
 //---------------------------------*-CUDA-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -69,7 +69,6 @@ void col_cuda_test(CTestInput input)
 {
     CELER_EXPECT(input.states.size() > 0);
     CELER_LAUNCH_KERNEL(col_cuda_test,
-                        device().default_block_size(),
                         input.states.size(),
                         0,
                         input.params,

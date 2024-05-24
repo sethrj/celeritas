@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -13,6 +13,7 @@
 #include "corecel/data/CollectionBuilder.hh"
 #include "celeritas/Quantities.hh"
 #include "celeritas/Types.hh"
+#include "celeritas/optical/Types.hh"
 #include "celeritas/phys/AtomicNumber.hh"
 
 namespace celeritas
@@ -96,7 +97,7 @@ struct MatElementComponent
  */
 struct MaterialRecord
 {
-    real_type number_density;  //!< Atomic number density [1/cm^3]
+    real_type number_density;  //!< Atomic number density [1/length^3]
     real_type temperature;  //!< Temperature [K]
     MatterState matter_state;  //!< Solid, liquid, gas
     ItemRange<MatElementComponent> elements;  //!< Element components
@@ -104,9 +105,9 @@ struct MaterialRecord
     // COMPUTED PROPERTIES
 
     real_type zeff;  //!< Weighted atomic number
-    real_type density;  //!< Density [g/cm^3]
-    real_type electron_density;  //!< Electron number density [1/cm^3]
-    real_type rad_length;  //!< Radiation length [cm]
+    real_type density;  //!< Density [mass/length^3]
+    real_type electron_density;  //!< Electron number density [1/length^3]
+    real_type rad_length;  //!< Radiation length [length]
     units::MevEnergy mean_exc_energy;  //!< Mean excitation energy [MeV]
     units::LogMevEnergy log_mean_exc_energy;  //!< Log mean excitation energy
 };
@@ -117,6 +118,10 @@ struct MaterialRecord
  *
  * This view is created from \c MaterialParams.
  *
+ * If a material has optical properties defined, \c optical_id will give the
+ * index into the optical properties data. Otherwise, it will be an invalid ID,
+ * or empty if no optical properties are present for any material.
+ *
  * \sa MaterialParams (owns the pointed-to data)
  * \sa ElementView (uses the pointed-to element data in a kernel)
  * \sa IsotopeView (uses the pointed-to isotope data in a kernel)
@@ -126,15 +131,18 @@ template<Ownership W, MemSpace M>
 struct MaterialParamsData
 {
     template<class T>
-    using Items = celeritas::Collection<T, W, M>;
+    using Items = Collection<T, W, M>;
+    template<class T>
+    using MaterialItems = Collection<T, W, M, MaterialId>;
 
     Items<IsotopeRecord> isotopes;
     Items<ElementRecord> elements;
     Items<ElIsotopeComponent> isocomponents;
     Items<MatElementComponent> elcomponents;
-    Items<MaterialRecord> materials;
+    Collection<MaterialRecord, W, M, MaterialId> materials;
     IsotopeComponentId::size_type max_isotope_components{};
     ElementComponentId::size_type max_element_components{};
+    MaterialItems<OpticalMaterialId> optical_id;
 
     //// MEMBER FUNCTIONS ////
 
@@ -156,6 +164,7 @@ struct MaterialParamsData
         materials = other.materials;
         max_isotope_components = other.max_isotope_components;
         max_element_components = other.max_element_components;
+        optical_id = other.optical_id;
         return *this;
     }
 };
@@ -187,7 +196,7 @@ template<Ownership W, MemSpace M>
 struct MaterialStateData
 {
     template<class T>
-    using Items = celeritas::StateCollection<T, W, M>;
+    using Items = StateCollection<T, W, M>;
 
     Items<MaterialTrackState> state;
     Items<real_type> element_scratch;  // 2D array: [num states][max

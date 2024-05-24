@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -23,7 +23,7 @@ TEST(ExponentialDistributionTest, all)
 {
     int num_samples = 10000;
     double lambda = 0.25;
-    ExponentialDistribution<> sample(lambda);
+    ExponentialDistribution<double> sample(lambda);
     test::DiagnosticRngEngine<std::mt19937> rng;
 
     std::vector<int> counters(5);

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -11,12 +11,18 @@
 #include "orange/OrangeData.hh"
 #include "orange/detail/LevelStateAccessor.hh"
 #include "orange/univ/SimpleUnitTracker.hh"
+#include "orange/univ/detail/Types.hh"
 
 namespace celeritas
 {
 namespace test
 {
+//---------------------------------------------------------------------------//
+// TYPEDEFS
+//---------------------------------------------------------------------------//
+
 using LocalState = detail::LocalState;
+using LSA = detail::LevelStateAccessor;
 
 template<MemSpace M>
 using ParamsRef = OrangeParamsData<Ownership::const_reference, M>;
@@ -45,17 +51,17 @@ inline CELER_FUNCTION LocalState build_local_state(ParamsRef<M> params,
     // Create local state from global memory
     LocalState lstate;
 
-    LevelStateAccessor lsa(&states, tid, LevelId{0});
+    LSA lsa(&states, tid, LevelId{0});
     lstate.pos = lsa.pos();
     lstate.dir = lsa.dir();
     lstate.volume = lsa.vol();
 
-    lstate.surface = {lsa.surf(), lsa.sense()};
+    lstate.surface = {};
 
-    const size_type max_faces = params.scalars.max_faces;
+    size_type const max_faces = params.scalars.max_faces;
     lstate.temp_sense = states.temp_sense[build_range<Sense>(max_faces, tid)];
 
-    const size_type max_isect = params.scalars.max_intersections;
+    size_type const max_isect = params.scalars.max_intersections;
     lstate.temp_next.face
         = states.temp_face[build_range<FaceId>(max_isect, tid)].data();
     lstate.temp_next.distance
@@ -84,18 +90,10 @@ struct InitializingExecutor
 
         // TODO: for multiuniverses tests, we actually have to iterate
         // through daughter universes to assign the level and volume
-        LevelStateAccessor lsa(&states, tid, LevelId{0});
+        LSA lsa(&states, tid, LevelId{0});
         lsa.vol() = init.volume;
 
-        lsa.surf() = init.surface.id();
-        lsa.sense() = init.surface.unchecked_sense();
-
         lstate.volume = init.volume;
-        auto isect = tracker.intersect(lstate);
-
-        // BOGUS
-        lsa.surf() = isect.surface.id();
-        lsa.sense() = flip_sense(isect.surface.unchecked_sense());
     }
 };
 

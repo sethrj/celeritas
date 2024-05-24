@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -8,8 +8,9 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
+#include <cstdlib>  // IWYU pragma: keep
 #include <functional>
-#include <string>
+#include <string_view>
 
 namespace celeritas
 {
@@ -34,15 +35,22 @@ enum class LogLevel
 char const* to_cstring(LogLevel);
 
 //---------------------------------------------------------------------------//
+// Get an ANSI color code appropriate to each log level
+char const* to_color_code(LogLevel);
+
+//---------------------------------------------------------------------------//
 //! Stand-in for a more complex class for the "provenance" of data
-struct Provenance
+struct LogProvenance
 {
-    std::string file;  //!< Originating file
-    int line = 0;  //!< Line number
+    std::string_view file;  //!< Originating file
+    int line{0};  //!< Line number
 };
 
 //! Type for handling a log message
-using LogHandler = std::function<void(Provenance, LogLevel, std::string)>;
+using LogHandler = std::function<void(LogProvenance, LogLevel, std::string)>;
+
+// DEPRECATED: remove in v0.6
+using Provenance [[deprecated]] = LogProvenance;
 
 //---------------------------------------------------------------------------//
 }  // namespace celeritas

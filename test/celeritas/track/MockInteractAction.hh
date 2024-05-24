@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -23,7 +23,7 @@ namespace test
 /*!
  * Change the track state and allocate secondaries.
  */
-class MockInteractAction final : public ExplicitActionInterface
+class MockInteractAction final : public ExplicitCoreActionInterface
 {
   public:
     // Construct with number of secondaries and post-interact state
@@ -37,8 +37,11 @@ class MockInteractAction final : public ExplicitActionInterface
     void execute(CoreParams const&, CoreStateDevice&) const final;
 
     ActionId action_id() const final { return id_; }
-    std::string label() const final { return "mock-interact"; }
-    std::string description() const final { return "mock interact kernel"; }
+    std::string_view label() const final { return "mock-interact"; }
+    std::string_view description() const final
+    {
+        return "mock interact kernel";
+    }
     ActionOrder order() const final { return ActionOrder::post; }
 
     // Get the number of secondaries

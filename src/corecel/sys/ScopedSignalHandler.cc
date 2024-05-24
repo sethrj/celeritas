@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -8,6 +8,7 @@
 #include "ScopedSignalHandler.hh"
 
 #include <algorithm>
+#include <cassert>
 #include <csignal>
 #include <string>
 
@@ -20,13 +21,17 @@ namespace
 {
 //---------------------------------------------------------------------------//
 // Bitset of signals that have been called
-volatile sig_atomic_t g_celer_signal_bits_ = 0;
+sig_atomic_t volatile g_celer_signal_bits_ = 0;
 
 //---------------------------------------------------------------------------//
 //! Set the bit corresponding to a signal
 extern "C" void celer_set_signal(int signal)
 {
-    CELER_ASSERT(signal >= 0 && signal < static_cast<int>(sizeof(int) * 8 - 1));
+    // It's undefined behavior to throw C++ exceptions from inside a C function
+    // call, so use a C assert to check that the bit being set is within
+    // bounds.
+    assert(signal >= 0 && signal < static_cast<int>(sizeof(int) * 8 - 1));
+
     g_celer_signal_bits_ |= (1 << signal);
 }
 

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -52,7 +52,7 @@ class EIonizationProcess : public Process
     bool use_integral_xs() const final { return options_.use_integral_xs; }
 
     // Name of the process
-    std::string label() const final;
+    std::string_view label() const final;
 
   private:
     SPConstParticles particles_;

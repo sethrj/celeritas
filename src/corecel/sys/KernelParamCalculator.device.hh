@@ -1,5 +1,5 @@
 //---------------------------------*-C++-*-----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -28,14 +28,37 @@
  * function itself has a \c _kernel suffix, and launch with the given
  * block/thread sizes and arguments list.
  */
-#define CELER_LAUNCH_KERNEL(NAME, BLOCK_SIZE, THREADS, STREAM, ...)          \
+#define CELER_LAUNCH_KERNEL(NAME, THREADS, STREAM, ...)                      \
     do                                                                       \
     {                                                                        \
         static const ::celeritas::KernelParamCalculator calc_launch_params_( \
-            #NAME, NAME##_kernel, BLOCK_SIZE);                               \
+            #NAME, NAME##_kernel);                                           \
         auto grid_ = calc_launch_params_(THREADS);                           \
                                                                              \
         CELER_LAUNCH_KERNEL_IMPL(NAME##_kernel,                              \
+                                 grid_.blocks_per_grid,                      \
+                                 grid_.threads_per_block,                    \
+                                 0,                                          \
+                                 STREAM,                                     \
+                                 __VA_ARGS__);                               \
+        CELER_DEVICE_CHECK_ERROR();                                          \
+    } while (0)
+
+/*!
+ * \def CELER_LAUNCH_KERNEL_TEMPLATE_1
+ *
+ * Create a kernel param calculator with the given kernel with
+ * one template parameter, assuming the unction itself has a \c _kernel
+ * suffix, and launch with the given block/thread sizes and arguments list.
+ */
+#define CELER_LAUNCH_KERNEL_TEMPLATE_1(NAME, T1, THREADS, STREAM, ...)       \
+    do                                                                       \
+    {                                                                        \
+        static const ::celeritas::KernelParamCalculator calc_launch_params_( \
+            #NAME, NAME##_kernel<T1>);                                       \
+        auto grid_ = calc_launch_params_(THREADS);                           \
+                                                                             \
+        CELER_LAUNCH_KERNEL_IMPL(NAME##_kernel<T1>,                          \
                                  grid_.blocks_per_grid,                      \
                                  grid_.threads_per_block,                    \
                                  0,                                          \
@@ -53,9 +76,9 @@
 #else
 #    define CELER_LAUNCH_KERNEL_IMPL(KERNEL, GRID, BLOCK, SHARED, STREAM, ...) \
         CELER_NOT_CONFIGURED("CUDA or HIP");                                   \
-        (void)sizeof(GRID);                                                    \
-        (void)sizeof(KERNEL);                                                  \
-        (void)sizeof(__VA_ARGS__);
+        CELER_DISCARD(GRID)                                                    \
+        CELER_DISCARD(KERNEL)                                                  \
+        CELER_DISCARD(__VA_ARGS__);
 #endif
 
 namespace celeritas
@@ -148,14 +171,16 @@ CELER_FUNCTION auto KernelParamCalculator::thread_id() -> ThreadId
 
 //---------------------------------------------------------------------------//
 /*!
- * Construct for the given global kernel F.
+ * Construct with the maximum threads per block for a given kernel.
  */
 template<class F>
 KernelParamCalculator::KernelParamCalculator(std::string_view name,
                                              F* kernel_func_ptr)
-    : KernelParamCalculator(
-        name, kernel_func_ptr, celeritas::device().default_block_size())
 {
+    auto attrs = make_kernel_attributes(kernel_func_ptr);
+    CELER_ASSERT(attrs.threads_per_block > 0);
+    block_size_ = attrs.threads_per_block;
+    this->register_kernel(name, std::move(attrs));
 }
 
 //---------------------------------------------------------------------------//
@@ -171,13 +196,16 @@ KernelParamCalculator::KernelParamCalculator(std::string_view name,
                                              dim_type threads_per_block)
     : block_size_(threads_per_block)
 {
-    CELER_EXPECT(threads_per_block <= static_cast<dim_type>(
-                     celeritas::device().max_threads_per_block()));
-    CELER_EXPECT(threads_per_block % celeritas::device().threads_per_warp()
-                 == 0);
+    CELER_EXPECT(threads_per_block > 0
+                 && threads_per_block % celeritas::device().threads_per_warp()
+                        == 0);
 
-    this->register_kernel(
-        name, make_kernel_attributes(kernel_func_ptr, threads_per_block));
+    auto attrs = make_kernel_attributes(kernel_func_ptr, threads_per_block);
+    CELER_VALIDATE(threads_per_block <= attrs.max_threads_per_block,
+                   << "requested GPU threads per block " << threads_per_block
+                   << " exceeds kernel maximum "
+                   << attrs.max_threads_per_block);
+    this->register_kernel(name, std::move(attrs));
 }
 
 //---------------------------------------------------------------------------//

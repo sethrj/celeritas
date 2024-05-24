@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -12,7 +12,7 @@
 #include <vector>
 
 #include "celeritas_config.h"
-#include "celeritas/ext/GeantGeoUtils.hh"
+#include "geocel/GeantGeoUtils.hh"
 #include "celeritas/geo/GeoParams.hh"
 
 #include "celeritas_test.hh"
@@ -29,15 +29,14 @@
 #    include <G4VSolid.hh>
 #endif
 #if CELERITAS_USE_VECGEOM
-#    include "celeritas/ext/VecgeomParams.hh"
+#    include "geocel/vg/VecgeomParams.hh"
 #endif
 
 #include "corecel/ScopedLogStorer.hh"
 #include "corecel/io/Logger.hh"
 #include "corecel/sys/MpiCommunicator.hh"
+#include "orange/OrangeInput.hh"
 #include "orange/OrangeParams.hh"
-#include "orange/construct/OrangeInput.hh"
-#include "orange/construct/SurfaceInputBuilder.hh"
 #include "orange/surf/Sphere.hh"
 
 class G4VSolid;
@@ -156,7 +155,8 @@ void NestedTest::build_vecgeom()
 #if CELERITAS_USE_VECGEOM
     auto geo = std::make_shared<VecgeomParams>(physical_.front());
 #else
-    [[maybe_unused]] int geo;
+    int geo;
+    CELER_DISCARD(geo);
 #endif
 #if CELERITAS_CORE_GEO == CELERITAS_CORE_GEO_VECGEOM
     geo_params_ = std::move(geo);
@@ -169,20 +169,21 @@ void NestedTest::build_orange()
     UnitInput ui;
     ui.label = "global";
 
-    double radius{static_cast<double>(names_.size()) + 1};
+    auto radius = static_cast<real_type>(names_.size() + 1);
     ui.bbox = {{-radius, -radius, -radius}, {radius, radius, radius}};
 
-    SurfaceInputBuilder insert_surface(&ui.surfaces);
     LocalSurfaceId daughter;
     for (std::string const& name : names_)
     {
         // Insert surfaces
-        auto parent = insert_surface(Sphere({0, 0, 0}, radius), Label("name"));
+        LocalSurfaceId parent{static_cast<size_type>(ui.surfaces.size())};
+        ui.surfaces.push_back(Sphere({0, 0, 0}, radius));
         radius -= 1.0;
 
         // Insert volume
         VolumeInput vi;
         vi.label = name;
+        vi.zorder = ZOrder::media;
         if (daughter)
         {
             vi.logic = {1, logic::lnot, 0, logic::land};
@@ -198,13 +199,13 @@ void NestedTest::build_orange()
     }
 
     OrangeInput input;
-    input.max_level = 1;
     input.universes.push_back(std::move(ui));
+    input.tol = Tolerance<>::from_default();
     auto geo = std::make_shared<OrangeParams>(std::move(input));
 #if CELERITAS_CORE_GEO == CELERITAS_CORE_GEO_ORANGE
     geo_params_ = std::move(geo);
 #else
-    (void)sizeof(geo);
+    CELER_DISCARD(geo);
 #endif
 }
 

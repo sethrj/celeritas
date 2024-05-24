@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -9,6 +9,8 @@
 
 #include <cstddef>
 #include <type_traits>
+
+#include "corecel/data/LdgIterator.hh"
 
 #include "Array.hh"
 #include "detail/SpanImpl.hh"
@@ -33,22 +35,30 @@ constexpr std::size_t dynamic_extent = detail::dynamic_extent;
  *
  * Notably, only a subset of the functions (those having to do with size) are
  * \c constexpr. This is to allow debug assertions.
+ *
+ * Span can be instantiated with the special marker type \c LdgValue<T> to
+ * optimize reading constant data on device memory. In that case, data returned
+ * by \c front, \c back, \c operator[] and \c begin / \c end iterator use value
+ * semantics instead of reference. \c data still returns a pointer to the data
+ * and can be used to bypass using \c LdgIterator
  */
 template<class T, std::size_t Extent = dynamic_extent>
 class Span
 {
+    using SpanTraitsT = detail::SpanTraits<T>;
+
   public:
     //!@{
     //! \name Type aliases
-    using element_type = T;
-    using value_type = std::remove_cv_t<T>;
+    using element_type = typename SpanTraitsT::element_type;
+    using value_type = std::remove_cv_t<element_type>;
     using size_type = std::size_t;
-    using pointer = T*;
-    using const_pointer = T const*;
-    using reference = T&;
-    using const_reference = T const&;
-    using iterator = pointer;
-    using const_iterator = const_pointer;
+    using pointer = typename SpanTraitsT::pointer;
+    using const_pointer = typename SpanTraitsT::const_pointer;
+    using reference = typename SpanTraitsT::reference;
+    using const_reference = typename SpanTraitsT::const_reference;
+    using iterator = typename SpanTraitsT::iterator;
+    using const_iterator = typename SpanTraitsT::const_iterator;
     //!@}
 
     //! Size (may be dynamic)
@@ -72,7 +82,7 @@ class Span
 
     //! Construct from a C array
     template<std::size_t N>
-    CELER_CONSTEXPR_FUNCTION Span(T (&arr)[N]) : s_(arr, N)
+    CELER_CONSTEXPR_FUNCTION Span(element_type (&arr)[N]) : s_(arr, N)
     {
     }
 
@@ -108,7 +118,10 @@ class Span
     {
         return s_.data[s_.size - 1];
     }
-    CELER_CONSTEXPR_FUNCTION pointer data() const { return s_.data; }
+    CELER_CONSTEXPR_FUNCTION pointer data() const
+    {
+        return static_cast<pointer>(s_.data);
+    }
     //!@}
 
     //!@{
@@ -117,7 +130,7 @@ class Span
     CELER_CONSTEXPR_FUNCTION size_type size() const { return s_.size; }
     CELER_CONSTEXPR_FUNCTION size_type size_bytes() const
     {
-        return sizeof(T) * s_.size;
+        return sizeof(element_type) * s_.size;
     }
     //!@}
 
@@ -127,13 +140,13 @@ class Span
     CELER_FUNCTION Span<T, Count> first() const
     {
         CELER_EXPECT(Count == 0 || Count <= this->size());
-        return {s_.data, Count};
+        return {this->data(), Count};
     }
     CELER_FUNCTION
     Span<T, dynamic_extent> first(std::size_t count) const
     {
         CELER_EXPECT(count <= this->size());
-        return {s_.data, count};
+        return {this->data(), count};
     }
 
     template<std::size_t Offset, std::size_t Count = dynamic_extent>
@@ -142,7 +155,7 @@ class Span
     {
         CELER_EXPECT((Count == dynamic_extent) || (Offset == 0 && Count == 0)
                      || (Offset + Count <= this->size()));
-        return {s_.data + Offset,
+        return {this->data() + Offset,
                 detail::subspan_size(this->size(), Offset, Count)};
     }
     CELER_FUNCTION
@@ -150,7 +163,7 @@ class Span
     subspan(std::size_t offset, std::size_t count = dynamic_extent) const
     {
         CELER_EXPECT(offset + count <= this->size());
-        return {s_.data + offset,
+        return {this->data() + offset,
                 detail::subspan_size(this->size(), offset, count)};
     }
 
@@ -176,8 +189,12 @@ class Span
 template<class T, std::size_t N>
 constexpr std::size_t Span<T, N>::extent;
 
+//! Alias for a Span iterating over values read using __ldg
+template<class T, std::size_t Extent = dynamic_extent>
+using LdgSpan = Span<LdgValue<T>, Extent>;
+
 //---------------------------------------------------------------------------//
-// HELPER FUNCTIONS
+// FREE FUNCTIONS
 //---------------------------------------------------------------------------//
 //! Get a mutable fixed-size view to an array
 template<class T, std::size_t N>
@@ -189,7 +206,7 @@ CELER_CONSTEXPR_FUNCTION Span<T, N> make_span(Array<T, N>& x)
 //---------------------------------------------------------------------------//
 //! Get a constant fixed-size view to an array
 template<class T, std::size_t N>
-CELER_CONSTEXPR_FUNCTION Span<const T, N> make_span(Array<T, N> const& x)
+CELER_CONSTEXPR_FUNCTION Span<T const, N> make_span(Array<T, N> const& x)
 {
     return {x.data(), N};
 }
@@ -213,9 +230,43 @@ CELER_FUNCTION Span<typename T::value_type> make_span(T& cont)
 //---------------------------------------------------------------------------//
 //! Get a const view to a generic container
 template<class T>
-CELER_FUNCTION Span<const typename T::value_type> make_span(T const& cont)
+CELER_FUNCTION Span<typename T::value_type const> make_span(T const& cont)
 {
     return {cont.data(), cont.size()};
+}
+
+//---------------------------------------------------------------------------//
+//! Construct an array from a fixed-size span
+template<class T, std::size_t N>
+CELER_CONSTEXPR_FUNCTION auto make_array(Span<T, N> const& s)
+{
+    Array<std::remove_cv_t<T>, N> result{};
+    for (std::size_t i = 0; i < N; ++i)
+    {
+        result[i] = s[i];
+    }
+    return result;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Construct an array from a fixed-size span, removing LdgValue marker.
+ *
+ * Note: \code make_array(Span<T,N> const&) \endcode is not reused because:
+ * 1. Using this overload reads input data using \c __ldg
+ * 2. \code return make_array<T, N>(s) \endcode results in segfault (gcc 11.3).
+ *    This might be a compiler bug because temporary lifetime should be
+ *    extended until the end of the expression and we return a copy...
+ */
+template<class T, std::size_t N>
+CELER_CONSTEXPR_FUNCTION auto make_array(LdgSpan<T, N> const& s)
+{
+    Array<std::remove_cv_t<T>, N> result{};
+    for (std::size_t i = 0; i < N; ++i)
+    {
+        result[i] = s[i];
+    }
+    return result;
 }
 
 //---------------------------------------------------------------------------//

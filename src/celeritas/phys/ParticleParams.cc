@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -16,9 +16,12 @@
 #include "corecel/data/CollectionBuilder.hh"
 #include "corecel/sys/ScopedMem.hh"
 #include "celeritas/io/ImportData.hh"
-#include "celeritas/phys/PDGNumber.hh"
-#include "celeritas/phys/ParticleData.hh"  // IWYU pragma: associated
-#include "celeritas/phys/ParticleView.hh"
+
+#include "PDGNumber.hh"
+#include "ParticleData.hh"  // IWYU pragma: associated
+#include "ParticleView.hh"
+
+#include "detail/ParticleInserter.hh"
 
 namespace celeritas
 {
@@ -44,10 +47,10 @@ ParticleParams::from_import(ImportData const& data)
         CELER_ASSERT(defs[i].pdg_code);
 
         // Convert data
-        defs[i].mass = units::MevMass{particle.mass};
-        defs[i].charge = units::ElementaryCharge{particle.charge};
+        defs[i].mass = units::MevMass(particle.mass);
+        defs[i].charge = units::ElementaryCharge(particle.charge);
         defs[i].decay_constant = (particle.is_stable
-                                      ? ParticleRecord::stable_decay_constant()
+                                      ? constants::stable_decay_constant
                                       : 1. / particle.lifetime);
     }
 
@@ -82,35 +85,19 @@ ParticleParams::ParticleParams(Input const& input)
 
     // Build elements and materials on host.
     HostVal<ParticleParamsData> host_data;
-    auto particles = make_builder(&host_data.particles);
-    particles.reserve(input.size());
-
+    detail::ParticleInserter insert_particle(&host_data);
     for (auto const& particle : input)
     {
         CELER_EXPECT(!particle.name.empty());
-        CELER_EXPECT(particle.mass >= zero_quantity());
-        CELER_EXPECT(particle.decay_constant >= 0);
+
+        ParticleId id = insert_particle(particle);
 
         // Add host metadata
-        ParticleId id(name_to_id_.size());
-        bool inserted;
-        std::tie(std::ignore, inserted)
-            = name_to_id_.insert({particle.name, id});
-        CELER_ASSERT(inserted);
-        std::tie(std::ignore, inserted)
-            = pdg_to_id_.insert({particle.pdg_code, id});
-        CELER_ASSERT(inserted);
-
-        // Save the metadata on the host
         md_.push_back({particle.name, particle.pdg_code});
-
-        // Save the definitions on the host
-        ParticleRecord host_def;
-        host_def.mass = particle.mass;
-        host_def.charge = particle.charge;
-        host_def.decay_constant = particle.decay_constant;
-        host_def.is_antiparticle = particle.pdg_code.get() < 0;
-        particles.push_back(std::move(host_def));
+        bool inserted = name_to_id_.insert({particle.name, id}).second;
+        CELER_ASSERT(inserted);
+        inserted = pdg_to_id_.insert({particle.pdg_code, id}).second;
+        CELER_ASSERT(inserted);
     }
 
     // Move to mirrored data, copying to device
@@ -119,7 +106,7 @@ ParticleParams::ParticleParams(Input const& input)
     CELER_ENSURE(md_.size() == input.size());
     CELER_ENSURE(name_to_id_.size() == input.size());
     CELER_ENSURE(pdg_to_id_.size() == input.size());
-    CELER_ENSURE(this->host_ref().particles.size() == input.size());
+    CELER_ENSURE(this->host_ref().size() == input.size());
 }
 
 //---------------------------------------------------------------------------//
@@ -128,7 +115,7 @@ ParticleParams::ParticleParams(Input const& input)
  */
 ParticleView ParticleParams::get(ParticleId id) const
 {
-    CELER_EXPECT(id < this->host_ref().particles.size());
+    CELER_EXPECT(id < this->host_ref().size());
     return ParticleView(this->host_ref(), id);
 }
 

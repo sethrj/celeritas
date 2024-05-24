@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -30,7 +30,7 @@ ValueGridInserter::ValueGridInserter(RealCollection* real_data,
  */
 auto ValueGridInserter::operator()(UniformGridData const& log_grid,
                                    size_type prime_index,
-                                   SpanConstReal values) -> XsIndex
+                                   SpanConstDbl values) -> XsIndex
 {
     CELER_EXPECT(log_grid);
     CELER_EXPECT(log_grid.size == values.size());
@@ -49,19 +49,9 @@ auto ValueGridInserter::operator()(UniformGridData const& log_grid,
  * Add a grid of log-spaced data without 1/E scaling.
  */
 auto ValueGridInserter::operator()(UniformGridData const& log_grid,
-                                   SpanConstReal values) -> XsIndex
+                                   SpanConstDbl values) -> XsIndex
 {
     return (*this)(log_grid, XsGridData::no_scaling(), values);
-}
-
-//---------------------------------------------------------------------------//
-/*!
- * Add a grid of host pointer data.
- */
-auto ValueGridInserter::operator()(InterpolatedGrid, InterpolatedGrid)
-    -> GenericIndex
-{
-    CELER_NOT_IMPLEMENTED("generic grids");
 }
 
 //---------------------------------------------------------------------------//

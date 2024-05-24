@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -122,7 +122,7 @@ void ExceptionOutput::output(JsonPimpl* j) const
     CELER_EXPECT(output_);
     j->obj = output_->obj;
 #else
-    (void)sizeof(j);
+    CELER_DISCARD(j);
 #endif
 }
 

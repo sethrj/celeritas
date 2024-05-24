@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -57,7 +57,7 @@ auto EIonizationProcess::step_limits(Applicability applicability) const
 /*!
  * Name of the process.
  */
-std::string EIonizationProcess::label() const
+std::string_view EIonizationProcess::label() const
 {
     return "Electron/positron ionization";
 }

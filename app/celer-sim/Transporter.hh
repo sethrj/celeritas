@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -38,10 +38,13 @@ struct TransporterInput
     // Stepper input
     std::shared_ptr<CoreParams const> params;
     size_type num_track_slots{};  //!< AKA max_num_tracks
-    bool sync{false};  //!< Whether to synchronize device between actions
+    bool action_times{false};  //!< Whether to synchronize device between
+                               //!< actions for timing
 
     // Loop control
     size_type max_steps{};
+    bool store_track_counts{};  //!< Store track counts at each step
+    bool store_step_times{};  //!< Store time elapsed for each step
 
     StreamId stream_id{0};
 
@@ -58,16 +61,20 @@ struct TransporterInput
  */
 struct TransporterResult
 {
-    using MapStrReal = std::unordered_map<std::string, real_type>;
-    using VecReal = std::vector<real_type>;
     using VecCount = std::vector<size_type>;
 
+    // Per-step diagnostics
     VecCount initializers;  //!< Num starting track initializers
     VecCount active;  //!< Num tracks active at beginning of step
     VecCount alive;  //!< Num living tracks at end of step
-    MapStrReal action_times{};  //!< Accumulated action timing
-    VecReal step_times;  //!< Real time per step
+    std::vector<double> step_times;  //!< Real time per step
+
+    // Always-on basic diagnostics
     size_type num_track_slots{};  //!< Number of total track slots
+    size_type num_step_iterations{};  //!< Total number of step iterations
+    size_type num_steps{};  //!< Total number of steps
+    size_type num_aborted{};  //!< Number of unconverged tracks
+    size_type max_queued{};  //!< Maximum track initializer count
 };
 
 //---------------------------------------------------------------------------//
@@ -89,14 +96,20 @@ class TransporterBase
     //!@{
     //! \name Type aliases
     using SpanConstPrimary = Span<Primary const>;
-
+    using MapStrDouble = std::unordered_map<std::string, double>;
     //!@}
 
   public:
     virtual ~TransporterBase() = 0;
 
-    // Transport the input primaries and all secondaries produced
+    // Run a single step with no active states to "warm up"
+    virtual void operator()() = 0;
+
+    //! Transport the input primaries and all secondaries produced
     virtual TransporterResult operator()(SpanConstPrimary primaries) = 0;
+
+    //! Accumulate action times into the map
+    virtual void accum_action_times(MapStrDouble*) const = 0;
 };
 
 //---------------------------------------------------------------------------//
@@ -110,13 +123,21 @@ class Transporter final : public TransporterBase
     // Construct from parameters
     explicit Transporter(TransporterInput inp);
 
+    // Run a single step with no active states to "warm up"
+    void operator()() final;
+
     // Transport the input primaries and all secondaries produced
     TransporterResult operator()(SpanConstPrimary primaries) final;
+
+    // Accumulate action times into the map
+    void accum_action_times(MapStrDouble*) const final;
 
   private:
     std::shared_ptr<Stepper<M>> stepper_;
     size_type max_steps_;
     size_type num_streams_;
+    bool store_track_counts_;
+    bool store_step_times_;
 };
 
 //---------------------------------------------------------------------------//

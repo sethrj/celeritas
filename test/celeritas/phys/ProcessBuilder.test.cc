@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -10,6 +10,7 @@
 #include "corecel/sys/Environment.hh"
 #include "celeritas/em/process/BremsstrahlungProcess.hh"
 #include "celeritas/em/process/ComptonProcess.hh"
+#include "celeritas/em/process/CoulombScatteringProcess.hh"
 #include "celeritas/em/process/EIonizationProcess.hh"
 #include "celeritas/em/process/EPlusAnnihilationProcess.hh"
 #include "celeritas/em/process/GammaConversionProcess.hh"
@@ -19,7 +20,9 @@
 #include "celeritas/ext/ScopedRootErrorHandler.hh"
 #include "celeritas/io/ImportData.hh"
 #include "celeritas/io/LivermorePEReader.hh"
+#include "celeritas/io/NeutronXsReader.hh"
 #include "celeritas/io/SeltzerBergerReader.hh"
+#include "celeritas/neutron/process/NeutronElasticProcess.hh"
 #include "celeritas/phys/Model.hh"
 
 #include "celeritas_test.hh"
@@ -71,6 +74,13 @@ class ProcessBuilderTest : public Test
     static bool has_le_data()
     {
         static bool const result = !celeritas::getenv("G4LEDATA").empty();
+        return result;
+    }
+
+    static bool has_neutron_data()
+    {
+        static bool const result
+            = !celeritas::getenv("G4PARTICLEXSDATA").empty();
         return result;
     }
 };
@@ -446,6 +456,107 @@ TEST_F(ProcessBuilderTest, rayleigh)
     }
 }
 
+TEST_F(ProcessBuilderTest, coulomb)
+{
+    Options pbopts;
+    pbopts.brem_combined = false;
+    ProcessBuilder build_process(
+        this->import_data(), this->particle(), this->material(), pbopts);
+
+    // Create process
+    auto process = build_process(IPC::coulomb_scat);
+    EXPECT_PROCESS_TYPE(CoulombScatteringProcess, process.get());
+
+    // Test model
+    auto models = process->build_models(ActionIdIter{});
+    ASSERT_EQ(1, models.size());
+    ASSERT_TRUE(models.front());
+    EXPECT_EQ("coulomb-wentzel", models.front()->label());
+
+    // Applicabilities for electron and positron
+    auto all_applic = models.front()->applicability();
+    ASSERT_EQ(2, all_applic.size());
+    Applicability applic = *all_applic.begin();
+
+    for (auto mat_id : range(MaterialId{this->material()->num_materials()}))
+    {
+        // Test step limits
+        {
+            applic.material = mat_id;
+            auto builders = process->step_limits(applic);
+            EXPECT_TRUE(builders[VGT::macro_xs]);
+            EXPECT_FALSE(builders[VGT::energy_loss]);
+            EXPECT_FALSE(builders[VGT::range]);
+        }
+
+        // Test micro xs
+        for (auto const& model : models)
+        {
+            auto builders = model->micro_xs(applic);
+            auto material = this->material()->get(mat_id);
+            EXPECT_EQ(material.num_elements(), builders.size());
+            for (auto elcomp_idx : range(material.num_elements()))
+            {
+                EXPECT_TRUE(builders[elcomp_idx]);
+            }
+        }
+    }
+}
+
+TEST_F(ProcessBuilderTest, neutron_elastic)
+{
+    if (!this->has_neutron_data())
+    {
+        GTEST_SKIP() << "Missing G4PARTICLEXSDATA";
+    }
+
+    // Create ParticleParams with neutron
+    ParticleParams::Input particle_inp = {
+        {"neutron",
+         pdg::neutron(),
+         units::MevMass{939.5654133},
+         zero_quantity(),
+         constants::stable_decay_constant},
+    };
+    SPConstParticle particle_params
+        = std::make_shared<ParticleParams>(std::move(particle_inp));
+
+    ProcessBuilder build_process(
+        this->import_data(), particle_params, this->material(), Options{});
+
+    // Create process
+    auto process = build_process(IPC::neutron_elastic);
+    EXPECT_PROCESS_TYPE(NeutronElasticProcess, process.get());
+
+    // Test model
+    auto models = process->build_models(ActionIdIter{});
+    ASSERT_EQ(1, models.size());
+    ASSERT_TRUE(models.front());
+    EXPECT_EQ("neutron-elastic-chips", models.front()->label());
+    auto all_applic = models.front()->applicability();
+    ASSERT_EQ(1, all_applic.size());
+    Applicability applic = *all_applic.begin();
+
+    for (auto mat_id : range(MaterialId{this->material()->num_materials()}))
+    {
+        // Test step limits
+        {
+            applic.material = mat_id;
+            auto builders = process->step_limits(applic);
+            EXPECT_TRUE(builders[VGT::macro_xs]);
+            EXPECT_FALSE(builders[VGT::energy_loss]);
+            EXPECT_FALSE(builders[VGT::range]);
+        }
+
+        // Test micro xs
+        for (auto const& model : models)
+        {
+            auto builders = model->micro_xs(applic);
+            EXPECT_TRUE(builders.empty());
+        }
+    }
+}
+  
 //---------------------------------------------------------------------------//
 }  // namespace test
 }  // namespace celeritas

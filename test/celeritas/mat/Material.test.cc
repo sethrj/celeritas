@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -11,6 +11,7 @@
 #include <limits>
 
 #include "corecel/data/CollectionStateStore.hh"
+#include "geocel/UnitUtils.hh"
 #include "celeritas/Quantities.hh"
 #include "celeritas/ext/RootImporter.hh"
 #include "celeritas/ext/ScopedRootErrorHandler.hh"
@@ -24,7 +25,13 @@
 #include "celeritas/mat/MaterialView.hh"
 #include "celeritas/mat/detail/Utils.hh"
 
+#include "MaterialTestBase.hh"
 #include "celeritas_test.hh"
+
+using celeritas::units::GramCcDensity;
+using celeritas::units::InvCcDensity;
+using celeritas::units::MevEnergy;
+using celeritas::units::MolCcDensity;
 
 namespace celeritas
 {
@@ -78,7 +85,8 @@ TEST(MaterialUtils, radiation_length)
         el.atomic_mass = units::AmuMass{amu_mass};
         el.coulomb_correction = calc_coulomb_correction(el.atomic_number);
 
-        return 1 / detail::calc_mass_rad_coeff(el);
+        return 1 / detail::calc_mass_rad_coeff(el)
+               * (ipow<2>(units::centimeter) / units::gram);
     };
 
     // Hydrogen
@@ -103,91 +111,12 @@ TEST(MaterialUtils, radiation_length)
 namespace test
 {
 //---------------------------------------------------------------------------//
-class MaterialTest : public Test
+class MaterialTest : public MaterialTestBase, public Test
 {
   protected:
-    void SetUp() override
-    {
-        MaterialParams::Input inp;
+    void SetUp() override { params = build_material(); }
 
-        // Using nuclear masses provided by Geant4 11.0.3
-        inp.isotopes = {
-            // H
-            {AtomicNumber{1}, AtomicNumber{1}, units::MevMass{938.272}, "1H"},
-            {AtomicNumber{1}, AtomicNumber{2}, units::MevMass{1875.61}, "2H"},
-            // Al
-            {AtomicNumber{13},
-             AtomicNumber{27},
-             units::MevMass{25126.5},
-             "27Al"},
-            {AtomicNumber{13},
-             AtomicNumber{28},
-             units::MevMass{26058.3},
-             "28Al"},
-            // Na
-            {AtomicNumber{11},
-             AtomicNumber{23},
-             units::MevMass{21409.2},
-             "23Na"},
-            // I
-            {AtomicNumber{53},
-             AtomicNumber{125},
-             units::MevMass{116321},
-             "125I"},
-            {AtomicNumber{53},
-             AtomicNumber{126},
-             units::MevMass{117253},
-             "126I"},
-            {AtomicNumber{53},
-             AtomicNumber{127},
-             units::MevMass{118184},
-             "127I"}};
-
-        inp.elements = {
-            {AtomicNumber{1},
-             units::AmuMass{1.008},
-             {{IsotopeId{0}, 0.9}, {IsotopeId{1}, 0.1}},
-             "H"},
-            {AtomicNumber{13},
-             units::AmuMass{26.9815385},
-             {{IsotopeId{2}, 0.7}, {IsotopeId{3}, 0.3}},
-             "Al"},
-            {AtomicNumber{11},
-             units::AmuMass{22.98976928},
-             {{IsotopeId{4}, 1}},
-             "Na"},
-            {AtomicNumber{53},
-             units::AmuMass{126.90447},
-             {{IsotopeId{5}, 0.05}, {IsotopeId{6}, 0.15}, {IsotopeId{7}, 0.8}},
-             "I"},
-        };
-
-        inp.materials = {
-            // Sodium iodide
-            {2.948915064677e+22,
-             293.0,
-             MatterState::solid,
-             {{ElementId{2}, 0.5}, {ElementId{3}, 0.5}},
-             "NaI"},
-            // Void
-            {0, 0, MatterState::unspecified, {}, "hard vacuum"},
-            // Diatomic hydrogen
-            {1.0739484359044669e+20,
-             100.0,
-             MatterState::gas,
-             {{ElementId{0}, 1.0}},
-             Label{"H2", "1"}},
-            // Diatomic hydrogen with the same name and different properties
-            {1.072e+20,
-             110.0,
-             MatterState::gas,
-             {{ElementId{0}, 1.0}},
-             Label{"H2", "2"}},
-        };
-        params = std::make_shared<MaterialParams>(std::move(inp));
-    }
-
-    std::shared_ptr<MaterialParams> params;
+    SPConstMaterial params;
 };
 
 //---------------------------------------------------------------------------//
@@ -206,7 +135,7 @@ TEST_F(MaterialTest, params)
     EXPECT_THROW(params->find_material("H2"), RuntimeError);
     {
         auto found = params->find_materials("H2");
-        const MaterialId expected[] = {MaterialId{2}, MaterialId{3}};
+        MaterialId const expected[] = {MaterialId{2}, MaterialId{3}};
         EXPECT_VEC_EQ(expected, found);
     }
     EXPECT_EQ(MaterialId{}, params->find_material("nonexistent material"));
@@ -235,6 +164,11 @@ TEST_F(MaterialTest, params)
 
 TEST_F(MaterialTest, material_view)
 {
+    if (CELERITAS_UNITS != CELERITAS_UNITS_CGS)
+    {
+        GTEST_SKIP() << "Test needs updating to include units";
+    }
+
     {
         // NaI
         MaterialView mat = params->get(MaterialId{0});
@@ -261,17 +195,17 @@ TEST_F(MaterialTest, material_view)
     {
         // vacuum
         MaterialView mat = params->get(MaterialId{1});
-        EXPECT_SOFT_EQ(0, mat.number_density());
-        EXPECT_SOFT_EQ(0, mat.temperature());
+        EXPECT_EQ(0, mat.number_density());
+        EXPECT_EQ(0, mat.temperature());
         EXPECT_EQ(MatterState::unspecified, mat.matter_state());
-        EXPECT_SOFT_EQ(0, mat.zeff());
-        EXPECT_SOFT_EQ(0, mat.density());
-        EXPECT_SOFT_EQ(0, mat.electron_density());
-        EXPECT_SOFT_EQ(std::numeric_limits<real_type>::infinity(),
-                       mat.radiation_length());
-        EXPECT_SOFT_EQ(0, mat.mean_excitation_energy().value());
-        EXPECT_SOFT_EQ(-std::numeric_limits<real_type>::infinity(),
-                       mat.log_mean_excitation_energy().value());
+        EXPECT_EQ(0, mat.zeff());
+        EXPECT_EQ(0, mat.density());
+        EXPECT_EQ(0, mat.electron_density());
+        EXPECT_EQ(std::numeric_limits<real_type>::infinity(),
+                  mat.radiation_length());
+        EXPECT_EQ(0, mat.mean_excitation_energy().value());
+        EXPECT_EQ(-std::numeric_limits<real_type>::infinity(),
+                  mat.log_mean_excitation_energy().value());
 
         // Test element view
         auto els = mat.elements();
@@ -298,14 +232,20 @@ TEST_F(MaterialTest, material_view)
     {
         // H2_3
         MaterialView mat = params->get(MaterialId{3});
-        EXPECT_SOFT_EQ(1.072e+20, mat.number_density());
+        EXPECT_SOFT_EQ(
+            1.072e+20,
+            native_value_to<InvCcDensity>(mat.number_density()).value());
         EXPECT_SOFT_EQ(110, mat.temperature());
         EXPECT_EQ(MatterState::gas, mat.matter_state());
         EXPECT_SOFT_EQ(1.0, mat.zeff());
-        EXPECT_SOFT_EQ(0.00017943386624303615, mat.density());
-        EXPECT_SOFT_EQ(1.072e+20, mat.electron_density());
-        EXPECT_SOFT_EQ(351367.47504673258, mat.radiation_length());
-        EXPECT_SOFT_EQ(19.2e-6, mat.mean_excitation_energy().value());
+        EXPECT_SOFT_EQ(0.00017943386624303615,
+                       native_value_to<GramCcDensity>(mat.density()).value());
+        EXPECT_SOFT_EQ(
+            1.072e+20,
+            native_value_to<InvCcDensity>(mat.electron_density()).value());
+        EXPECT_SOFT_EQ(351367.47504673258, to_cm(mat.radiation_length()));
+        EXPECT_SOFT_EQ(19.2e-6,
+                       value_as<MevEnergy>(mat.mean_excitation_energy()));
         EXPECT_SOFT_EQ(std::log(19.2e-6),
                        mat.log_mean_excitation_energy().value());
 
@@ -326,7 +266,9 @@ TEST_F(MaterialTest, element_view)
         EXPECT_SOFT_EQ(std::pow(13.0 * 14.0, 1.0 / 3), el.cbrt_zzp());
         EXPECT_SOFT_EQ(std::log(13.0), el.log_z());
         EXPECT_SOFT_EQ(0.010734632775699565, el.coulomb_correction());
-        EXPECT_SOFT_EQ(0.04164723292591279, el.mass_radiation_coeff());
+        EXPECT_SOFT_EQ(
+            0.04164723292591279 * ipow<2>(units::centimeter) / units::gram,
+            el.mass_radiation_coeff());
 
         // Test its isotopes
         EXPECT_EQ(2, el.num_isotopes());
@@ -345,7 +287,7 @@ TEST_F(MaterialTest, isotope_view)
 {
     std::vector<int> atomic_numbers;
     std::vector<int> atomic_mass_numbers;
-    std::vector<double> nuclear_masses;
+    std::vector<real_type> nuclear_masses;
     for (auto i : range(params->num_isotopes()))
     {
         auto iso_view = params->get(IsotopeId{i});
@@ -357,7 +299,7 @@ TEST_F(MaterialTest, isotope_view)
     static int const expected_atomic_numbers[] = {1, 1, 13, 13, 11, 53, 53, 53};
     static int const expected_atomic_mass_numbers[]
         = {1, 2, 27, 28, 23, 125, 126, 127};
-    static double const expected_nuclear_masses[] = {
+    static real_type const expected_nuclear_masses[] = {
         938.272, 1875.61, 25126.5, 26058.3, 21409.2, 116321, 117253, 118184};
 
     EXPECT_VEC_EQ(expected_atomic_numbers, atomic_numbers);
@@ -370,13 +312,11 @@ TEST_F(MaterialTest, output)
     MaterialParamsOutput out(params);
     EXPECT_EQ("material", out.label());
 
-    if (CELERITAS_USE_JSON)
+    if (CELERITAS_USE_JSON && CELERITAS_UNITS == CELERITAS_UNITS_CGS)
     {
-        EXPECT_EQ(
-            R"json({"_units":{"atomic_mass":"amu","mean_excitation_energy":"MeV","nuclear_mass":"MeV/c^2"},"elements":{"atomic_mass":[1.008,26.9815385,22.98976928,126.90447],"atomic_number":[1,13,11,53],"coulomb_correction":[6.400821803338426e-05,0.010734632775699565,0.00770256745342534,0.15954439947436763],"isotope_fractions":[[0.9,0.1],[0.7,0.3],[1.0],[0.05,0.15,0.8]],"isotope_ids":[[0,1],[2,3],[4],[5,6,7]],"label":["H","Al","Na","I"],"mass_radiation_coeff":[0.0158611264432063,0.04164723292591279,0.03605392839455309,0.11791841505608874]},"isotopes":{"atomic_mass_number":[1,2,27,28,23,125,126,127],"atomic_number":[1,1,13,13,11,53,53,53],"label":["1H","2H","27Al","28Al","23Na","125I","126I","127I"],"nuclear_mass":[938.272,1875.61,25126.5,26058.3,21409.2,116321.0,117253.0,118184.0]},"materials":{"density":[3.6700020622594716,0.0,0.00017976000000000003,0.00017943386624303615],"electron_density":[9.4365282069664e+23,0.0,1.073948435904467e+20,1.072e+20],"element_frac":[[0.5,0.5],[],[1.0],[1.0]],"element_id":[[2,3],[],[0],[0]],"label":["NaI","hard vacuum","H2@1","H2@2"],"matter_state":["solid","unspecified","gas","gas"],"mean_excitation_energy":[0.00040000760709482647,0.0,1.9199999999999986e-05,1.9199999999999986e-05],"number_density":[2.948915064677e+22,0.0,1.073948435904467e+20,1.072e+20],"radiation_length":[3.5393292693170424,null,350729.99844063615,351367.4750467326],"temperature":[293.0,0.0,100.0,110.0],"zeff":[32.0,0.0,1.0,1.0]}})json",
-            to_string(out))
-            << "\n/*** REPLACE ***/\nR\"json(" << to_string(out)
-            << ")json\"\n/******/";
+        EXPECT_JSON_EQ(
+            R"json({"_category":"internal","_label":"material","_units":{"atomic_mass":"amu","mean_excitation_energy":"MeV","nuclear_mass":"MeV/c^2"},"elements":{"atomic_mass":[1.008,26.9815385,22.98976928,126.90447],"atomic_number":[1,13,11,53],"coulomb_correction":[6.400821803338426e-05,0.010734632775699565,0.00770256745342534,0.15954439947436763],"isotope_fractions":[[0.9,0.1],[0.7,0.3],[1.0],[0.05,0.15,0.8]],"isotope_ids":[[0,1],[2,3],[4],[5,6,7]],"label":["H","Al","Na","I"],"mass_radiation_coeff":[0.0158611264432063,0.04164723292591279,0.03605392839455309,0.11791841505608874]},"isotopes":{"atomic_mass_number":[1,2,27,28,23,125,126,127],"atomic_number":[1,1,13,13,11,53,53,53],"label":["1H","2H","27Al","28Al","23Na","125I","126I","127I"],"nuclear_mass":[938.272,1875.61,25126.5,26058.3,21409.2,116321.0,117253.0,118184.0]},"materials":{"density":[3.6700020622594716,0.0,0.00017976000000000003,0.00017943386624303615],"electron_density":[9.4365282069664e+23,0.0,1.073948435904467e+20,1.072e+20],"element_frac":[[0.5,0.5],[],[1.0],[1.0]],"element_id":[[2,3],[],[0],[0]],"label":["NaI","hard vacuum","H2@1","H2@2"],"matter_state":["solid","unspecified","gas","gas"],"mean_excitation_energy":[0.00040000760709482647,0.0,1.9199999999999986e-05,1.9199999999999986e-05],"number_density":[2.948915064677e+22,0.0,1.073948435904467e+20,1.072e+20],"radiation_length":[3.5393292693170424,null,350729.99844063615,351367.4750467326],"temperature":[293.0,0.0,100.0,110.0],"zeff":[32.0,0.0,1.0,1.0]}})json",
+            to_string(out));
     }
 }
 
@@ -419,10 +359,13 @@ TEST_F(MaterialParamsImportTest, TEST_IF_CELERITAS_USE_ROOT(import_materials))
 
     EXPECT_EQ(MatterState::solid, mat.matter_state());
     EXPECT_SOFT_EQ(293.15, mat.temperature());  // [K]
-    EXPECT_SOFT_EQ(7.9999999972353661, mat.density());  // [g/cm^3]
-    EXPECT_SOFT_EQ(2.2444320228819809e+24,
-                   mat.electron_density());  // [1/cm^3]
-    EXPECT_SOFT_EQ(8.6993489258991514e+22, mat.number_density());  // [1/cm^3]
+    EXPECT_SOFT_EQ(7.9999999972353661,
+                   native_value_to<GramCcDensity>(mat.density()).value());
+    EXPECT_SOFT_EQ(
+        2.2444320228819809e+24,
+        native_value_to<InvCcDensity>(mat.electron_density()).value());
+    EXPECT_SOFT_EQ(8.6993489258991514e+22,
+                   native_value_to<InvCcDensity>(mat.number_density()).value());
 
     // Test elements by unpacking them
     std::vector<unsigned int> els;
@@ -477,10 +420,10 @@ TEST_F(MaterialDeviceTest, TEST_IF_CELER_DEVICE(all))
     result = m_test(input);
 #endif
 
-    double const expected_temperatures[] = {293, 0, 100, 110};
-    double const expected_rad_len[]
+    static real_type const expected_temperatures[] = {293, 0, 100, 110};
+    static real_type const expected_rad_len[]
         = {3.5393292693170424, inf, 350729.99844063615, 351367.47504673258};
-    double const expected_tot_z[]
+    static real_type const expected_tot_z[]
         = {9.4365282069664e+23, 0, 1.07394843590447e+20, 1.072e20};
 
     EXPECT_VEC_SOFT_EQ(expected_temperatures, result.temperatures);

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -14,7 +14,7 @@
 #include "corecel/math/Quantity.hh"
 #include "celeritas/Quantities.hh"
 #include "celeritas/Types.hh"
-#include "celeritas/grid/XsGridData.hh"
+#include "celeritas/grid/GenericGridData.hh"
 
 namespace celeritas
 {
@@ -100,16 +100,18 @@ struct LivermorePEXsData
 
     //// MEMBER DATA ////
 
-    Items<real_type> reals;
     Items<LivermoreSubshell> shells;
     ElementItems<LivermoreElement> elements;
+
+    // Backend data
+    Items<real_type> reals;
 
     //// MEMBER FUNCTIONS ////
 
     //! Whether all data are assigned and valid
     explicit CELER_FUNCTION operator bool() const
     {
-        return !reals.empty() && !shells.empty() && !elements.empty();
+        return !shells.empty() && !elements.empty() && !reals.empty();
     }
 
     //! Assign from another set of data
@@ -117,9 +119,9 @@ struct LivermorePEXsData
     LivermorePEXsData& operator=(LivermorePEXsData<W2, M2> const& other)
     {
         CELER_EXPECT(other);
-        reals = other.reals;
         shells = other.shells;
         elements = other.elements;
+        reals = other.reals;
         return *this;
     }
 };

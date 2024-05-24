@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -18,6 +18,9 @@
 namespace celeritas
 {
 //---------------------------------------------------------------------------//
+class SimpleQuadric;
+
+//---------------------------------------------------------------------------//
 /*!
  * General quadric surface.
  *
@@ -28,6 +31,9 @@ namespace celeritas
  * \f[
     ax^2 + by^2 + cz^2 + dxy + eyz + fzx + gx + hy + iz + j = 0
    \f]
+ *
+ * Note that some formulations of a general quadric include a factor of 2 for
+ * the g/h/i terms.
  */
 class GeneralQuadric
 {
@@ -35,8 +41,8 @@ class GeneralQuadric
     //@{
     //! Type aliases
     using Intersections = Array<real_type, 2>;
-    using Storage = Span<const real_type, 10>;
-    using SpanConstReal3 = Span<const real_type, 3>;
+    using StorageSpan = Span<real_type const, 10>;
+    using SpanConstReal3 = Span<real_type const, 3>;
     //@}
 
     //// CLASS ATTRIBUTES ////
@@ -53,14 +59,18 @@ class GeneralQuadric
   public:
     //// CONSTRUCTORS ////
 
-    // Construct with radius
-    explicit inline CELER_FUNCTION GeneralQuadric(Real3 const& abc,
-                                                  Real3 const& def,
-                                                  Real3 const& ghi,
-                                                  real_type j);
+    // Construct from coefficients
+    explicit GeneralQuadric(Real3 const& abc,
+                            Real3 const& def,
+                            Real3 const& ghi,
+                            real_type j);
 
     // Construct from raw data
-    explicit inline CELER_FUNCTION GeneralQuadric(Storage);
+    template<class R>
+    explicit inline CELER_FUNCTION GeneralQuadric(Span<R, StorageSpan::extent>);
+
+    // Promote from a simple quadric
+    explicit GeneralQuadric(SimpleQuadric const& other) noexcept;
 
     //// ACCESSORS ////
 
@@ -77,7 +87,7 @@ class GeneralQuadric
     CELER_FUNCTION real_type zeroth() const { return j_; }
 
     //! Get a view to the data for type-deleted storage
-    CELER_FUNCTION Storage data() const { return {&a_, 10}; }
+    CELER_FUNCTION StorageSpan data() const { return {&a_, 10}; }
 
     //// CALCULATION ////
 
@@ -106,30 +116,10 @@ class GeneralQuadric
 // INLINE DEFINITIONS
 //---------------------------------------------------------------------------//
 /*!
- * Construct with all coefficients.
- */
-CELER_FUNCTION GeneralQuadric::GeneralQuadric(Real3 const& abc,
-                                              Real3 const& def,
-                                              Real3 const& ghi,
-                                              real_type j)
-    : a_(abc[0])
-    , b_(abc[1])
-    , c_(abc[2])
-    , d_(def[0])
-    , e_(def[1])
-    , f_(def[2])
-    , g_(ghi[0])
-    , h_(ghi[1])
-    , i_(ghi[2])
-    , j_(j)
-{
-}
-
-//---------------------------------------------------------------------------//
-/*!
  * Construct from raw data.
  */
-CELER_FUNCTION GeneralQuadric::GeneralQuadric(Storage data)
+template<class R>
+CELER_FUNCTION GeneralQuadric::GeneralQuadric(Span<R, StorageSpan::extent> data)
     : a_(data[0])
     , b_(data[1])
     , c_(data[2])
@@ -149,9 +139,9 @@ CELER_FUNCTION GeneralQuadric::GeneralQuadric(Storage data)
  */
 CELER_FUNCTION SignedSense GeneralQuadric::calc_sense(Real3 const& pos) const
 {
-    const real_type x = pos[0];
-    const real_type y = pos[1];
-    const real_type z = pos[2];
+    real_type const x = pos[0];
+    real_type const y = pos[1];
+    real_type const z = pos[2];
 
     real_type result = (a_ * x + d_ * y + f_ * z + g_) * x
                        + (b_ * y + e_ * z + h_) * y + (c_ * z + i_) * z + j_;
@@ -169,12 +159,12 @@ GeneralQuadric::calc_intersections(Real3 const& pos,
                                    SurfaceState on_surface) const
     -> Intersections
 {
-    const real_type x = pos[0];
-    const real_type y = pos[1];
-    const real_type z = pos[2];
-    const real_type u = dir[0];
-    const real_type v = dir[1];
-    const real_type w = dir[2];
+    real_type const x = pos[0];
+    real_type const y = pos[1];
+    real_type const z = pos[2];
+    real_type const u = dir[0];
+    real_type const v = dir[1];
+    real_type const w = dir[2];
 
     // Quadratic values
     real_type a = (a_ * u + d_ * v) * u + (b_ * v + e_ * w) * v
@@ -194,17 +184,16 @@ GeneralQuadric::calc_intersections(Real3 const& pos,
  */
 CELER_FUNCTION Real3 GeneralQuadric::calc_normal(Real3 const& pos) const
 {
-    const real_type x = pos[0];
-    const real_type y = pos[1];
-    const real_type z = pos[2];
+    real_type const x = pos[0];
+    real_type const y = pos[1];
+    real_type const z = pos[2];
 
     Real3 norm;
     norm[0] = 2 * a_ * x + d_ * y + f_ * z + g_;
     norm[1] = 2 * b_ * y + d_ * x + e_ * z + h_;
     norm[2] = 2 * c_ * z + e_ * y + f_ * x + i_;
 
-    normalize_direction(&norm);
-    return norm;
+    return make_unit_vector(norm);
 }
 
 //---------------------------------------------------------------------------//

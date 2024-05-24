@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -7,9 +7,8 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
-#include "corecel/sys/MpiCommunicator.hh"
-#include "corecel/sys/detail/MpiCommunicatorImpl.hh"
-
+#include "MpiCommunicator.hh"
+#include "detail/MpiCommunicatorImpl.hh"
 #include "detail/MpiCommunicatorImpl.hh"  // IWYU pragma: keep
 
 namespace celeritas

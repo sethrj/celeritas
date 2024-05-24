@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -11,6 +11,7 @@
 #include <random>
 
 #include "corecel/cont/Range.hh"
+#include "celeritas/Quantities.hh"
 #include "celeritas/mat/MaterialParams.hh"
 #include "celeritas/random/SequenceEngine.hh"
 
@@ -22,6 +23,7 @@ namespace test
 {
 //---------------------------------------------------------------------------//
 using MaterialParamsRef = MaterialParams::HostRef;
+using BarnXs = units::BarnXs;
 
 //---------------------------------------------------------------------------//
 // TEST HARNESS
@@ -38,7 +40,7 @@ class ElementSelectorTest : public Test
   protected:
     void SetUp() override
     {
-        using units::AmuMass;
+        using namespace units;
 
         MaterialParams::Input inp;
         inp.elements = {
@@ -49,12 +51,12 @@ class ElementSelectorTest : public Test
         };
         inp.materials = {
             {0.0, 0.0, MatterState::unspecified, {}, "hard_vacuum"},
-            {0.1 * constants::na_avogadro,
+            {native_value_from(MolCcDensity{0.1}),
              293.0,
              MatterState::gas,
              {{ElementId{2}, 1.0}},
              "Al"},
-            {0.05 * constants::na_avogadro,
+            {native_value_from(MolCcDensity{0.05}),
              293.0,
              MatterState::solid,
              {{ElementId{0}, 0.25},
@@ -62,7 +64,7 @@ class ElementSelectorTest : public Test
               {ElementId{2}, 0.25},
               {ElementId{3}, 0.25}},
              "everything_even"},
-            {1 * constants::na_avogadro,
+            {native_value_from(MolCcDensity{1}),
              293.0,
              MatterState::solid,
              {{ElementId{0}, 0.48},
@@ -85,10 +87,10 @@ class ElementSelectorTest : public Test
 };
 
 // Return cross section proportional to the element ID offset by 1.
-real_type mock_micro_xs(ElementId el_id)
+auto mock_micro_xs(ElementId el_id) -> BarnXs
 {
     CELER_EXPECT(el_id < 4);
-    return static_cast<real_type>(el_id.get() + 1);
+    return BarnXs(static_cast<real_type>(el_id.get() + 1));
 }
 
 // Example functor for calculating cross section from actual atomic properties
@@ -100,11 +102,11 @@ struct CalcFancyMicroXs
     {
     }
 
-    real_type operator()(ElementId el_id) const
+    auto operator()(ElementId el_id) const -> BarnXs
     {
         CELER_EXPECT(el_id);
         ElementView el(mats_, el_id);
-        return el.cbrt_z() * inv_energy_;
+        return BarnXs(el.cbrt_z() * inv_energy_);
     }
 
     MaterialParamsRef const& mats_;
@@ -130,7 +132,7 @@ TEST_F(ElementSelectorTest, single)
     ElementSelector select_el(material, mock_micro_xs, make_span(storage));
 
     // Construction should have precalculated cross sections
-    double const expected_elemental_micro_xs[] = {3};
+    real_type const expected_elemental_micro_xs[] = {3};
     EXPECT_VEC_SOFT_EQ(expected_elemental_micro_xs,
                        select_el.elemental_micro_xs());
     EXPECT_SOFT_EQ(3.0, select_el.material_micro_xs());
@@ -144,13 +146,13 @@ TEST_F(ElementSelectorTest, single)
 }
 
 //! Equal number densities but unequal cross sections
-TEST_F(ElementSelectorTest, everything_even)
+TEST_F(ElementSelectorTest, TEST_IF_CELERITAS_DOUBLE(everything_even))
 {
     MaterialView material(host_mats, mats->find_material("everything_even"));
     ElementSelector select_el(material, mock_micro_xs, make_span(storage));
 
     // Test cross sections
-    double const expected_elemental_micro_xs[] = {1, 2, 3, 4};
+    real_type const expected_elemental_micro_xs[] = {1, 2, 3, 4};
     EXPECT_VEC_SOFT_EQ(expected_elemental_micro_xs,
                        select_el.elemental_micro_xs());
     EXPECT_SOFT_EQ(2.5, select_el.material_micro_xs());
@@ -167,20 +169,25 @@ TEST_F(ElementSelectorTest, everything_even)
     // Proportional to micro_xs (equal number density)
     int const expected_tally[] = {1032, 2014, 2971, 3983};
     EXPECT_VEC_EQ(expected_tally, tally);
+}
+
+//! Equal number densities but unequal cross sections
+TEST_F(ElementSelectorTest, everything_even_seq)
+{
+    MaterialView material(host_mats, mats->find_material("everything_even"));
+    ElementSelector select_el(material, mock_micro_xs, make_span(storage));
 
     // Test with sequence engine
+    auto seq_rng = SequenceEngine::from_reals(
+        {0.0, 0.099, 0.101, 0.3, 0.499, 0.999999});
+    std::vector<int> selection;
+    while (seq_rng.count() < seq_rng.max_count())
     {
-        auto seq_rng = SequenceEngine::from_reals(
-            {0.0, 0.099, 0.101, 0.3, 0.499, 0.999999});
-        std::vector<int> selection;
-        while (seq_rng.count() < seq_rng.max_count())
-        {
-            auto el_id = select_el(seq_rng);
-            selection.push_back(el_id.unchecked_get());
-        }
-        int const expected_selection[] = {0, 0, 1, 2, 2, 3};
-        EXPECT_VEC_EQ(expected_selection, selection);
+        auto el_id = select_el(seq_rng);
+        selection.push_back(el_id.unchecked_get());
     }
+    int const expected_selection[] = {0, 0, 1, 2, 2, 3};
+    EXPECT_VEC_EQ(expected_selection, selection);
 }
 
 //! Number densities scaled to 1/xs so equiprobable
@@ -191,7 +198,7 @@ TEST_F(ElementSelectorTest, everything_weighted)
     ElementSelector select_el(material, mock_micro_xs, make_span(storage));
 
     // Test cross sections
-    double const expected_elemental_micro_xs[] = {1, 2, 3, 4};
+    real_type const expected_elemental_micro_xs[] = {1, 2, 3, 4};
     EXPECT_VEC_SOFT_EQ(expected_elemental_micro_xs,
                        select_el.elemental_micro_xs());
     EXPECT_SOFT_EQ(1.92, select_el.material_micro_xs());
@@ -205,6 +212,11 @@ TEST_F(ElementSelectorTest, everything_weighted)
         ++tally[el_id.get()];
     }
 
+    if (CELERITAS_REAL_TYPE != CELERITAS_REAL_TYPE_DOUBLE)
+    {
+        GTEST_SKIP() << "Test results are based on double-precision RNG";
+    }
+
     // Equiprobable
     int const expected_tally[] = {2574, 2395, 2589, 2442};
     EXPECT_VEC_EQ(expected_tally, tally);
@@ -214,8 +226,9 @@ TEST_F(ElementSelectorTest, everything_weighted)
 TEST_F(ElementSelectorTest, even_zero_xs)
 {
     MaterialView material(host_mats, mats->find_material("everything_even"));
-    auto calc_xs
-        = [](ElementId el) -> real_type { return (el.get() % 2 ? 1 : 0); };
+    auto calc_xs = [](ElementId el) -> BarnXs {
+        return BarnXs((el.get() % 2 ? 1 : 0));
+    };
     ElementSelector select_el(material, calc_xs, make_span(storage));
 
     auto seq_rng = SequenceEngine::from_reals({0.0, 0.01, 0.49, 0.5, 0.51});
@@ -239,7 +252,7 @@ TEST_F(ElementSelectorTest, fancy_xs)
         material, CalcFancyMicroXs{host_mats, energy}, make_span(storage));
 
     // Test cross sections
-    double const expected_elemental_micro_xs[] = {
+    real_type const expected_elemental_micro_xs[] = {
         0.008130081300813, 0.01808113894772, 0.01911654217659, 0.0305389085709};
     EXPECT_VEC_SOFT_EQ(expected_elemental_micro_xs,
                        select_el.elemental_micro_xs());

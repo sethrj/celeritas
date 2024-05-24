@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -39,6 +39,15 @@ StepperTestBase::StepperTestBase()
 }
 
 //---------------------------------------------------------------------------//
+//! Whether the build uses the default real type and RNG.
+bool StepperTestBase::is_default_build()
+{
+    return CELERITAS_REAL_TYPE == CELERITAS_REAL_TYPE_DOUBLE
+           && CELERITAS_UNITS == CELERITAS_UNITS_CGS
+           && CELERITAS_CORE_RNG == CELERITAS_CORE_RNG_XORWOW;
+}
+
+//---------------------------------------------------------------------------//
 //! Generate a stepper construction class
 StepperInput StepperTestBase::make_stepper_input(size_type tracks)
 {
@@ -63,7 +72,7 @@ auto StepperTestBase::check_setup() -> SetupCheckResult
 
     for (auto process_id : range(ProcessId{p.num_processes()}))
     {
-        result.processes.push_back(p.process(process_id)->label());
+        result.processes.emplace_back(p.process(process_id)->label());
     }
 
     // Create temporary host stepper to get action ordering
@@ -71,8 +80,8 @@ auto StepperTestBase::check_setup() -> SetupCheckResult
     auto const& action_seq = temp_stepper.actions();
     for (auto const& sp_action : action_seq.actions())
     {
-        result.actions.push_back(sp_action->label());
-        result.actions_desc.push_back(sp_action->description());
+        result.actions.emplace_back(sp_action->label());
+        result.actions_desc.emplace_back(sp_action->description());
     }
 
     return result;
@@ -99,7 +108,7 @@ auto StepperTestBase::run(StepperInterface& step,
     result.active = {counts.active};
     result.queued = {counts.queued};
 
-    const size_type max_steps = this->max_average_steps() * num_primaries;
+    size_type const max_steps = this->max_average_steps() * num_primaries;
     size_type accum_steps = counts.active;
 
     while (counts)

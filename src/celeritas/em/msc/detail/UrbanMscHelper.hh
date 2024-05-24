@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -17,7 +17,7 @@
 #include "celeritas/grid/EnergyLossCalculator.hh"
 #include "celeritas/grid/InverseRangeCalculator.hh"
 #include "celeritas/grid/RangeCalculator.hh"
-#include "celeritas/grid/ValueGridData.hh"
+#include "celeritas/grid/ValueGridType.hh"
 #include "celeritas/grid/XsCalculator.hh"
 #include "celeritas/phys/ParticleTrackView.hh"
 #include "celeritas/phys/PhysicsTrackView.hh"
@@ -29,6 +29,8 @@ namespace detail
 //---------------------------------------------------------------------------//
 /*!
  * This is a helper class for the UrbanMscStepLimit and UrbanMscScatter.
+ *
+ * NOTE: units are "native" units, listed here as CGS.
  *
  * \todo Refactor to UrbanMscTrackView .
  */
@@ -51,10 +53,10 @@ class UrbanMscHelper
     //// HELPER FUNCTIONS ////
 
     //! The mean free path of the multiple scattering at the current energy
-    //! [cm]
+    //! [len]
     CELER_FUNCTION real_type msc_mfp() const { return lambda_; }
 
-    // The mean free path of the multiple scattering for a given energy [cm]
+    // The mean free path of the multiple scattering for a given energy [len]
     inline CELER_FUNCTION real_type calc_msc_mfp(Energy energy) const;
 
     // TODO: the following methods are used only by MscStepLimit
@@ -83,13 +85,20 @@ class UrbanMscHelper
     PhysicsTrackView const& physics_;
 
     // Precalculated mean free path (TODO: move to physics step view)
-    real_type lambda_;  // [cm]
+    real_type lambda_;  // [len]
 
     // Data for this particle+material
     CELER_FUNCTION UrbanMscParMatData const& pmdata() const
     {
-        return shared_.par_mat_data[shared_.at(physics_.material_id(),
-                                               particle_.particle_id())];
+        return shared_.par_mat_data[shared_.at<UrbanMscParMatData>(
+            physics_.material_id(), particle_.particle_id())];
+    }
+
+    // Scaled cross section data for this particle+material
+    CELER_FUNCTION XsGridData const& xs() const
+    {
+        return shared_.xs[shared_.at<XsGridData>(physics_.material_id(),
+                                                 particle_.particle_id())];
     }
 };
 
@@ -119,7 +128,7 @@ UrbanMscHelper::UrbanMscHelper(UrbanMscRef const& shared,
 CELER_FUNCTION real_type UrbanMscHelper::calc_msc_mfp(Energy energy) const
 {
     CELER_EXPECT(energy > zero_quantity());
-    XsCalculator calc_scaled_xs(this->pmdata().xs, shared_.reals);
+    XsCalculator calc_scaled_xs(this->xs(), shared_.reals);
 
     real_type xsec = calc_scaled_xs(energy) / ipow<2>(energy.value());
     CELER_ENSURE(xsec >= 0 && 1 / xsec > 0);

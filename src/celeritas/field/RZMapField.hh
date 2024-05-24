@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -36,8 +36,7 @@ class RZMapField
 
   public:
     // Construct with the shared map data
-    CELER_FUNCTION
-    explicit RZMapField(FieldParamsRef const& shared);
+    inline CELER_FUNCTION explicit RZMapField(FieldParamsRef const& shared);
 
     // Evaluate the magnetic field value for the given position
     CELER_FUNCTION
@@ -47,8 +46,8 @@ class RZMapField
     // Shared constant field map
     FieldParamsRef const& params_;
 
-    const UniformGrid grid_r_;
-    const UniformGrid grid_z_;
+    UniformGrid const grid_r_;
+    UniformGrid const grid_z_;
 };
 
 //---------------------------------------------------------------------------//

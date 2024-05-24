@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -22,7 +22,7 @@ namespace celeritas
  * This should only be used for testing and demonstration purposes because real
  * EM physics always has continuous energy loss for charged particles.
  */
-class AlongStepNeutralAction final : public ExplicitActionInterface
+class AlongStepNeutralAction final : public ExplicitCoreActionInterface
 {
   public:
     // Construct with next action ID
@@ -38,10 +38,10 @@ class AlongStepNeutralAction final : public ExplicitActionInterface
     ActionId action_id() const final { return id_; }
 
     //! Short name for the along-step kernel
-    std::string label() const final { return "along-step-neutral"; }
+    std::string_view label() const final { return "along-step-neutral"; }
 
     //! Short description of the action
-    std::string description() const final
+    std::string_view description() const final
     {
         return "apply along-step for neutral particles";
     }

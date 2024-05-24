@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -8,11 +8,13 @@
 #include "SimpleTestBase.hh"
 
 #include "celeritas/Quantities.hh"
+#include "celeritas/em/params/WentzelOKVIParams.hh"
 #include "celeritas/em/process/ComptonProcess.hh"
 #include "celeritas/geo/GeoMaterialParams.hh"
 #include "celeritas/global/ActionRegistry.hh"
 #include "celeritas/global/alongstep/AlongStepNeutralAction.hh"
 #include "celeritas/io/ImportProcess.hh"
+#include "celeritas/io/detail/ImportDataConverter.hh"
 #include "celeritas/mat/MaterialParams.hh"
 #include "celeritas/phys/CutoffParams.hh"
 #include "celeritas/phys/ImportedProcessAdapter.hh"
@@ -33,7 +35,7 @@ auto SimpleTestBase::build_material() -> SPConstMaterial
 
     MaterialParams::Input inp;
     inp.elements = {{AtomicNumber{13}, AmuMass{27}, {}, "Al"}};
-    inp.materials = {{2.7 * constants::na_avogadro / 27,
+    inp.materials = {{native_value_from(MolCcDensity{0.1}),
                       293.0,
                       MatterState::solid,
                       {{ElementId{0}, 1.0}},
@@ -56,18 +58,19 @@ auto SimpleTestBase::build_geomaterial() -> SPConstGeoMaterial
 //---------------------------------------------------------------------------//
 auto SimpleTestBase::build_particle() -> SPConstParticle
 {
+    using namespace constants;
     using namespace ::celeritas::units;
     ParticleParams::Input defs;
     defs.push_back({"gamma",
                     pdg::gamma(),
                     zero_quantity(),
                     zero_quantity(),
-                    ParticleRecord::stable_decay_constant()});
+                    stable_decay_constant});
     defs.push_back({"electron",
                     pdg::electron(),
                     MevMass{0.5},
                     ElementaryCharge{-1},
-                    ParticleRecord::stable_decay_constant()});
+                    stable_decay_constant});
     return std::make_shared<ParticleParams>(std::move(defs));
 }
 
@@ -115,7 +118,7 @@ auto SimpleTestBase::build_physics() -> SPConstPhysics
         ImportPhysicsTable lambda;
         lambda.table_type = ImportTableType::lambda;
         lambda.x_units = ImportUnits::mev;
-        lambda.y_units = ImportUnits::cm_inv;
+        lambda.y_units = ImportUnits::len_inv;
         lambda.physics_vectors = {
             {ImportPhysicsVectorType::log,
              {1e-4, 1.0},  // energy
@@ -130,7 +133,7 @@ auto SimpleTestBase::build_physics() -> SPConstPhysics
         ImportPhysicsTable lambdap;
         lambdap.table_type = ImportTableType::lambda_prim;
         lambdap.x_units = ImportUnits::mev;
-        lambdap.y_units = ImportUnits::cm_mev_inv;
+        lambdap.y_units = ImportUnits::len_mev_inv;
         lambdap.physics_vectors = {
             {ImportPhysicsVectorType::log,
              {1.0, 1e4, 1e8},  // energy
@@ -140,6 +143,13 @@ auto SimpleTestBase::build_physics() -> SPConstPhysics
              {1e-10, 1e-10, 1e-10}},  // lambda * energy (world)
         };
         compton_data.tables.push_back(std::move(lambdap));
+    }
+
+    // Update data values from CGS
+    {
+        celeritas::detail::ImportDataConverter convert{
+            celeritas::UnitSystem::cgs};
+        convert(&compton_data);
     }
 
     auto process_data = std::make_shared<ImportedProcesses>(
@@ -168,7 +178,15 @@ auto SimpleTestBase::build_init() -> SPConstTrackInit
     TrackInitParams::Input input;
     input.capacity = 4096;
     input.max_events = 4096;
+    input.track_order = TrackOrder::unsorted;
     return std::make_shared<TrackInitParams>(input);
+}
+
+//---------------------------------------------------------------------------//
+auto SimpleTestBase::build_wentzel() -> SPConstWentzelOKVI
+{
+    WentzelOKVIParams::Options options;
+    return std::make_shared<WentzelOKVIParams>(this->material(), options);
 }
 
 //---------------------------------------------------------------------------//

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -13,7 +13,8 @@
 #include "corecel/Types.hh"
 #include "corecel/cont/Range.hh"
 #include "corecel/math/Algorithms.hh"
-#include "celeritas/em/data/AtomicRelaxationData.hh"
+
+#include "../data/AtomicRelaxationData.hh"
 
 namespace celeritas
 {

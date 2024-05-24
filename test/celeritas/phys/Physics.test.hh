@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -96,7 +96,7 @@ inline CELER_FUNCTION real_type calc_step(PhysicsTrackView& phys,
     }
 
     // Take minimum of step and half the MFP
-    step = min(step, 0.5 * phys.interaction_mfp());
+    step = min(step, real_type{0.5} * phys.interaction_mfp());
     return step;
 }
 

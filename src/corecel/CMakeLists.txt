@@ -1,5 +1,5 @@
 #----------------------------------*-CMake-*----------------------------------#
-# Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+# Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 # See the top-level COPYRIGHT file for details.
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 #-----------------------------------------------------------------------------#
@@ -14,8 +14,11 @@ set(PUBLIC_DEPS)
 
 list(APPEND SOURCES
   Assert.cc
+  Types.cc
   data/Copier.cc
   data/DeviceAllocation.cc
+  data/PinnedAllocator.cc
+  grid/VectorUtils.cc
   io/BuildOutput.cc
   io/ColorUtils.cc
   io/ExceptionOutput.cc
@@ -60,13 +63,21 @@ endif()
 if(CELERITAS_USE_CUDA)
   # we currently depend on CUDA install including the nvtx header
   list(APPEND SOURCES
+    sys/ScopedLimitSaver.cuda.cc
     sys/ScopedProfiling.cuda.cc
+  )
+endif()
+
+if(CELERITAS_USE_HIP)
+  list(APPEND SOURCES
+    sys/ScopedProfiling.hip.cc
   )
 endif()
 
 if(CELERITAS_USE_JSON)
   list(APPEND SOURCES
     AssertIO.json.cc
+    io/JsonUtils.json.cc
     sys/DeviceIO.json.cc
     sys/KernelRegistryIO.json.cc
     sys/MemRegistryIO.json.cc
@@ -88,11 +99,26 @@ endif()
 
 celeritas_add_library(corecel ${SOURCES})
 
-# Require at least C++14
+# Require at least C++17
 target_compile_features(corecel PUBLIC cxx_std_17)
 if(CELERITAS_USE_CUDA)
   target_compile_features(corecel PUBLIC cuda_std_17)
 endif()
+if(WIN32)
+  target_compile_definitions(corecel PUBLIC
+    $<$<COMPILE_LANGUAGE:CXX>:NOMINMAX NOGDI>
+  )
+
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    # __cplusplus: use standard-compliant C++ version macro
+    # preprocessor: use standard-compliant preprocessor
+    # EHsc: enable standard C++ exception handling
+    target_compile_options(corecel PUBLIC
+      $<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus /Zc:preprocessor /EHsc>
+    )
+  endif()
+endif()
+
 
 celeritas_target_include_directories(corecel
   PUBLIC

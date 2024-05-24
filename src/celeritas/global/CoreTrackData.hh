@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -10,6 +10,7 @@
 #include "corecel/Assert.hh"
 #include "corecel/data/Collection.hh"
 #include "celeritas/Types.hh"
+#include "celeritas/em/data/WentzelOKVIData.hh"
 #include "celeritas/geo/GeoData.hh"
 #include "celeritas/geo/GeoMaterialData.hh"
 #include "celeritas/mat/MaterialData.hh"
@@ -65,6 +66,7 @@ struct CoreParamsData
     RngParamsData<W, M> rng;
     SimParamsData<W, M> sim;
     TrackInitParamsData<W, M> init;
+    WentzelOKVIData<W, M> wentzel;
 
     CoreScalars scalars;
 
@@ -72,7 +74,7 @@ struct CoreParamsData
     explicit CELER_FUNCTION operator bool() const
     {
         return geometry && geo_mats && materials && particles && cutoffs
-               && physics && sim && init && scalars;
+               && physics && rng && sim && init && scalars;
     }
 
     //! Assign from another set of data
@@ -89,6 +91,7 @@ struct CoreParamsData
         rng = other.rng;
         sim = other.sim;
         init = other.init;
+        wentzel = other.wentzel;
         scalars = other.scalars;
         return *this;
     }
@@ -103,9 +106,6 @@ struct CoreParamsData
 template<Ownership W, MemSpace M>
 struct CoreStateData
 {
-    template<class T>
-    using Items = StateCollection<T, W, M>;
-
     template<class T>
     using ThreadItems = Collection<T, W, M, ThreadId>;
 

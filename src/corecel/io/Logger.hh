@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -10,8 +10,6 @@
 #include <string>
 #include <utility>
 
-#include "corecel/io/Logger.hh"
-
 #include "LoggerTypes.hh"
 #include "detail/LoggerMessage.hh"  // IWYU pragma: export
 
@@ -19,10 +17,10 @@
 // MACROS
 //---------------------------------------------------------------------------//
 //! Inject the source code provenance (current file and line)
-#define CELER_CODE_PROVENANCE \
-    ::celeritas::Provenance   \
-    {                         \
-        __FILE__, __LINE__    \
+#define CELER_CODE_PROVENANCE  \
+    ::celeritas::LogProvenance \
+    {                          \
+        __FILE__, __LINE__     \
     }
 
 /*!
@@ -92,7 +90,7 @@ class Logger
     Logger(MpiCommunicator const& comm, LogHandler handle);
 
     // Create a logger that flushes its contents when it destructs
-    inline Message operator()(Provenance prov, LogLevel lev);
+    inline Message operator()(LogProvenance&& prov, LogLevel lev);
 
     //! Set the minimum logging verbosity
     void level(LogLevel lev) { min_level_ = lev; }
@@ -108,11 +106,17 @@ class Logger
 //---------------------------------------------------------------------------//
 // INLINE DEFINITIONS
 //---------------------------------------------------------------------------//
-//! Create a logger that flushes its contents when it destructs
-auto Logger::operator()(Provenance prov, LogLevel lev) -> Message
+/*!
+ * Create a logger that flushes its contents when it destructs.
+ *
+ * It's assumed that log messages will be relatively unlikely (and expensive
+ * anyway), so we mark as \c CELER_UNLIKELY to optimize for the no-logging
+ * case.
+ */
+auto Logger::operator()(LogProvenance&& prov, LogLevel lev) -> Message
 {
     LogHandler* handle = nullptr;
-    if (handle_ && lev >= min_level_)
+    if (CELER_UNLIKELY(handle_ && lev >= min_level_))
     {
         handle = &handle_;
     }

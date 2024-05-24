@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -12,6 +12,8 @@
 
 #include "accel/LocalTransporter.hh"
 #include "accel/SharedParams.hh"
+
+#include "GeantDiagnostics.hh"
 
 namespace celeritas
 {
@@ -31,17 +33,22 @@ class TrackingAction final : public G4UserTrackingAction
     //!@{
     //! \name Type aliases
     using SPConstParams = std::shared_ptr<SharedParams const>;
+    using SPDiagnostics = std::shared_ptr<GeantDiagnostics>;
     using SPTransporter = std::shared_ptr<LocalTransporter>;
     //!@}
 
   public:
-    TrackingAction(SPConstParams params, SPTransporter transport);
+    TrackingAction(SPConstParams params,
+                   SPTransporter transport,
+                   SPDiagnostics diagnostics);
 
     void PreUserTrackingAction(G4Track const* track) final;
+    void PostUserTrackingAction(G4Track const* track) final;
 
   private:
     SPConstParams params_;
     SPTransporter transport_;
+    SPDiagnostics diagnostics_;
 };
 
 //---------------------------------------------------------------------------//

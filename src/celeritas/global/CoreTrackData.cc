@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -43,10 +43,10 @@ void resize(CoreStateData<Ownership::value, M>* state,
     state->stream_id = stream_id;
 
     Span track_slots{state->track_slots[AllItems<TrackSlotId::size_type, M>{}]};
-    detail::fill_track_slots<M>(track_slots);
+    detail::fill_track_slots<M>(track_slots, stream_id);
     if (params.init.track_order == TrackOrder::shuffled)
     {
-        detail::shuffle_track_slots<M>(track_slots);
+        detail::shuffle_track_slots<M>(track_slots, stream_id);
     }
 
     CELER_ENSURE(state);

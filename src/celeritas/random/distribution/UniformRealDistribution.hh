@@ -1,11 +1,14 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
 //! \file celeritas/random/distribution/UniformRealDistribution.hh
 //---------------------------------------------------------------------------//
 #pragma once
+
+#include <cmath>
+#include <type_traits>
 
 #include "corecel/Assert.hh"
 #include "corecel/Macros.hh"
@@ -26,6 +29,8 @@ namespace celeritas
 template<class RealType = ::celeritas::real_type>
 class UniformRealDistribution
 {
+    static_assert(std::is_floating_point_v<RealType>);
+
   public:
     //!@{
     //! \name Type aliases
@@ -95,7 +100,7 @@ template<class Generator>
 CELER_FUNCTION auto
 UniformRealDistribution<RealType>::operator()(Generator& rng) -> result_type
 {
-    return delta_ * generate_canonical<RealType>(rng) + a_;
+    return std::fma(delta_, generate_canonical<RealType>(rng), a_);
 }
 
 //---------------------------------------------------------------------------//

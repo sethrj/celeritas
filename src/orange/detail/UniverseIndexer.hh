@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -11,8 +11,9 @@
 
 #include "corecel/data/Collection.hh"
 #include "corecel/math/Algorithms.hh"
-#include "orange/OrangeData.hh"
-#include "orange/OrangeTypes.hh"
+
+#include "../OrangeData.hh"
+#include "../OrangeTypes.hh"
 
 namespace celeritas
 {
@@ -83,7 +84,7 @@ class UniverseIndexer
         = Collection<size_type, Ownership::const_reference, MemSpace::native>;
     using AllVals = AllItems<size_type, MemSpace::native>;
     using SizeId = OpaqueId<size_type>;
-    using SpanIter = Span<size_type const>::const_iterator;
+    using SpanIter = typename DataRef::SpanConstT::const_iterator;
 
     //// DATA ////
     UniverseIndexerDataRef data_;

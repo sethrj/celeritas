@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -9,11 +9,13 @@
 
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <type_traits>
 
 #include "corecel/Assert.hh"
-#include "corecel/io/ScopedStreamFormat.hh"
+
+#include "../ScopedStreamFormat.hh"
 
 namespace celeritas
 {
@@ -55,6 +57,18 @@ std::ostream& operator<<(std::ostream& os, Repr<T> const& s)
         os << '}';
     }
     return os;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Convert a streamable object to a string.
+ */
+template<class T>
+std::string to_string(Repr<T> const& s)
+{
+    std::ostringstream os;
+    os << s;
+    return os.str();
 }
 
 //---------------------------------------------------------------------------//

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -15,15 +15,16 @@
 #include "corecel/Assert.hh"
 #include "corecel/Macros.hh"
 #include "corecel/io/JsonPimpl.hh"
+#include "geocel/UnitUtils.hh"
 #include "celeritas/global/CoreParams.hh"
 #include "celeritas/global/Stepper.hh"
 #include "celeritas/phys/PDGNumber.hh"
 #include "celeritas/phys/ParticleParams.hh"
 #include "celeritas/phys/Primary.hh"
 
-#include "../SimpleTestBase.hh"
 #include "StepperTestBase.hh"
 #include "celeritas_test.hh"
+#include "../SimpleTestBase.hh"
 
 using celeritas::units::MevEnergy;
 
@@ -40,7 +41,7 @@ std::string get_json_str(KernelContextException const& e)
     e.output(&jp);
     return jp.obj.dump();
 #else
-    (void)sizeof(e);
+    CELER_DISCARD(e);
     return {};
 #endif
 }
@@ -65,7 +66,7 @@ class KernelContextExceptionTest : public SimpleTestBase, public StepperTestBase
         Primary p;
         p.particle_id = this->particle()->find(pdg::gamma());
         p.energy = MevEnergy{10};
-        p.position = {0, 1, 0};
+        p.position = from_cm(Real3{0, 1, 0});
         p.direction = {0, 0, 1};
         p.time = 0;
 
@@ -137,21 +138,21 @@ TEST_F(KernelContextExceptionTest, typical)
         EXPECT_EQ(1, e.num_steps());
         EXPECT_EQ(ParticleId{0}, e.particle());
         EXPECT_EQ(10, e.energy().value());
-        EXPECT_VEC_SOFT_EQ((Real3{0, 1, 5}), e.pos());
+        EXPECT_VEC_SOFT_EQ(from_cm(Real3{0, 1, 5}), e.pos());
         EXPECT_VEC_SOFT_EQ((Real3{0, 0, 1}), e.dir());
         if (CELERITAS_CORE_GEO == CELERITAS_CORE_GEO_ORANGE)
         {
             EXPECT_EQ(VolumeId{2}, e.volume());
             EXPECT_EQ(SurfaceId{11}, e.surface());
         }
-        if (CELERITAS_USE_JSON
+        if (CELERITAS_USE_JSON && CELERITAS_UNITS == CELERITAS_UNITS_CGS
             && CELERITAS_CORE_GEO == CELERITAS_CORE_GEO_ORANGE)
         {
             std::stringstream ss;
             ss << R"json({"dir":[0.0,0.0,1.0],"energy":[10.0,"MeV"],"event":1,"label":"test-kernel","num_steps":1,"particle":0,"pos":[0.0,1.0,5.0],"surface":11,"thread":)json"
                << e.thread().unchecked_get()
                << R"json(,"track":3,"track_slot":15,"volume":2})json";
-            EXPECT_EQ(ss.str(), get_json_str(e));
+            EXPECT_JSON_EQ(ss.str(), get_json_str(e));
         }
     };
     // Since tracks are initialized back to front, the thread ID must be toward
@@ -188,7 +189,7 @@ TEST_F(KernelContextExceptionTest, uninitialized_track)
             std::stringstream ss;
             ss << R"json({"label":"test-kernel","thread":)json"
                << e.thread().unchecked_get() << R"json(,"track_slot":1})json";
-            EXPECT_EQ(ss.str(), get_json_str(e));
+            EXPECT_JSON_EQ(ss.str(), get_json_str(e));
         }
     };
 
@@ -217,7 +218,8 @@ TEST_F(KernelContextExceptionTest, bad_thread)
         EXPECT_EQ(TrackSlotId{}, e.track_slot());
         if (CELERITAS_USE_JSON)
         {
-            EXPECT_EQ(R"json({"label":"dumb-kernel"})json", get_json_str(e));
+            EXPECT_JSON_EQ(R"json({"label":"dumb-kernel"})json",
+                           get_json_str(e));
         }
     };
     CELER_TRY_HANDLE_CONTEXT(

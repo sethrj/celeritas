@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -11,8 +11,11 @@
 #include <cstring>
 #include <string>
 
+#include "celeritas_config.h"
 #include "corecel/Assert.hh"
 #include "corecel/io/ColorUtils.hh"
+
+#include "JsonComparer.hh"
 
 namespace celeritas
 {
@@ -59,6 +62,26 @@ trunc_string(unsigned int digits, char const* str, char const* trunc)
         return trunc;
     }
     return str;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Compare two JSON objects.
+ */
+::testing::AssertionResult IsJsonEq(char const*,
+                                    char const*,
+                                    std::string_view expected,
+                                    std::string_view actual)
+{
+    JsonComparer compare{};
+    auto result = compare(expected, actual);
+    if (!result)
+    {
+        // Print actual result for copy-pasting into "expected" expression
+        result << "\n/*** ACTUAL ***/\nR\"json(" << actual
+               << ")json\"\n/******/";
+    }
+    return result;
 }
 
 //---------------------------------------------------------------------------//

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -8,24 +8,40 @@
 #include "LocalTransporter.hh"
 
 #include <csignal>
+#include <string>
 #include <type_traits>
 #include <CLHEP/Units/SystemOfUnits.h>
+#include <G4MTRunManager.hh>
 #include <G4ParticleDefinition.hh>
+#include <G4Threading.hh>
 #include <G4ThreeVector.hh>
 #include <G4Track.hh>
 
+#ifdef _OPENMP
+#    include <omp.h>
+#endif
+
+#include "celeritas_config.h"
 #include "corecel/cont/Span.hh"
 #include "corecel/io/Logger.hh"
 #include "corecel/sys/Device.hh"
+#include "corecel/sys/Environment.hh"
 #include "corecel/sys/ScopedSignalHandler.hh"
+#include "geocel/GeantUtils.hh"
+#include "geocel/g4/Convert.geant.hh"
 #include "celeritas/Quantities.hh"
-#include "celeritas/ext/Convert.geant.hh"
+#include "celeritas/ext/GeantUnits.hh"
+#include "celeritas/global/detail/ActionSequence.hh"
+#include "celeritas/io/EventWriter.hh"
+#include "celeritas/io/RootEventWriter.hh"
 #include "celeritas/phys/PDGNumber.hh"
 #include "celeritas/phys/ParticleParams.hh"  // IWYU pragma: keep
 
 #include "SetupOptions.hh"
 #include "SharedParams.hh"
+
 #include "detail/HitManager.hh"
+#include "detail/OffloadWriter.hh"
 
 namespace celeritas
 {
@@ -35,8 +51,10 @@ namespace celeritas
  */
 LocalTransporter::LocalTransporter(SetupOptions const& options,
                                    SharedParams const& params)
-    : auto_flush_(options.max_num_tracks)
+    : auto_flush_(options.auto_flush ? options.auto_flush
+                                     : options.max_num_tracks)
     , max_steps_(options.max_steps)
+    , dump_primaries_{params.offload_writer()}
     , hit_manager_{params.hit_manager()}
 {
     CELER_VALIDATE(params,
@@ -45,10 +63,7 @@ LocalTransporter::LocalTransporter(SetupOptions const& options,
                       "thread did not call BeginOfRunAction?");
     particles_ = params.Params()->particle();
 
-    // Thread ID is -1 when running serially
-    auto thread_id = G4Threading::IsMultithreadedApplication()
-                         ? G4Threading::G4GetThreadId()
-                         : 0;
+    auto thread_id = get_geant_thread_id();
     CELER_VALIDATE(thread_id >= 0,
                    << "Geant4 ThreadID (" << thread_id
                    << ") is invalid (perhaps LocalTransporter is being built "
@@ -59,11 +74,35 @@ LocalTransporter::LocalTransporter(SetupOptions const& options,
         << ") is out of range for the reported number of worker threads ("
         << params.Params()->max_streams() << ")");
 
+    // Check that OpenMP and Geant4 threading models don't collide
+    if (CELERITAS_OPENMP == CELERITAS_OPENMP_TRACK && !celeritas::device()
+        && G4Threading::IsMultithreadedApplication())
+    {
+        auto msg = CELER_LOG_LOCAL(warning);
+        msg << "Using multithreaded Geant4 with Celeritas track-level OpenMP "
+               "parallelism";
+        if (std::string const& nt_str = celeritas::getenv("OMP_NUM_THREADS");
+            !nt_str.empty())
+        {
+            msg << "(OMP_NUM_THREADS=" << nt_str
+                << "): CPU threads may be oversubscribed";
+        }
+        else
+        {
+            msg << ": forcing 1 Celeritas thread to Geant4 thread";
+#ifdef _OPENMP
+            omp_set_num_threads(1);
+#else
+            CELER_ASSERT_UNREACHABLE();
+#endif
+        }
+    }
+
     StepperInput inp;
     inp.params = params.Params();
     inp.stream_id = StreamId{static_cast<size_type>(thread_id)};
     inp.num_track_slots = options.max_num_tracks;
-    inp.sync = options.sync;
+    inp.action_times = options.action_times;
 
     if (celeritas::device())
     {
@@ -80,14 +119,24 @@ LocalTransporter::LocalTransporter(SetupOptions const& options,
 
 //---------------------------------------------------------------------------//
 /*!
- * Set the event ID at the start of an event.
+ * Set the event ID and reseed the Celeritas RNG at the start of an event.
  */
-void LocalTransporter::SetEventId(int id)
+void LocalTransporter::InitializeEvent(int id)
 {
     CELER_EXPECT(*this);
     CELER_EXPECT(id >= 0);
+
     event_id_ = EventId(id);
     track_counter_ = 0;
+
+    if (!(G4Threading::IsMultithreadedApplication()
+          && G4MTRunManager::SeedOncePerCommunication()))
+    {
+        // Since Geant4 schedules events dynamically, reseed the Celeritas RNGs
+        // using the Geant4 event ID for reproducibility. This guarantees that
+        // an event can be reproduced given the event ID.
+        step_->reseed(event_id_);
+    }
 }
 
 //---------------------------------------------------------------------------//
@@ -103,17 +152,17 @@ void LocalTransporter::Push(G4Track const& g4track)
 
     track.particle_id = particles_->find(
         PDGNumber{g4track.GetDefinition()->GetPDGEncoding()});
-    track.energy = units::MevEnergy{
-        convert_from_geant(g4track.GetKineticEnergy(), CLHEP::MeV)};
+    track.energy = units::MevEnergy(
+        convert_from_geant(g4track.GetKineticEnergy(), CLHEP::MeV));
 
     CELER_VALIDATE(track.particle_id,
                    << "cannot offload '"
                    << g4track.GetDefinition()->GetParticleName()
                    << "' particles");
 
-    track.position = convert_from_geant(g4track.GetPosition(), CLHEP::cm);
+    track.position = convert_from_geant(g4track.GetPosition(), clhep_length);
     track.direction = convert_from_geant(g4track.GetMomentumDirection(), 1);
-    track.time = convert_from_geant(g4track.GetGlobalTime(), CLHEP::s);
+    track.time = convert_from_geant(g4track.GetGlobalTime(), clhep_time);
 
     // TODO: Celeritas track IDs are independent from Geant4 track IDs, since
     // they must be sequential from zero for a given event. We may need to save
@@ -142,10 +191,18 @@ void LocalTransporter::Flush()
     {
         return;
     }
+    if (celeritas::device())
+    {
+        CELER_LOG_LOCAL(info)
+            << "Transporting " << buffer_.size() << " tracks from event "
+            << event_id_.unchecked_get() << " with Celeritas";
+    }
 
-    CELER_LOG_LOCAL(info) << "Transporting " << buffer_.size()
-                          << " tracks from event " << event_id_.unchecked_get()
-                          << " with Celeritas";
+    if (dump_primaries_)
+    {
+        // Write offload particles if user requested
+        (*dump_primaries_)(buffer_);
+    }
 
     // Abort cleanly for interrupt and user-defined signals
     ScopedSignalHandler interrupted{SIGINT, SIGUSR2};
@@ -188,6 +245,31 @@ void LocalTransporter::Finalize()
     *this = {};
 
     CELER_ENSURE(!*this);
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Get the accumulated action times.
+ */
+auto LocalTransporter::GetActionTime() const -> MapStrReal
+{
+    CELER_EXPECT(*this);
+
+    MapStrReal result;
+    auto const& action_seq = step_->actions();
+    if (action_seq.action_times())
+    {
+        // Save kernel timing if synchronization is enabled
+        auto const& action_ptrs = action_seq.actions();
+        auto const& time = action_seq.accum_time();
+
+        CELER_ASSERT(action_ptrs.size() == time.size());
+        for (auto i : range(action_ptrs.size()))
+        {
+            result[std::string{action_ptrs[i]->label()}] = time[i];
+        }
+    }
+    return result;
 }
 
 //---------------------------------------------------------------------------//

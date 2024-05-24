@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -10,7 +10,7 @@
 #include <type_traits>
 
 #include "celeritas_config.h"
-#include "celeritas/Constants.hh"
+#include "corecel/math/Turn.hh"
 
 #include "celeritas_test.hh"
 
@@ -24,14 +24,14 @@ namespace test
 {
 //---------------------------------------------------------------------------//
 
-using constants::pi;
+constexpr double pi = m_pi;
 
 // One revolution = 2pi radians
 struct TwoPi
 {
-    static double value() { return 2 * constants::pi; }
+    static double value() { return 2 * pi; }
 };
-using Revolution = Quantity<TwoPi, double>;
+using Revolution = Quantity<TwoPi>;
 
 struct DozenUnit
 {
@@ -43,11 +43,14 @@ struct DozenUnit
 // TESTS
 //---------------------------------------------------------------------------//
 
-TEST(QuantityTest, simplicity)
+TEST(QuantityTest, constexpr_attributes)
 {
+    EXPECT_TRUE((std::is_same_v<Revolution::value_type, double>));
     EXPECT_EQ(sizeof(Revolution), sizeof(double));
     EXPECT_TRUE(std::is_standard_layout<Revolution>::value);
     EXPECT_TRUE(std::is_default_constructible<Revolution>::value);
+
+    EXPECT_TRUE((std::is_same_v<Quantity<DozenUnit>::value_type, int>));
 }
 
 TEST(QuantityTest, usage)
@@ -64,12 +67,12 @@ TEST(QuantityTest, usage)
     EXPECT_SOFT_EQ(2 * pi / 16, native_value_from(spacing));
 
     // Create a quantity from a literal value in the native unit system
-    auto half_rev = native_value_to<Revolution>(constants::pi);
+    auto half_rev = native_value_to<Revolution>(pi);
     EXPECT_TRUE((std::is_same<decltype(half_rev), Revolution>::value));
     EXPECT_DOUBLE_EQ(0.5, value_as<Revolution>(half_rev));
 
     // Check integer division works correctly
-    using Dozen = Quantity<DozenUnit, int>;
+    using Dozen = Quantity<DozenUnit>;
     auto two_dozen = native_value_to<Dozen>(24);
     EXPECT_TRUE((std::is_same_v<decltype(two_dozen), Dozen>));
     EXPECT_EQ(2, value_as<Dozen>(two_dozen));
@@ -90,6 +93,11 @@ TEST(QuantityTest, zeros)
     // Construct from a "zero" sentinel type
     zero_turn = zero_quantity();
     EXPECT_EQ(0, value_as<Revolution>(zero_turn));
+
+    // Check int/untyped commparisons
+    using Dozen = Quantity<DozenUnit, int>;
+    EXPECT_GT(Dozen{1}, zero_quantity());
+    EXPECT_LT(Dozen{1}, max_quantity());
 }
 
 TEST(QuantityTest, mixed_precision)
@@ -97,7 +105,7 @@ TEST(QuantityTest, mixed_precision)
     using RevInt = Quantity<TwoPi, int>;
     auto fourpi = native_value_from(RevInt{2});
     EXPECT_TRUE((std::is_same_v<decltype(fourpi), double>));
-    EXPECT_SOFT_EQ(4 * constants::pi, fourpi);
+    EXPECT_SOFT_EQ(4 * pi, fourpi);
 
     using DozenDbl = Quantity<DozenUnit, double>;
     auto two_dozen = native_value_to<DozenDbl>(24);
@@ -177,7 +185,7 @@ TEST(QuantityTest, math)
 
     // Test mixed precision
     {
-        EXPECT_DOUBLE_EQ(4 * constants::pi, native_value_from(RevInt{2}));
+        EXPECT_DOUBLE_EQ(4 * pi, native_value_from(RevInt{2}));
         auto added = RevFlt{1.5} + RevInt{1};
         EXPECT_TRUE((std::is_same<decltype(added), RevFlt>::value));
     }
@@ -190,7 +198,7 @@ TEST(QuantityTest, math)
 
 TEST(QuantityTest, swappiness)
 {
-    using Dozen = Quantity<DozenUnit, int>;
+    using Dozen = Quantity<DozenUnit>;
     Dozen dozen{1}, gross{12};
     {
         // ADL should prefer swap implementation
@@ -212,7 +220,7 @@ TEST(QuantityTest, swappiness)
 TEST(QuantityTest, TEST_IF_CELERITAS_JSON(io))
 {
 #if CELERITAS_USE_JSON
-    using Dozen = Quantity<DozenUnit, int>;
+    using Dozen = Quantity<DozenUnit>;
 
     {
         SCOPED_TRACE("Input as scalar");
@@ -243,6 +251,51 @@ TEST(QuantityTest, TEST_IF_CELERITAS_JSON(io))
         EXPECT_EQ(std::string(expected), std::string(out.dump()));
     }
 #endif
+}
+
+TEST(TurnTest, basic)
+{
+    EXPECT_STREQ("tr", Turn::unit_type::label());
+    EXPECT_SOFT_EQ(0.5, Turn{0.5}.value());
+    EXPECT_REAL_EQ(2 * pi, native_value_from(Turn{1}));
+}
+
+TEST(TurnTest, math)
+{
+    EXPECT_EQ(real_type(1), sin(Turn{0.25}));
+    EXPECT_EQ(real_type(-1), cos(Turn{0.5}));
+    EXPECT_EQ(real_type(0), sin(Turn{0}));
+}
+
+TEST(QuarterTurnTest, basic)
+{
+    EXPECT_STREQ("qtr", QuarterTurn::unit_type::label());
+    EXPECT_EQ(-1, QuarterTurn{-1}.value());
+    EXPECT_EQ(1, QuarterTurn{1}.value());
+    EXPECT_REAL_EQ(2 * pi, native_value_from(QuarterTurn{4}));
+}
+
+TEST(QuarterTurnTest, sincos)
+{
+    std::vector<int> result;
+    for (auto i : range(-4, 5))
+    {
+        result.push_back(sin(QuarterTurn{i}));
+        result.push_back(cos(QuarterTurn{i}));
+    }
+    // clang-format off
+    static int const expected_result[]
+        = {  0,  1, // -1 turn
+             1,  0, // -3/4 turn
+             0, -1, // -1/2 turn
+            -1,  0, // -1/4 turn
+             0,  1, // 0 turn
+             1,  0, // 1/4
+             0, -1, // 1/2
+            -1,  0, // 3/4
+             0,  1}; // 1
+    // clang-format on
+    EXPECT_VEC_EQ(expected_result, result);
 }
 
 //---------------------------------------------------------------------------//

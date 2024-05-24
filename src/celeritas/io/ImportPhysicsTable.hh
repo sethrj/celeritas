@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "ImportPhysicsVector.hh"
+#include "ImportUnits.hh"
 
 namespace celeritas
 {
@@ -35,36 +36,6 @@ enum class ImportTableType
     dedx,  //!< Energy loss summed over processes
     range,  //!< Integrated inverse energy loss
     msc_xs,  //!< Scaled transport cross section
-
-    //// DEPRECATED (remove in v0.4): Unused by celeritas ////
-    dedx_process,  //!< Energy loss table for a process
-    dedx_unrestricted,
-    csda_range,  //!< Continuous slowing down approximation
-
-    //// DEPRECATED (remove in v0.4): Removed in Geant4@11 ////
-    dedx_subsec,
-    ionization_subsec,
-    secondary_range,
-    inverse_range,  //!< Inverse mapping of range: (range -> energy)
-    sublambda,  //!< For subcutoff regions
-
-    size_
-};
-
-//---------------------------------------------------------------------------//
-/*!
- * Units of a physics table.
- */
-enum class ImportUnits
-{
-    none,  //!< Unitless
-    mev,  //!< Energy [MeV]
-    mev_per_cm,  //!< Energy loss [MeV/cm]
-    cm,  //!< Range [cm]
-    cm_inv,  //!< Macroscopic xs [1/cm]
-    cm_mev_inv,  //!< Macroscopic xs divided by energy [1/cm-MeV]
-    mev_2_per_cm,  //!< Macroscopic xs with energy^2 factored in [MeV^2/cm]
-    cm_2,  //!< Microscopic cross section [cm^2]
     size_
 };
 
@@ -75,8 +46,8 @@ enum class ImportUnits
 struct ImportPhysicsTable
 {
     ImportTableType table_type{ImportTableType::size_};
-    ImportUnits x_units{ImportUnits::none};
-    ImportUnits y_units{ImportUnits::none};
+    ImportUnits x_units{ImportUnits::unitless};
+    ImportUnits y_units{ImportUnits::unitless};
     std::vector<ImportPhysicsVector> physics_vectors;
 
     explicit operator bool() const
@@ -89,8 +60,8 @@ struct ImportPhysicsTable
 // FREE FUNCTIONS
 //---------------------------------------------------------------------------//
 
+// Get the string value for a table type
 char const* to_cstring(ImportTableType value);
-char const* to_cstring(ImportUnits value);
 
 //---------------------------------------------------------------------------//
 }  // namespace celeritas

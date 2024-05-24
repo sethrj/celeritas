@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -131,7 +131,7 @@ CELER_FUNCTION auto Interpolator<XI, YI, T>::operator()(real_type x) const
 {
     CELER_EXPECT(XTraits_t::valid_domain(x));
     real_type result = YTraits_t::transform_inv(
-        intercept_ + slope_ * (XTraits_t::add_transformed(offset_, x)));
+        std::fma(slope_, XTraits_t::add_transformed(offset_, x), intercept_));
 
     CELER_ENSURE(!std::isnan(result));
     return result;

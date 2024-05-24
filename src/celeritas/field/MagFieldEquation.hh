@@ -1,5 +1,5 @@
 //---------------------------------*-CUDA-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -11,6 +11,7 @@
 
 #include "corecel/Types.hh"
 #include "corecel/math/Algorithms.hh"
+#include "corecel/math/ArrayOperators.hh"
 #include "celeritas/Constants.hh"
 #include "celeritas/Quantities.hh"
 
@@ -73,7 +74,7 @@ class MagFieldEquation
 //---------------------------------------------------------------------------//
 template<class FieldT>
 CELER_FUNCTION MagFieldEquation(FieldT&&, units::ElementaryCharge)
-    ->MagFieldEquation<FieldT>;
+    -> MagFieldEquation<FieldT>;
 
 //---------------------------------------------------------------------------//
 // INLINE DEFINITIONS
@@ -108,12 +109,12 @@ MagFieldEquation<FieldT>::operator()(OdeState const& y) const -> OdeState
     // Evaluate the rate of change in particle's position per unit length: this
     // is just the direction
     OdeState result;
-    result.pos = detail::ax(momentum_inv, y.mom);
+    result.pos = momentum_inv * y.mom;
 
     // Calculate the magnetic field value at the current position
     // to calculate the force on the particle
-    result.mom = detail::ax(coeffi_ * momentum_inv,
-                            cross_product(y.mom, calc_field_(y.pos)));
+    result.mom = (coeffi_ * momentum_inv)
+                 * cross_product(y.mom, calc_field_(y.pos));
 
     return result;
 }

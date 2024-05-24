@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -22,7 +22,7 @@ class GridIdFinderTest : public Test
 {
   protected:
     using Energy = units::MevEnergy;
-    using IdT = OpaqueId<struct Foo>;
+    using IdT = OpaqueId<struct Foo_>;
     using FinderT = GridIdFinder<Energy, IdT>;
 
     std::vector<Energy::value_type> grid;

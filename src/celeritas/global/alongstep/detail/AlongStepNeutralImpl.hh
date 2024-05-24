@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -36,10 +36,10 @@ struct NoMsc
     }
 
     //! No updates needed to the physical and geometric step lengths
-    CELER_FUNCTION void limit_step(CoreTrackView const&, StepLimit*) const {}
+    CELER_FUNCTION void limit_step(CoreTrackView const&) const {}
 
     //! MSC is never applied
-    CELER_FUNCTION void apply_step(CoreTrackView const&, StepLimit*) const {}
+    CELER_FUNCTION void apply_step(CoreTrackView const&) const {}
 };
 
 //---------------------------------------------------------------------------//

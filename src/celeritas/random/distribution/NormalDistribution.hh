@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -8,6 +8,7 @@
 #pragma once
 
 #include <cmath>
+#include <type_traits>
 
 #include "corecel/Assert.hh"
 #include "corecel/Macros.hh"
@@ -35,6 +36,8 @@ namespace celeritas
 template<class RealType = ::celeritas::real_type>
 class NormalDistribution
 {
+    static_assert(std::is_floating_point_v<RealType>);
+
   public:
     //!@{
     //! \name Type aliases
@@ -52,8 +55,8 @@ class NormalDistribution
     inline CELER_FUNCTION result_type operator()(Generator& rng);
 
   private:
-    const real_type mean_;
-    const real_type stddev_;
+    real_type const mean_;
+    real_type const stddev_;
     real_type spare_{};
     bool has_spare_{false};
 };
@@ -85,14 +88,15 @@ CELER_FUNCTION auto NormalDistribution<RealType>::operator()(Generator& rng)
     if (has_spare_)
     {
         has_spare_ = false;
-        return spare_ * stddev_ + mean_;
+        return std::fma(spare_, stddev_, mean_);
     }
 
-    real_type theta = 2 * constants::pi * generate_canonical(rng);
-    real_type r = std::sqrt(-2 * std::log(generate_canonical(rng)));
+    constexpr auto twopi = static_cast<RealType>(2 * m_pi);
+    real_type theta = twopi * generate_canonical<RealType>(rng);
+    real_type r = std::sqrt(-2 * std::log(generate_canonical<RealType>(rng)));
     spare_ = r * std::cos(theta);
     has_spare_ = true;
-    return r * std::sin(theta) * stddev_ + mean_;
+    return std::fma(r * std::sin(theta), stddev_, mean_);
 }
 
 //---------------------------------------------------------------------------//

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -18,10 +18,10 @@
 #include "corecel/io/Label.hh"
 #include "celeritas/geo/GeoParams.hh"  // IWYU pragma: keep
 #include "celeritas/global/ActionRegistry.hh"
-#include "celeritas/user/StepInterface.hh"
-#include "celeritas/user/detail/StepStorage.hh"
 
+#include "StepInterface.hh"
 #include "detail/StepGatherAction.hh"
+#include "detail/StepStorage.hh"
 
 namespace celeritas
 {

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -10,6 +10,7 @@
 #include "corecel/Assert.hh"
 #include "corecel/Macros.hh"
 #include "corecel/Types.hh"
+#include "corecel/math/ArrayOperators.hh"
 #include "celeritas/Types.hh"
 #include "celeritas/em/data/UrbanMscData.hh"
 #include "celeritas/global/CoreTrackView.hh"
@@ -17,8 +18,9 @@
 #include "detail/MscStepFromGeo.hh"  // IWYU pragma: associated
 #include "detail/MscStepToGeo.hh"  // IWYU pragma: associated
 #include "detail/UrbanMscHelper.hh"  // IWYU pragma: associated
+#include "detail/UrbanMscMinimalStepLimit.hh"  // IWYU pragma: associated
+#include "detail/UrbanMscSafetyStepLimit.hh"  // IWYU pragma: associated
 #include "detail/UrbanMscScatter.hh"  // IWYU pragma: associated
-#include "detail/UrbanMscStepLimit.hh"  // IWYU pragma: associated
 
 namespace celeritas
 {
@@ -36,24 +38,23 @@ class UrbanMsc
 
   public:
     // Construct from MSC params
-    explicit inline CELER_FUNCTION UrbanMsc(ParamsRef const& params);
+    explicit inline CELER_FUNCTION UrbanMsc(ParamsRef const& shared);
 
     // Whether MSC applies to the current track
     inline CELER_FUNCTION bool
     is_applicable(CoreTrackView const&, real_type step) const;
 
     // Update the physical and geometric step lengths
-    inline CELER_FUNCTION void limit_step(CoreTrackView const&, StepLimit*);
+    inline CELER_FUNCTION void limit_step(CoreTrackView const&);
 
     // Apply MSC
-    inline CELER_FUNCTION void apply_step(CoreTrackView const&, StepLimit*);
+    inline CELER_FUNCTION void apply_step(CoreTrackView const&);
 
   private:
-    ParamsRef const msc_params_;
+    ParamsRef const shared_;
 
     // Whether the step was limited by geometry
-    static inline CELER_FUNCTION bool
-    is_geo_limited(CoreTrackView const&, StepLimit const&);
+    static inline CELER_FUNCTION bool is_geo_limited(CoreTrackView const&);
 };
 
 //---------------------------------------------------------------------------//
@@ -62,10 +63,9 @@ class UrbanMsc
 /*!
  * Construct with defaults.
  */
-CELER_FUNCTION UrbanMsc::UrbanMsc(ParamsRef const& params)
-    : msc_params_(params)
+CELER_FUNCTION UrbanMsc::UrbanMsc(ParamsRef const& shared) : shared_(shared)
 {
-    CELER_EXPECT(msc_params_);
+    CELER_EXPECT(shared_);
 }
 
 //---------------------------------------------------------------------------//
@@ -75,40 +75,40 @@ CELER_FUNCTION UrbanMsc::UrbanMsc(ParamsRef const& params)
 CELER_FUNCTION bool
 UrbanMsc::is_applicable(CoreTrackView const& track, real_type step) const
 {
-    if (step <= msc_params_.params.geom_limit)
+    if (step <= shared_.params.geom_limit)
         return false;
 
     if (track.make_sim_view().status() != TrackStatus::alive)
         return false;
 
     auto par = track.make_particle_view();
-    if (par.particle_id() != msc_params_.ids.electron
-        && par.particle_id() != msc_params_.ids.positron)
+    if (par.particle_id() != shared_.ids.electron
+        && par.particle_id() != shared_.ids.positron)
         return false;
 
-    return par.energy() > msc_params_.params.low_energy_limit
-           && par.energy() < msc_params_.params.high_energy_limit;
+    return par.energy() > shared_.params.low_energy_limit
+           && par.energy() < shared_.params.high_energy_limit;
 }
 
 //---------------------------------------------------------------------------//
 /*!
  * Update the physical and geometric step lengths.
  */
-CELER_FUNCTION void
-UrbanMsc::limit_step(CoreTrackView const& track, StepLimit* step_limit)
+CELER_FUNCTION void UrbanMsc::limit_step(CoreTrackView const& track)
 {
     auto phys = track.make_physics_view();
     auto par = track.make_particle_view();
-    detail::UrbanMscHelper msc_helper(msc_params_, par, phys);
+    auto sim = track.make_sim_view();
+    detail::UrbanMscHelper msc_helper(shared_, par, phys);
 
     bool displaced = false;
 
     // Sample multiple scattering step length
     real_type const true_path = [&] {
-        if (step_limit->step <= msc_params_.params.limit_min_fix())
+        if (sim.step_length() <= shared_.params.limit_min_fix())
         {
             // Very short step: don't displace or limit
-            return step_limit->step;
+            return sim.step_length();
         }
 
         auto geo = track.make_geo_view();
@@ -126,31 +126,47 @@ UrbanMsc::limit_step(CoreTrackView const& track, StepLimit* step_limit)
             {
                 // The nearest boundary is further than the maximum expected
                 // travel distance of the particle: don't displace or limit
-                return step_limit->step;
+                return sim.step_length();
             }
         }
 
-        displaced = true;
-        detail::UrbanMscStepLimit calc_limit(msc_params_,
-                                             msc_helper,
-                                             par.energy(),
-                                             &phys,
-                                             phys.material_id(),
-                                             geo.is_on_boundary(),
-                                             safety,
-                                             step_limit->step);
         auto rng = track.make_rng_engine();
-        return calc_limit(rng);
-    }();
-    CELER_ASSERT(true_path <= step_limit->step);
+        displaced = true;
 
-    bool limited = (true_path < step_limit->step);
+        if (phys.scalars().step_limit_algorithm
+            == MscStepLimitAlgorithm::minimal)
+        {
+            // Calculate step limit using "minimal" algorithm
+            detail::UrbanMscMinimalStepLimit calc_limit(shared_,
+                                                        msc_helper,
+                                                        &phys,
+                                                        geo.is_on_boundary(),
+                                                        sim.step_length());
+            return calc_limit(rng);
+        }
+
+        // Calculate step limit using "safety" or "safety plus" algorithm
+        detail::UrbanMscSafetyStepLimit calc_limit(shared_,
+                                                   msc_helper,
+                                                   par.energy(),
+                                                   &phys,
+                                                   phys.material_id(),
+                                                   geo.is_on_boundary(),
+                                                   safety,
+                                                   sim.step_length());
+        return calc_limit(rng);
+
+        // TODO: "distance to boundary" step limit algorithm
+    }();
+    CELER_ASSERT(true_path <= sim.step_length());
+
+    bool limited = (true_path < sim.step_length());
 
     // Always apply the step transformation, even if the physical step wasn't
     // necessarily limited. This transformation will be reversed in
     // `apply_step` below.
     auto gp = [&] {
-        detail::MscStepToGeo calc_geom_path(msc_params_,
+        detail::MscStepToGeo calc_geom_path(shared_,
                                             msc_helper,
                                             par.energy(),
                                             msc_helper.msc_mfp(),
@@ -178,11 +194,11 @@ UrbanMsc::limit_step(CoreTrackView const& track, StepLimit* step_limit)
         return result;
     }());
 
-    step_limit->step = gp.step;
+    sim.step_length(gp.step);
     if (limited)
     {
         // Physical step was further limited by MSC
-        step_limit->action = phys.scalars().msc_action();
+        sim.post_step_action(phys.scalars().msc_action());
     }
 }
 
@@ -190,26 +206,24 @@ UrbanMsc::limit_step(CoreTrackView const& track, StepLimit* step_limit)
 /*!
  * Apply MSC.
  */
-CELER_FUNCTION void
-UrbanMsc::apply_step(CoreTrackView const& track, StepLimit* step_limit)
+CELER_FUNCTION void UrbanMsc::apply_step(CoreTrackView const& track)
 {
     auto par = track.make_particle_view();
     auto geo = track.make_geo_view();
     auto phys = track.make_physics_view();
+    auto sim = track.make_sim_view();
 
     // Replace step with actual geometry distance traveled
-    detail::UrbanMscHelper msc_helper(msc_params_, par, phys);
+    detail::UrbanMscHelper msc_helper(shared_, par, phys);
     auto msc_step = track.make_physics_step_view().msc_step();
-    if (this->is_geo_limited(track, *step_limit))
+    if (this->is_geo_limited(track))
     {
         // Convert geometrical distance to equivalent physical distance, which
         // will be greater than (or in edge cases equal to) that distance and
         // less than the original physical step limit.
-        msc_step.geom_path = step_limit->step;
-        detail::MscStepFromGeo geo_to_true(msc_params_.params,
-                                           msc_step,
-                                           phys.dedx_range(),
-                                           msc_helper.msc_mfp());
+        msc_step.geom_path = sim.step_length();
+        detail::MscStepFromGeo geo_to_true(
+            shared_.params, msc_step, phys.dedx_range(), msc_helper.msc_mfp());
         msc_step.true_path = geo_to_true(msc_step.geom_path);
         CELER_ASSERT(msc_step.true_path >= msc_step.geom_path);
 
@@ -219,7 +233,7 @@ UrbanMsc::apply_step(CoreTrackView const& track, StepLimit* step_limit)
 
     // Update full path length traveled along the step based on MSC to
     // correctly calculate energy loss, step time, etc.
-    step_limit->step = msc_step.true_path;
+    sim.step_length(msc_step.true_path);
 
     auto msc_result = [&] {
         real_type safety = 0;
@@ -234,8 +248,8 @@ UrbanMsc::apply_step(CoreTrackView const& track, StepLimit* step_limit)
             // bound here using [1 + 2*eps > 1/(1 - eps)], and we want to check
             // to at least the minimum geometry limit.
             // TODO: this is hacky and relies on UrbanMscScatter internals...
-            displ = max(displ * (1 + 2 * msc_params_.params.safety_tol),
-                        msc_params_.params.geom_limit);
+            displ = max(displ * (1 + 2 * shared_.params.safety_tol),
+                        shared_.params.geom_limit);
             safety = geo.find_safety(displ);
             if (CELER_UNLIKELY(safety == 0))
             {
@@ -248,7 +262,7 @@ UrbanMsc::apply_step(CoreTrackView const& track, StepLimit* step_limit)
 
         auto mat = track.make_material_view().make_material_view();
         detail::UrbanMscScatter sample_scatter(
-            msc_params_, msc_helper, par, phys, mat, geo.dir(), safety, msc_step);
+            shared_, msc_helper, par, phys, mat, geo.dir(), safety, msc_step);
 
         auto rng = track.make_rng_engine();
         return sample_scatter(rng);
@@ -264,12 +278,7 @@ UrbanMsc::apply_step(CoreTrackView const& track, StepLimit* step_limit)
     {
         // Displacment during a boundary crossing is *not* OK
         CELER_ASSERT(!geo.is_on_boundary());
-        Real3 new_pos;
-        for (int i = 0; i < 3; ++i)
-        {
-            new_pos[i] = geo.pos()[i] + msc_result.displacement[i];
-        }
-        geo.move_internal(new_pos);
+        geo.move_internal(geo.pos() + msc_result.displacement);
     }
 }
 
@@ -281,11 +290,11 @@ UrbanMsc::apply_step(CoreTrackView const& track, StepLimit* step_limit)
  * it should be "boundary action") but in rare circumstances the propagation
  * has to pause before the end of the step is reached.
  */
-CELER_FUNCTION bool
-UrbanMsc::is_geo_limited(CoreTrackView const& track, StepLimit const& limit)
+CELER_FUNCTION bool UrbanMsc::is_geo_limited(CoreTrackView const& track)
 {
-    return (limit.action == track.boundary_action()
-            || limit.action == track.propagation_limit_action());
+    auto sim = track.make_sim_view();
+    return (sim.post_step_action() == track.boundary_action()
+            || sim.post_step_action() == track.propagation_limit_action());
 }
 
 //---------------------------------------------------------------------------//

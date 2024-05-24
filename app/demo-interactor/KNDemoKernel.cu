@@ -1,5 +1,5 @@
 //---------------------------------*-CUDA-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -73,7 +73,7 @@ __global__ void move_kernel(DeviceCRef<ParamsData> const params,
     // Construct particle accessor from immutable and thread-local data
     ParticleTrackView particle(
         params.particle, states.particle, TrackSlotId(tid));
-    RngEngine rng(states.rng, TrackSlotId(tid));
+    RngEngine rng(params.rng, states.rng, TrackSlotId(tid));
 
     // Move to collision
     XsCalculator calc_xs(params.tables.xs, params.tables.reals);
@@ -109,7 +109,7 @@ __global__ void interact_kernel(DeviceCRef<ParamsData> const params,
     // Construct particle accessor from immutable and thread-local data
     ParticleTrackView particle(
         params.particle, states.particle, TrackSlotId(tid));
-    RngEngine rng(states.rng, TrackSlotId(tid));
+    RngEngine rng(params.rng, states.rng, TrackSlotId(tid));
 
     Detector detector(params.detector, states.detector);
 
@@ -192,9 +192,6 @@ __global__ void cleanup_kernel(DeviceCRef<ParamsData> const params,
 //---------------------------------------------------------------------------//
 // KERNEL INTERFACES
 //---------------------------------------------------------------------------//
-#define CDE_LAUNCH_KERNEL(NAME, BLOCK_SIZE, THREADS, ...) \
-    CELER_LAUNCH_KERNEL(NAME, BLOCK_SIZE, THREADS, 0, __VA_ARGS__)
-
 /*!
  * Initialize particle states.
  */
@@ -205,12 +202,7 @@ void initialize(DeviceGridParams const& opts,
 {
     CELER_EXPECT(states.alive.size() == states.size());
     CELER_EXPECT(states.rng.size() == states.size());
-    CDE_LAUNCH_KERNEL(initialize,
-                      opts.threads_per_block,
-                      states.size(),
-                      params,
-                      states,
-                      initial);
+    CELER_LAUNCH_KERNEL(initialize, states.size(), 0, params, states, initial);
 }
 
 //---------------------------------------------------------------------------//
@@ -222,12 +214,10 @@ void iterate(DeviceGridParams const& opts,
              DeviceRef<StateData> const& states)
 {
     // Move to the collision site
-    CDE_LAUNCH_KERNEL(
-        move, opts.threads_per_block, states.size(), params, states);
+    CELER_LAUNCH_KERNEL(move, states.size(), 0, params, states);
 
     // Perform the interaction
-    CDE_LAUNCH_KERNEL(
-        interact, opts.threads_per_block, states.size(), params, states);
+    CELER_LAUNCH_KERNEL(interact, states.size(), 0, params, states);
 
     if (opts.sync)
     {
@@ -245,14 +235,11 @@ void cleanup(DeviceGridParams const& opts,
              DeviceRef<StateData> const& states)
 {
     // Process hits from buffer to grid
-    CDE_LAUNCH_KERNEL(process_hits,
-                      opts.threads_per_block,
-                      states.detector.capacity(),
-                      params,
-                      states);
+    CELER_LAUNCH_KERNEL(
+        process_hits, states.detector.capacity(), 0, params, states);
 
     // Clear buffers
-    CDE_LAUNCH_KERNEL(cleanup, device().threads_per_warp(), 1, params, states);
+    CELER_LAUNCH_KERNEL(cleanup, 1, 0, params, states);
 
     if (opts.sync)
     {

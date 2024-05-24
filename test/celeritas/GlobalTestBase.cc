@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -94,6 +94,7 @@ auto GlobalTestBase::build_core() -> SPConstCore
     inp.rng = this->rng();
     inp.sim = this->sim();
     inp.init = this->init();
+    inp.wentzel = this->wentzel();
     inp.action_reg = this->action_reg();
     inp.output_reg = this->output_reg();
     CELER_ASSERT(inp);

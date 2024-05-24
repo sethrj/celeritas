@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -10,30 +10,28 @@
 #include <memory>
 #include <utility>
 #include <G4ParticleTable.hh>
+#include <G4RunManager.hh>
 #include <G4VPhysicalVolume.hh>
 #include <G4VUserDetectorConstruction.hh>
 #include <G4Version.hh>
-
 #if G4VERSION_NUMBER >= 1070
 #    include <G4Backtrace.hh>
-#else
-#    include <G4MTRunManager.hh>
 #endif
 #if G4VERSION_NUMBER >= 1100
 #    include <G4RunManagerFactory.hh>
-#else
-#    include <G4RunManager.hh>
 #endif
 
 #include "corecel/io/Logger.hh"
 #include "corecel/io/ScopedTimeAndRedirect.hh"
 #include "corecel/io/ScopedTimeLog.hh"
 #include "corecel/sys/ScopedMem.hh"
+#include "corecel/sys/ScopedProfiling.hh"
+#include "geocel/GeantGeoUtils.hh"
+#include "geocel/GeantUtils.hh"
+#include "geocel/ScopedGeantExceptionHandler.hh"
+#include "geocel/ScopedGeantLogger.hh"
 
-#include "GeantGeoUtils.hh"
-#include "ScopedGeantExceptionHandler.hh"
-#include "ScopedGeantLogger.hh"
-#include "detail/GeantPhysicsList.hh"
+#include "detail/CelerEmPhysicsList.hh"
 
 namespace celeritas
 {
@@ -62,46 +60,12 @@ class DetectorConstruction : public G4VUserDetectorConstruction
 
 //---------------------------------------------------------------------------//
 /*!
- * Get the number of threads in a version-portable way.
- *
- * G4RunManager::GetNumberOfThreads isn't virtual before Geant4 v10.7.0 so we
- * need to explicitly dynamic cast to G4MTRunManager to get the number of
- * threads.
- */
-int get_num_threads(G4RunManager const& runman)
-{
-#if G4VERSION_NUMBER >= 1070
-    return runman.GetNumberOfThreads();
-#else
-    if (auto const* runman_mt = dynamic_cast<G4MTRunManager const*>(&runman))
-    {
-        return runman_mt->GetNumberOfThreads();
-    }
-    // Not multithreaded
-    return 1;
-#endif
-}
-
-//---------------------------------------------------------------------------//
-/*!
- * Clear ROOT's signal handlers that get installed on startup/activation.
- */
-void GeantSetup::disable_signal_handler()
-{
-#if G4VERSION_NUMBER >= 1070
-    CELER_LOG(debug) << "Disabling Geant4 signal handlers";
-    // Disable geant4 signal interception
-    G4Backtrace::DefaultSignals() = {};
-#endif
-}
-
-//---------------------------------------------------------------------------//
-/*!
  * Construct from a GDML file and physics options.
  */
 GeantSetup::GeantSetup(std::string const& gdml_filename, Options options)
 {
     CELER_LOG(status) << "Initializing Geant4 run manager";
+    ScopedProfiling profile_this{"initialize-geant"};
     ScopedMem record_setup_mem("GeantSetup.construct");
 
     {
@@ -123,7 +87,7 @@ GeantSetup::GeantSetup(std::string const& gdml_filename, Options options)
         ++geant_launch_count;
 
         // Disable signal handling
-        this->disable_signal_handler();
+        disable_geant_signal_handler();
 
 #if G4VERSION_NUMBER >= 1100
         run_manager_.reset(
@@ -150,7 +114,8 @@ GeantSetup::GeantSetup(std::string const& gdml_filename, Options options)
         run_manager_->SetUserInitialization(detector.release());
 
         // Construct the physics
-        auto physics_list = std::make_unique<detail::GeantPhysicsList>(options);
+        auto physics_list
+            = std::make_unique<detail::CelerEmPhysicsList>(options);
         run_manager_->SetUserInitialization(physics_list.release());
     }
 

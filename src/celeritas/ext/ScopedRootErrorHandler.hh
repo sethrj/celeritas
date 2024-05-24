@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -33,14 +33,14 @@ class ScopedRootErrorHandler
     ~ScopedRootErrorHandler();
     //!@{
     //! Prevent copying and moving for RAII class
-    CELER_DELETE_COPY_MOVE(ScopedRootErrorHandler)
+    CELER_DELETE_COPY_MOVE(ScopedRootErrorHandler);
     //!@}
 
   private:
     using ErrorHandlerFuncPtr = void (*)(int, bool, char const*, char const*);
 
-    ErrorHandlerFuncPtr previous_;
-    bool prev_errored_;
+    ErrorHandlerFuncPtr previous_{nullptr};
+    bool prev_errored_{false};
 };
 
 #if !CELERITAS_USE_ROOT
@@ -49,8 +49,8 @@ class ScopedRootErrorHandler
 inline void ScopedRootErrorHandler::disable_signal_handler() {}
 inline ScopedRootErrorHandler::ScopedRootErrorHandler()
 {
-    (void)sizeof(previous_);
-    (void)sizeof(prev_errored_);
+    CELER_DISCARD(previous_);
+    CELER_DISCARD(prev_errored_);
 }
 inline ScopedRootErrorHandler::~ScopedRootErrorHandler() {}
 inline void ScopedRootErrorHandler::throw_if_errors() const {}

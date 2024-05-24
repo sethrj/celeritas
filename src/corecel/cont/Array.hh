@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -7,13 +7,14 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
+#include <cstddef>
+#include <utility>
+
 #include "corecel/Macros.hh"
 #include "corecel/Types.hh"
 
 namespace celeritas
 {
-#define CFIF_ CELER_FORCEINLINE_FUNCTION
-
 //---------------------------------------------------------------------------//
 /*!
  * Fixed-size simple array for storage.
@@ -22,6 +23,12 @@ namespace celeritas
  * N=0 for example. Additionally it uses the native celeritas \c size_type,
  * even though this has *no* effect on generated code for values of N inside
  * the range of \c size_type.
+ *
+ * \note For supplementary functionality, include:
+ * - \c corecel/math/ArrayUtils.hh for real-number vector/matrix applications
+ * - \c corecel/math/ArrayOperators.hh for mathematical operators
+ * - \c ArrayIO.hh for streaming and string conversion
+ * - \c ArrayIO.json.hh for JSON input and output
  */
 template<class T, ::celeritas::size_type N>
 struct Array
@@ -46,36 +53,61 @@ struct Array
 
     //!@{
     //! \name Element access
-    CFIF_ const_reference operator[](size_type i) const { return data_[i]; }
-    CFIF_ reference operator[](size_type i) { return data_[i]; }
-    CFIF_ const_reference front() const { return data_[0]; }
-    CFIF_ reference front() { return data_[0]; }
-    CFIF_ const_reference back() const { return data_[N - 1]; }
-    CFIF_ reference back() { return data_[N - 1]; }
-    CFIF_ const_pointer data() const { return data_; }
-    CFIF_ pointer data() { return data_; }
+    CELER_CONSTEXPR_FUNCTION const_reference operator[](size_type i) const
+    {
+        return data_[i];
+    }
+    CELER_CONSTEXPR_FUNCTION reference operator[](size_type i)
+    {
+        return data_[i];
+    }
+    CELER_CONSTEXPR_FUNCTION const_reference front() const { return data_[0]; }
+    CELER_CONSTEXPR_FUNCTION reference front() { return data_[0]; }
+    CELER_CONSTEXPR_FUNCTION const_reference back() const
+    {
+        return data_[N - 1];
+    }
+    CELER_CONSTEXPR_FUNCTION reference back() { return data_[N - 1]; }
+    CELER_CONSTEXPR_FUNCTION const_pointer data() const { return data_; }
+    CELER_CONSTEXPR_FUNCTION pointer data() { return data_; }
+
+    //! Access for structured unpacking
+    template<std::size_t I>
+    CELER_CONSTEXPR_FUNCTION T& get()
+    {
+        static_assert(I < static_cast<std::size_t>(N));
+        return data_[I];
+    }
+
+    //! Access for structured unpacking
+    template<std::size_t I>
+    CELER_CONSTEXPR_FUNCTION T const& get() const
+    {
+        static_assert(I < static_cast<std::size_t>(N));
+        return data_[I];
+    }
     //!@}
 
     //!@{
     //! \name Iterators
-    CFIF_ iterator begin() { return data_; }
-    CFIF_ iterator end() { return data_ + N; }
-    CFIF_ const_iterator begin() const { return data_; }
-    CFIF_ const_iterator end() const { return data_ + N; }
-    CFIF_ const_iterator cbegin() const { return data_; }
-    CFIF_ const_iterator cend() const { return data_ + N; }
+    CELER_CONSTEXPR_FUNCTION iterator begin() { return data_; }
+    CELER_CONSTEXPR_FUNCTION iterator end() { return data_ + N; }
+    CELER_CONSTEXPR_FUNCTION const_iterator begin() const { return data_; }
+    CELER_CONSTEXPR_FUNCTION const_iterator end() const { return data_ + N; }
+    CELER_CONSTEXPR_FUNCTION const_iterator cbegin() const { return data_; }
+    CELER_CONSTEXPR_FUNCTION const_iterator cend() const { return data_ + N; }
     //!@}
 
     //!@{
     //! \name Capacity
     CELER_CONSTEXPR_FUNCTION bool empty() const { return N == 0; }
-    CELER_CONSTEXPR_FUNCTION size_type size() const { return N; }
+    static CELER_CONSTEXPR_FUNCTION size_type size() { return N; }
     //!@}
 
     //!@{
     //! \name  Operations
     //! Fill the array with a constant value
-    CFIF_ void fill(const_reference value)
+    CELER_CONSTEXPR_FUNCTION void fill(const_reference value)
     {
         for (size_type i = 0; i != N; ++i)
             data_[i] = value;
@@ -90,7 +122,7 @@ struct Array
  * Test equality of two arrays.
  */
 template<class T, size_type N>
-inline CELER_FUNCTION bool
+CELER_CONSTEXPR_FUNCTION bool
 operator==(Array<T, N> const& lhs, Array<T, N> const& rhs)
 {
     for (size_type i = 0; i != N; ++i)
@@ -106,12 +138,35 @@ operator==(Array<T, N> const& lhs, Array<T, N> const& rhs)
  * Test inequality of two arrays.
  */
 template<class T, size_type N>
-CFIF_ bool operator!=(Array<T, N> const& lhs, Array<T, N> const& rhs)
+CELER_CONSTEXPR_FUNCTION bool
+operator!=(Array<T, N> const& lhs, Array<T, N> const& rhs)
 {
     return !(lhs == rhs);
 }
 
-#undef CFIF_
-
 //---------------------------------------------------------------------------//
 }  // namespace celeritas
+
+//---------------------------------------------------------------------------//
+//! \cond
+namespace std
+{
+//---------------------------------------------------------------------------//
+//! Support structured binding: array size
+template<class T, celeritas::size_type N>
+struct tuple_size<celeritas::Array<T, N>>
+{
+    static constexpr std::size_t value = N;
+};
+
+//! Support structured binding: array element type
+template<std::size_t I, class T, celeritas::size_type N>
+struct tuple_element<I, celeritas::Array<T, N>>
+{
+    static_assert(I < std::tuple_size<celeritas::Array<T, N>>::value);
+    using type = T;
+};
+
+//---------------------------------------------------------------------------//
+}  // namespace std
+//! \endcond

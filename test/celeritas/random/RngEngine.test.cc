@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -121,7 +121,7 @@ TEST_F(SequenceEngineTest, double_canonical)
     {
         double actual = generate_canonical<double>(engine);
         // Test within 2 ulp
-        EXPECT_DOUBLE_EQ(expected, actual)
+        EXPECT_REAL_EQ(expected, actual)
             << "for i=" << (engine.count() / 2 - 1);
         EXPECT_LT(actual, 1.0);
     }
@@ -177,7 +177,8 @@ TEST_F(DeviceRngEngineTest, TEST_IF_CELER_DEVICE(device))
     RngDeviceStore rng_store(params->host_ref(), StreamId{0}, 1024);
 
     // Generate on device
-    std::vector<unsigned int> values = re_test_native(rng_store.ref());
+    std::vector<unsigned int> values
+        = re_test_native(params->device_ref(), rng_store.ref());
 
     // Print a subset of the values
     std::vector<unsigned int> test_values;
@@ -253,14 +254,14 @@ void check_expected_float_samples(std::vector<double> const& v)
 {
     ASSERT_LE(2, v.size());
 #if CELERITAS_CORE_RNG == CELERITAS_CORE_RNG_CURAND
-    EXPECT_DOUBLE_EQ(0.283318433931184, v[0]);
-    EXPECT_DOUBLE_EQ(0.653335242131673, v[1]);
+    EXPECT_REAL_EQ(0.283318433931184, v[0]);
+    EXPECT_REAL_EQ(0.653335242131673, v[1]);
 #elif CELERITAS_CORE_RNG == CELERITAS_CORE_RNG_HIPRAND
-    EXPECT_DOUBLE_EQ(0.22503638759639666, v[0]);
-    EXPECT_DOUBLE_EQ(0.73006306995055248, v[1]);
+    EXPECT_REAL_EQ(0.22503638759639666, v[0]);
+    EXPECT_REAL_EQ(0.73006306995055248, v[1]);
 #elif CELERITAS_CORE_RNG == CELERITAS_CORE_RNG_XORWOW
-    EXPECT_DOUBLE_EQ(0.11456196141430341, v[0]);
-    EXPECT_DOUBLE_EQ(0.71564819382390976, v[1]);
+    EXPECT_REAL_EQ(0.11456196141430341, v[0]);
+    EXPECT_REAL_EQ(0.71564819382390976, v[1]);
 #else
     FAIL() << "Unexpected RNG";
 #endif
@@ -282,7 +283,8 @@ TYPED_TEST(DeviceRngEngineFloatTest, DISABLED_device)
     RngDeviceStore rng_store(this->params->host_ref(), StreamId{0}, 100);
 
     // Generate on device
-    auto values = re_test_canonical<real_type>(rng_store.ref());
+    auto values = re_test_canonical<real_type>(this->params->device_ref(),
+                                               rng_store.ref());
 
     // Test result
     EXPECT_EQ(rng_store.size(), values.size());

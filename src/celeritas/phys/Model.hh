@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -16,7 +16,7 @@
 #include "celeritas/Types.hh"
 #include "celeritas/global/ActionInterface.hh"  // IWYU pragma: export
 #include "celeritas/grid/ValueGridBuilder.hh"
-#include "celeritas/grid/ValueGridData.hh"
+#include "celeritas/grid/ValueGridType.hh"
 
 #include "Applicability.hh"  // IWYU pragma: export
 
@@ -47,7 +47,7 @@ namespace celeritas
  * This class is similar to Geant4's G4VContinuousDiscrete process, but more
  * limited.
  */
-class Model : public ExplicitActionInterface
+class Model : public ExplicitCoreActionInterface
 {
   public:
     //@{

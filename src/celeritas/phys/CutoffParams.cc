@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -18,9 +18,9 @@
 #include "celeritas/io/ImportData.hh"
 #include "celeritas/io/ImportMaterial.hh"
 #include "celeritas/mat/MaterialParams.hh"
-#include "celeritas/phys/ParticleParams.hh"
 
 #include "CutoffData.hh"  // IWYU pragma: associated
+#include "ParticleParams.hh"
 
 namespace celeritas
 {
@@ -50,8 +50,9 @@ CutoffParams::from_import(ImportData const& data,
             if (iter != material.pdg_cutoffs.end())
             {
                 // Found assigned cutoff values
-                mat_cutoffs.push_back({units::MevEnergy{iter->second.energy},
-                                       iter->second.range});
+                mat_cutoffs.push_back(
+                    {units::MevEnergy(iter->second.energy),
+                     static_cast<real_type>(iter->second.range)});
             }
             else
             {
@@ -139,7 +140,7 @@ CutoffParams::CutoffParams(Input const& input)
  */
 std::vector<PDGNumber> const& CutoffParams::pdg_numbers()
 {
-    static const std::vector<PDGNumber> pdg_numbers{
+    static std::vector<PDGNumber> const pdg_numbers{
         pdg::electron(), pdg::gamma(), pdg::positron()};
     return pdg_numbers;
 }

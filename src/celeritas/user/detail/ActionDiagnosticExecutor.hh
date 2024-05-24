@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -40,7 +40,7 @@ ActionDiagnosticExecutor::operator()(CoreTrackView const& track)
 
     using BinId = ItemId<size_type>;
 
-    auto action = track.make_sim_view().step_limit().action;
+    auto action = track.make_sim_view().post_step_action();
     CELER_ASSERT(action);
     auto particle = track.make_particle_view().particle_id();
     CELER_ASSERT(particle);

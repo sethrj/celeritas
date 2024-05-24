@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -70,7 +70,7 @@ struct RZMapFieldParamsData
                 && r >= grids.data_r.front && r <= grids.data_r.back);
     }
 
-    inline CELER_FUNCTION ElementId id(int idx_z, int idx_r) const
+    inline CELER_FUNCTION ElementId id(size_type idx_z, size_type idx_r) const
     {
         CELER_EXPECT(grids.data_r);
         return ElementId(idx_z * grids.data_r.size + idx_r);

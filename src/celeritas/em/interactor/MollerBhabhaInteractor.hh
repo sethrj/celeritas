@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -32,7 +32,8 @@ namespace celeritas
 /*!
  * Perform Moller (e-e-) and Bhabha (e+e-) scattering.
  *
- * This is a model for both Moller and Bhabha scattering processes.
+ * This interaction, part of the ionization process, is when an incident
+ * electron or positron ejects an electron from the surrounding matter.
  *
  * \note This performs the same sampling routine as in Geant4's
  * G4MollerBhabhaModel class, as documented in section 10.1.4 of the Geant4
@@ -65,13 +66,13 @@ class MollerBhabhaInteractor
     // Shared constant physics properties
     MollerBhabhaData const& shared_;
     // Incident energy [MeV]
-    const real_type inc_energy_;
+    real_type const inc_energy_;
     // Incident momentum [MeV]
-    const real_type inc_momentum_;
+    real_type const inc_momentum_;
     // Incident direction
     Real3 const& inc_direction_;
     // Secondary electron cutoff for current material
-    const real_type electron_cutoff_;
+    real_type const electron_cutoff_;
     // Allocate space for the secondary particle
     StackAllocator<Secondary>& allocate_;
     // Incident particle flag for selecting Moller or Bhabha scattering
@@ -103,6 +104,8 @@ CELER_FUNCTION MollerBhabhaInteractor::MollerBhabhaInteractor(
 {
     CELER_EXPECT(particle.particle_id() == shared_.ids.electron
                  || particle.particle_id() == shared_.ids.positron);
+    CELER_EXPECT(inc_energy_
+                 > (inc_particle_is_electron_ ? 2 : 1) * electron_cutoff_);
 }
 
 //---------------------------------------------------------------------------//
@@ -115,16 +118,8 @@ CELER_FUNCTION MollerBhabhaInteractor::MollerBhabhaInteractor(
 template<class Engine>
 CELER_FUNCTION Interaction MollerBhabhaInteractor::operator()(Engine& rng)
 {
-    if (inc_energy_ <= (inc_particle_is_electron_ ? 2 : 1) * electron_cutoff_)
-    {
-        // The secondary should not be emitted. This interaction cannot
-        // happen and the incident particle must undergo an energy loss
-        // process.
-        return Interaction::from_unchanged(Energy{inc_energy_}, inc_direction_);
-    }
-
     // Allocate memory for the produced electron
-    Secondary* electron_secondary = this->allocate_(1);
+    Secondary* electron_secondary = allocate_(1);
 
     if (electron_secondary == nullptr)
     {
@@ -152,15 +147,16 @@ CELER_FUNCTION Interaction MollerBhabhaInteractor::operator()(Engine& rng)
     }
 
     // Sampled secondary kinetic energy
-    const real_type secondary_energy = epsilon * inc_energy_;
+    real_type const secondary_energy = epsilon * inc_energy_;
     CELER_ASSERT(secondary_energy >= electron_cutoff_);
 
     // Same equation as in ParticleTrackView::momentum_sq()
-    const real_type secondary_momentum = std::sqrt(
+    // TODO: use local data ParticleTrackView
+    real_type const secondary_momentum = std::sqrt(
         secondary_energy
         * (secondary_energy + 2 * value_as<Mass>(shared_.electron_mass)));
 
-    const real_type total_energy = inc_energy_
+    real_type const total_energy = inc_energy_
                                    + value_as<Mass>(shared_.electron_mass);
 
     // Calculate theta from energy-momentum conservation
@@ -188,10 +184,10 @@ CELER_FUNCTION Interaction MollerBhabhaInteractor::operator()(Engine& rng)
                                            * secondary_direction[i];
         inc_exiting_direction[i] = inc_momentum_ijk - secondary_momentum_ijk;
     }
-    normalize_direction(&inc_exiting_direction);
+    inc_exiting_direction = make_unit_vector(inc_exiting_direction);
 
     // Construct interaction for change to primary (incident) particle
-    const real_type inc_exiting_energy = inc_energy_ - secondary_energy;
+    real_type const inc_exiting_energy = inc_energy_ - secondary_energy;
     Interaction result;
     result.energy = Energy{inc_exiting_energy};
     result.secondaries = {electron_secondary, 1};

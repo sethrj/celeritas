@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -27,11 +27,21 @@ struct SetupOptions;
   geometryFile         | Override detector geometry with a custom GDML
   outputFile           | Filename for JSON diagnostic output
   physicsOutputFile    | Filename for ROOT dump of physics data
+  offloadOutputFile    | Filename for HepMC3 copy of offloaded tracks as events
   maxNumTracks         | Number of tracks to be transported simultaneously
   maxNumEvents         | Maximum number of events in use
   maxNumSteps          | Limit on number of step iterations before aborting
   maxInitializers      | Maximum number of track initializers
   secondaryStackFactor | At least the average number of secondaries per track
+  autoFlush            | Number of tracks to buffer before offloading
+  maxFieldSubsteps     | Limit on substeps in field propagator
+
+ * The following option is exposed in the \c /celer/detector/ command
+ * "directory":
+ *
+  Command | Description
+  ------- | -----------------------------------------
+  enabled | Call back to Geant4 sensitive detectors
 
  * If a CUDA/HIP device is available, additional options are available under \c
  * /celer/cuda/ :
@@ -57,6 +67,7 @@ class SetupOptionsMessenger : public G4UImessenger
 
   protected:
     void SetNewValue(G4UIcommand* command, G4String newValue) override;
+    G4String GetCurrentValue(G4UIcommand* command) override;
 
   private:
     std::vector<std::unique_ptr<G4UIdirectory>> directories_;

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -35,9 +35,9 @@ void copy_if_selected(const T1& src, T2& dst)
 /*!
  * Copy StepPointStateData values to TStepPoint arrays.
  */
-void copy_if_selected(Real3 const& src, std::array<double, 3>& dst)
+void copy_if_selected(Real3 const& src, std::array<real_type, 3>& dst)
 {
-    std::memcpy(&dst, &src, sizeof(src));
+    std::copy(src.begin(), src.end(), dst.begin());
 }
 
 //---------------------------------------------------------------------------//
@@ -139,6 +139,10 @@ void RootStepWriter::process_steps(HostStepState state)
     } while (0)
 
     CELER_EXPECT(state.steps);
+    if (state.stream_id != StreamId{0})
+    {
+        CELER_NOT_IMPLEMENTED("thread-safe ROOT output");
+    }
     tstep_ = TStepData();
 
     // Loop over track slots and fill TTree

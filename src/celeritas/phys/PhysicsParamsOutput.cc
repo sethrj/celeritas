@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -13,11 +13,11 @@
 #include "celeritas_config.h"
 #include "corecel/cont/Range.hh"
 #include "corecel/io/JsonPimpl.hh"
-#include "celeritas/phys/PhysicsData.hh"
-#include "celeritas/phys/Process.hh"
 
 #include "Model.hh"
+#include "PhysicsData.hh"
 #include "PhysicsParams.hh"  // IWYU pragma: keep
+#include "Process.hh"
 #if CELERITAS_USE_JSON
 #    include <nlohmann/json.hpp>
 
@@ -113,7 +113,7 @@ void PhysicsParamsOutput::output(JsonPimpl* j) const
 
     j->obj = std::move(obj);
 #else
-    (void)sizeof(j);
+    CELER_DISCARD(j);
 #endif
 }
 

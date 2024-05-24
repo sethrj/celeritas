@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -61,19 +61,19 @@ class RelativisticBremModel final : public Model
     ActionId action_id() const final;
 
     //! Short name for the interaction kernel
-    std::string label() const final { return "brems-rel"; }
+    std::string_view label() const final { return "brems-rel"; }
 
     //! Short description of the post-step action
-    std::string description() const final
+    std::string_view description() const final
     {
         return "interact by relativistic bremsstrahlung";
     }
 
     //! Access data on the host
-    HostRef const& host_ref() const { return data_.host(); }
+    HostRef const& host_ref() const { return data_.host_ref(); }
 
     //! Access data on the device
-    DeviceRef const& device_ref() const { return data_.device(); }
+    DeviceRef const& device_ref() const { return data_.device_ref(); }
 
   private:
     //// DATA ////

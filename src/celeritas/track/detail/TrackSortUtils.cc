@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -29,7 +29,7 @@ using ThreadItems
 using TrackSlots = ThreadItems<TrackSlotId::size_type>;
 
 template<class F>
-void partition_impl(TrackSlots const& track_slots, F&& func, StreamId)
+void partition_impl(TrackSlots const& track_slots, F&& func)
 {
     auto* start = track_slots.data().get();
     std::partition(start, start + track_slots.size(), std::forward<F>(func));
@@ -38,23 +38,85 @@ void partition_impl(TrackSlots const& track_slots, F&& func, StreamId)
 //---------------------------------------------------------------------------//
 
 template<class F>
-void sort_impl(TrackSlots const& track_slots, F&& func, StreamId)
+void sort_impl(TrackSlots const& track_slots, F&& func)
 {
     auto* start = track_slots.data().get();
     std::sort(start, start + track_slots.size(), std::forward<F>(func));
 }
 
-// PRE: get_action is sorted, i.e. i <= j ==> get_action(i) <=
-// get_action(j)
-template<class F>
-void count_tracks_per_action_impl(Span<ThreadId> offsets,
-                                  size_type size,
-                                  F&& get_action)
-{
-    std::fill(offsets.begin(), offsets.end(), ThreadId{});
+//---------------------------------------------------------------------------//
+}  // namespace
 
+//---------------------------------------------------------------------------//
+/*!
+ * Initialize default threads to track_slots mapping, track_slots[i] = i
+ */
+template<>
+void fill_track_slots<MemSpace::host>(Span<TrackSlotId::size_type> track_slots,
+                                      StreamId)
+{
+    std::iota(track_slots.data(), track_slots.data() + track_slots.size(), 0);
+}
+
+/*!
+ * Shuffle track slots
+ */
+template<>
+void shuffle_track_slots<MemSpace::host>(
+    Span<TrackSlotId::size_type> track_slots, StreamId)
+{
+    auto seed = static_cast<unsigned int>(track_slots.size());
+    std::mt19937 g{seed};
+    std::shuffle(track_slots.begin(), track_slots.end(), g);
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Sort or partition tracks.
+ */
+void sort_tracks(HostRef<CoreStateData> const& states, TrackOrder order)
+{
+    switch (order)
+    {
+        case TrackOrder::partition_status:
+            return partition_impl(states.track_slots,
+                                  AlivePredicate{states.sim.status.data()});
+        case TrackOrder::sort_along_step_action:
+        case TrackOrder::sort_step_limit_action:
+            return sort_impl(states.track_slots,
+                             IdComparator{get_action_ptr(states, order)});
+        case TrackOrder::sort_particle_type:
+            return sort_impl(states.track_slots,
+                             IdComparator{states.particles.particle_id.data()});
+        default:
+            CELER_ASSERT_UNREACHABLE();
+    }
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Count tracks associated to each action that was used to sort them, specified
+ * by order. Result is written in the output parameter offsets which sould be
+ * of size num_actions + 1.
+ */
+void count_tracks_per_action(
+    HostRef<CoreStateData> const& states,
+    Span<ThreadId> offsets,
+    Collection<ThreadId, Ownership::value, MemSpace::host, ActionId>&,
+    TrackOrder order)
+{
+    CELER_ASSERT(order == TrackOrder::sort_along_step_action
+                 || order == TrackOrder::sort_step_limit_action);
+
+    ActionAccessor get_action{get_action_ptr(states, order),
+                              states.track_slots.data()};
+
+    std::fill(offsets.begin(), offsets.end(), ThreadId{});
+    auto const size = states.size();
     // if get_action(0) != get_action(1), get_action(0) never gets initialized
-#pragma omp parallel for
+#if CELERITAS_OPENMP == CELERITAS_OPENMP_TRACK
+#    pragma omp parallel for
+#endif
     for (size_type i = 1; i < size; ++i)
     {
         ActionId current_action = get_action(ThreadId{i});
@@ -76,87 +138,9 @@ void count_tracks_per_action_impl(Span<ThreadId> offsets,
 }
 
 //---------------------------------------------------------------------------//
-}  // namespace
-
-//---------------------------------------------------------------------------//
 /*!
- * Initialize default threads to track_slots mapping, track_slots[i] = i
+ * Fill missing action offsets.
  */
-template<>
-void fill_track_slots<MemSpace::host>(Span<TrackSlotId::size_type> track_slots)
-{
-    std::iota(track_slots.data(), track_slots.data() + track_slots.size(), 0);
-}
-
-/*!
- * Shuffle track slots
- */
-template<>
-void shuffle_track_slots<MemSpace::host>(Span<TrackSlotId::size_type> track_slots)
-{
-    unsigned int seed = track_slots.size();
-    std::mt19937 g{seed};
-    std::shuffle(track_slots.begin(), track_slots.end(), g);
-}
-
-//---------------------------------------------------------------------------//
-/*!
- * Sort or partition tracks.
- */
-void sort_tracks(HostRef<CoreStateData> const& states, TrackOrder order)
-{
-    switch (order)
-    {
-        case TrackOrder::partition_status:
-            return partition_impl(states.track_slots,
-                                  alive_predicate{states.sim.status.data()},
-                                  states.stream_id);
-        case TrackOrder::sort_along_step_action:
-            return sort_impl(
-                states.track_slots,
-                along_action_comparator{states.sim.along_step_action.data()},
-                states.stream_id);
-        case TrackOrder::sort_step_limit_action:
-            return sort_impl(
-                states.track_slots,
-                step_limit_comparator{states.sim.step_limit.data()},
-                states.stream_id);
-        default:
-            CELER_ASSERT_UNREACHABLE();
-    }
-}
-
-//---------------------------------------------------------------------------//
-/*!
- * Count tracks associated to each action that was used to sort them, specified
- * by order. Result is written in the output parameter offsets which sould be
- * of size num_actions + 1.
- */
-void count_tracks_per_action(
-    HostRef<CoreStateData> const& states,
-    Span<ThreadId> offsets,
-    Collection<ThreadId, Ownership::value, MemSpace::host, ActionId>&,
-    TrackOrder order)
-{
-    switch (order)
-    {
-        case TrackOrder::sort_along_step_action:
-            return count_tracks_per_action_impl(
-                offsets,
-                states.size(),
-                AlongStepActionAccessor{states.sim.along_step_action.data(),
-                                        states.track_slots.data()});
-        case TrackOrder::sort_step_limit_action:
-            return count_tracks_per_action_impl(
-                offsets,
-                states.size(),
-                StepLimitActionAccessor{states.sim.step_limit.data(),
-                                        states.track_slots.data()});
-        default:
-            return;
-    }
-}
-
 void backfill_action_count(Span<ThreadId> offsets, size_type num_actions)
 {
     CELER_EXPECT(offsets.size() >= 2);

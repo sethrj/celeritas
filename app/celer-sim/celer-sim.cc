@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -77,14 +77,15 @@ void run(std::istream* is, std::shared_ptr<OutputRegistry> output)
 {
     CELER_EXPECT(is);
 
-    ScopedMem record_mem("demo_loop.run");
+    ScopedProfiling profile_this{"celer-sim"};
+    ScopedMem record_mem("celer-sim.run");
 
     // Read input options and save a copy for output
     auto run_input = std::make_shared<RunnerInput>();
 #if CELERITAS_USE_JSON
     nlohmann::json::parse(*is).get_to(*run_input);
 #else
-    CELER_NOT_CONFIGURED("nlohmann_json");
+    CELER_ASSERT_UNREACHABLE();
 #endif
     output->insert(std::make_shared<OutputInterfaceAdapter<RunnerInput>>(
         OutputInterface::Category::input, "*", run_input));
@@ -105,27 +106,27 @@ void run(std::istream* is, std::shared_ptr<OutputRegistry> output)
     }
     result.num_streams = num_streams;
 
+    if (run_input->warm_up)
+    {
+        get_setup_time = {};
+        run_stream.warm_up();
+        result.warmup_time = get_setup_time();
+    }
+
+    // Start profiling *after* initialization and warmup are complete
     Stopwatch get_transport_time;
     if (run_input->merge_events)
     {
-        ScopedProfiling profile_this{"celer-sim"};
-
         // Run all events simultaneously on a single stream
         result.events.front() = run_stream();
     }
     else
     {
+        CELER_LOG(status) << "Transporting " << run_stream.num_events()
+                          << " on " << num_streams << " threads";
         MultiExceptionHandler capture_exception;
-        ScopedProfiling profile_this{"celer-sim"};
-
-#ifdef _OPENMP
-        // Set the maximum number of nested parallel regions
-        // TODO: Enable nested OpenMP parallel regions for multithreaded CPU
-        // once the performance issues have been resolved. For now, limit the
-        // level of nesting to a single parallel region (over events) and
-        // deactivate any deeper nested parallel regions.
-        omp_set_max_active_levels(1);
-#    pragma omp parallel for num_threads(num_streams)
+#if CELERITAS_OPENMP == CELERITAS_OPENMP_EVENT
+#    pragma omp parallel for
 #endif
         for (size_type event = 0; event < run_stream.num_events(); ++event)
         {
@@ -138,13 +139,14 @@ void run(std::istream* is, std::shared_ptr<OutputRegistry> output)
         }
         log_and_rethrow(std::move(capture_exception));
     }
+    result.action_times = run_stream.get_action_times();
     result.total_time = get_transport_time();
     record_mem = {};
     output->insert(std::make_shared<RunnerOutput>(std::move(result)));
 }
 
 //---------------------------------------------------------------------------//
-void print_usage(char const* exec_name)
+void print_usage(std::string_view exec_name)
 {
     // clang-format off
     std::cerr << "usage: " << exec_name << " {input}.json\n"
@@ -221,7 +223,7 @@ int main(int argc, char* argv[])
     if (filename == "--dump-default"sv)
     {
 #if CELERITAS_USE_JSON
-        std::cout << nlohmann::json{celeritas::app::RunnerInput{}}.dump(1)
+        std::cout << nlohmann::json(celeritas::app::RunnerInput{}).dump(1)
                   << std::endl;
 #endif
         return EXIT_SUCCESS;

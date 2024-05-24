@@ -3,7 +3,8 @@
  "release": "@Celeritas_VERSION_STRING@",
  "options": {
   "breathe": @CELERITAS_USE_BREATHE@,
+  "furo": @CELERITAS_USE_FURO@,
   "sphinxbib": @CELERITAS_USE_SPHINXBIBTEX@,
-  "rtdtheme": @CELERITAS_USE_SPHINXRTDTHEME@
+  "sphinxmer": @CELERITAS_USE_SPHINXMERMAID@
  }
 }

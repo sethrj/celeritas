@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -41,8 +41,8 @@ class GridIdFinder
     using argument_type = KeyQuantity;
     using result_type = ValueId;
 
-    using SpanConstGrid = Span<const typename KeyQuantity::value_type>;
-    using SpanConstValue = Span<result_type const>;
+    using SpanConstGrid = LdgSpan<typename KeyQuantity::value_type const>;
+    using SpanConstValue = LdgSpan<result_type const>;
     //!@}
 
   public:

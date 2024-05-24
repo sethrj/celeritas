@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -58,7 +58,7 @@ void InitializeTracksAction::execute_impl(CoreParams const& core_params,
     // empty slots in the track vector and the number of track initializers
     size_type num_new_tracks
         = std::min(counters.num_vacancies, counters.num_initializers);
-    if (num_new_tracks > 0)
+    if (num_new_tracks > 0 || core_state.warming_up())
     {
         // Launch a kernel to initialize tracks
         this->execute_impl(core_params, core_state, num_new_tracks);

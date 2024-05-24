@@ -1,5 +1,5 @@
 #----------------------------------*-CMake-*----------------------------------#
-# Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+# Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 # See the top-level COPYRIGHT file for details.
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 #[=======================================================================[.rst:
@@ -159,13 +159,16 @@ include_guard()
 
 #-----------------------------------------------------------------------------#
 
+set(_procs 1)
 if(CELERITAS_USE_MPI)
-  set(CELERITASTEST_NP_DEFAULT "1;2;4" CACHE INTERNAL
-    "Default number of processes to use in CeleritasAddTest")
-else()
-  set(CELERITASTEST_NP_DEFAULT "1" CACHE INTERNAL
-    "Default number of processes to use in CeleritasAddTest")
+  list(APPEND _procs 2)
+  if(MPIEXEC_MAX_NUMPROCS GREATER 2)
+    list(APPEND _procs ${MPIEXEC_MAX_NUMPROCS})
+  endif()
 endif()
+set(CELERITASTEST_NP_DEFAULT "${_procs}" CACHE INTERNAL
+  "Default number of processes to use in CeleritasAddTest")
+set(_procs)
 
 if(NOT CELERITAS_USE_MPI)
   # Construct test name with MPI enabled, or empty if not applicable
@@ -314,7 +317,6 @@ function(celeritas_add_test SOURCE_FILE)
     add_executable(${_TARGET} "${SOURCE_FILE}" ${PARSE_SOURCES})
 
     # Note: for static linking the library order is relevant.
-
     celeritas_target_link_libraries(${_TARGET}
       ${CELERITASTEST_LINK_LIBRARIES}
       ${PARSE_LINK_LIBRARIES}
@@ -333,10 +335,15 @@ function(celeritas_add_test SOURCE_FILE)
     list(APPEND PARSE_ENVIRONMENT "PYTHONPATH=${CELERITASTEST_PYTHONPATH}")
   endif()
 
-  if(CELERITAS_DEBUG)
+  if(CELERITAS_TEST_VERBOSE)
     list(APPEND PARSE_ENVIRONMENT
       "CELER_LOG=debug"
       "CELER_LOG_LOCAL=diagnostic"
+    )
+  else()
+    list(APPEND PARSE_ENVIRONMENT
+      "CELER_LOG=warning"
+      "CELER_LOG_LOCAL=warning"
     )
   endif()
 
@@ -355,6 +362,17 @@ function(celeritas_add_test SOURCE_FILE)
         list(APPEND _COMMON_PROPS RESOURCE_LOCK gpu)
       endif()
       list(APPEND _LABELS gpu)
+    endif()
+  endif()
+  if(PARSE_SOURCES AND CELERITAS_USE_HIP)
+    celeritas_sources_contains_cuda(_cuda_sources ${PARSE_SOURCES})
+    if(_cuda_sources)
+      # When building Celeritas libraries, we put HIP/CUDA files in shared .cu
+      # suffixed files. Override the language if using HIP.
+      set_source_files_properties(
+        ${_cuda_sources}
+        PROPERTIES LANGUAGE HIP
+      )
     endif()
   endif()
   if(PARSE_TIMEOUT)

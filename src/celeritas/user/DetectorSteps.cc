@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -40,7 +40,7 @@ size_type count_num_valid(DetectorRef const& detector)
 
 //---------------------------------------------------------------------------//
 template<class T>
-void assign_field(std::vector<T>* dst,
+void assign_field(DetectorStepOutput::vector<T>* dst,
                   StateRef<T> const& src,
                   DetectorRef const& detector,
                   size_type size)

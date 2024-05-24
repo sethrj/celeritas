@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -15,8 +15,8 @@
 
 #include "celeritas/ext/GeantPhysicsOptions.hh"
 #include "celeritas/io/ImportProcess.hh"
-#include "celeritas/phys/AtomicNumber.hh"
 
+#include "AtomicNumber.hh"
 #include "Process.hh"
 
 namespace celeritas
@@ -114,6 +114,7 @@ class ProcessBuilder
     UserBuildMap user_build_map_;
     std::function<ImportSBTable(AtomicNumber)> read_sb_;
     std::function<ImportLivermorePE(AtomicNumber)> read_livermore_;
+    std::function<ImportPhysicsVector(AtomicNumber)> read_neutron_elastic_;
 
     BremsModelSelection selection_;
     bool brem_combined_;
@@ -122,16 +123,18 @@ class ProcessBuilder
 
     //// HELPER FUNCTIONS ////
 
-    const SPConstMaterial material() const { return input_.material; }
-    const SPConstParticle particle() const { return input_.particle; }
-    const SPConstImported imported() const { return input_.imported; }
+    SPConstMaterial const material() const { return input_.material; }
+    SPConstParticle const particle() const { return input_.particle; }
+    SPConstImported const imported() const { return input_.imported; }
 
     auto build_annihilation() -> SPProcess;
     auto build_compton() -> SPProcess;
     auto build_conversion() -> SPProcess;
+    auto build_coulomb() -> SPProcess;
     auto build_ebrems() -> SPProcess;
     auto build_eioni() -> SPProcess;
     auto build_msc() -> SPProcess;
+    auto build_neutron_elastic() -> SPProcess;
     auto build_photoelectric() -> SPProcess;
     auto build_rayleigh() -> SPProcess;
 };

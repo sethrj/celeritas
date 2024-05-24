@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -46,7 +46,7 @@ struct IsInRange
 TEST(UtilityTest, forward)
 {
     Foo foo;
-    const Foo cfoo;
+    Foo const cfoo;
 
     test_forward_impl<Foo&>(foo);
     test_forward_impl<Foo const&>(cfoo);
@@ -79,6 +79,48 @@ TEST(UtilityTest, exchange)
 }
 
 //---------------------------------------------------------------------------//
+
+TEST(AlgorithmsTest, all_of)
+{
+    static bool const items[] = {true, false, true, true};
+    auto is_true = [](bool b) { return b; };
+    EXPECT_TRUE(all_of(std::begin(items), std::begin(items), is_true));
+    EXPECT_FALSE(all_of(std::begin(items), std::end(items), is_true));
+    EXPECT_TRUE(all_of(std::begin(items) + 2, std::end(items), is_true));
+}
+
+TEST(AlgorithmsTest, any_of)
+{
+    static bool const items[] = {false, true, false, false};
+    auto is_true = [](bool b) { return b; };
+    EXPECT_FALSE(any_of(std::begin(items), std::begin(items), is_true));
+    EXPECT_TRUE(any_of(std::begin(items), std::end(items), is_true));
+    EXPECT_FALSE(any_of(std::begin(items) + 2, std::end(items), is_true));
+}
+
+TEST(AlgorithmsTest, all_adjacent)
+{
+    static int const incr[] = {0, 1, 3, 20, 200};
+    static int const vee[] = {3, 2, 1, 2, 3};
+    static int const nondecr[] = {1, 1, 2, 3, 5, 8};
+
+    // Empty and single-element ranges
+    EXPECT_TRUE(all_adjacent(
+        std::begin(incr), std::begin(incr), [](int, int) { return false; }));
+    EXPECT_TRUE(all_adjacent(std::begin(incr),
+                             std::begin(incr) + 1,
+                             [](int, int) { return false; }));
+
+    auto lt = [](int a, int b) { return a < b; };
+    auto le = [](int a, int b) { return a <= b; };
+    EXPECT_TRUE(all_adjacent(std::begin(incr), std::end(incr), lt));
+    EXPECT_FALSE(all_adjacent(std::begin(vee), std::end(vee), lt));
+    EXPECT_FALSE(all_adjacent(std::begin(nondecr), std::end(nondecr), lt));
+
+    EXPECT_TRUE(all_adjacent(std::begin(incr), std::end(incr), le));
+    EXPECT_FALSE(all_adjacent(std::begin(vee), std::end(vee), le));
+    EXPECT_TRUE(all_adjacent(std::begin(nondecr), std::end(nondecr), le));
+}
 
 TEST(AlgorithmsTest, clamp)
 {
@@ -165,6 +207,29 @@ TEST(AlgorithmsTest, upper_bound)
                 << "Upper bound failed for value " << val + delta;
         }
     }
+}
+
+TEST(AlgorithmsTest, find_sorted)
+{
+    std::vector<int> v;
+    auto find_index = [&v](int value) -> int {
+        auto iter = celeritas::find_sorted(v.begin(), v.end(), value);
+        if (iter == v.end())
+            return -1;
+        return iter - v.begin();
+    };
+
+    // Test empty vector
+    EXPECT_EQ(-1, find_index(10));
+
+    // Test a selection of sorted values
+    v = {-3, 1, 4, 9, 10, 11, 15, 15};
+    EXPECT_EQ(-1, find_index(-5));
+    EXPECT_EQ(0, find_index(-3));
+    EXPECT_EQ(2, find_index(4));
+    EXPECT_EQ(-1, find_index(5));
+    EXPECT_EQ(6, find_index(15));
+    EXPECT_EQ(-1, find_index(16));
 }
 
 TEST(AlgorithmsTest, partition)
@@ -284,6 +349,15 @@ TEST(MathTest, rsqrt)
 
 //---------------------------------------------------------------------------//
 
+TEST(MathTest, fma)
+{
+    EXPECT_DOUBLE_EQ(std::fma(1.0, 2.0, 8.0), fma(1.0, 2.0, 8.0));
+
+    EXPECT_DOUBLE_EQ(1 * 2 + 8, fma(1, 2, 8));
+}
+
+//---------------------------------------------------------------------------//
+
 TEST(MathTest, ceil_div)
 {
     EXPECT_EQ(0u, ceil_div(0u, 32u));
@@ -291,6 +365,106 @@ TEST(MathTest, ceil_div)
     EXPECT_EQ(1u, ceil_div(32u, 32u));
     EXPECT_EQ(2u, ceil_div(33u, 32u));
     EXPECT_EQ(8u, ceil_div(50u, 7u));
+}
+
+//---------------------------------------------------------------------------//
+
+TEST(MathTest, negate)
+{
+    double const zero = 0;
+    auto negzero = -zero;
+    EXPECT_TRUE(std::signbit(negzero));
+    EXPECT_FALSE(std::signbit(negate(zero)));
+
+    constexpr auto dblinf = std::numeric_limits<double>::infinity();
+    EXPECT_DOUBLE_EQ(-2.0, negate(2.0));
+    EXPECT_DOUBLE_EQ(-dblinf, negate(dblinf));
+    EXPECT_TRUE(std::isnan(negate(std::numeric_limits<double>::quiet_NaN())));
+}
+
+//---------------------------------------------------------------------------//
+
+TEST(MathTest, diffsq)
+{
+    EXPECT_DOUBLE_EQ(9.0, diffsq(5.0, 4.0));
+    EXPECT_DOUBLE_EQ(ipow<2>(std::sin(0.2)), diffsq(1.0, std::cos(0.2)));
+
+    float a{10000.001}, b{10000}, actual{20};
+    EXPECT_FLOAT_EQ(0.46875f, actual - diffsq(a, b));
+    EXPECT_LE(actual - diffsq(a, b), actual - (a * a - b * b));
+}
+
+//---------------------------------------------------------------------------//
+
+TEST(MathTest, eumod)
+{
+    // Wrap numbers to between [0, 360)
+    EXPECT_DOUBLE_EQ(270.0, eumod(-90.0 - 360.0, 360.0));
+    EXPECT_DOUBLE_EQ(270.0, eumod(-90.0, 360.0));
+    EXPECT_DOUBLE_EQ(0.0, eumod(0.0, 360.0));
+    EXPECT_DOUBLE_EQ(45.0, eumod(45.0, 360.0));
+    EXPECT_DOUBLE_EQ(0.0, eumod(360.0, 360.0));
+    EXPECT_DOUBLE_EQ(15.0, eumod(375.0, 360.0));
+    EXPECT_DOUBLE_EQ(30.0, eumod(720.0 + 30, 360.0));
+}
+
+//---------------------------------------------------------------------------//
+
+TEST(MathTest, sincos)
+{
+    {
+        double s{0}, c{0};
+        sincos(0.123, &s, &c);
+        EXPECT_DOUBLE_EQ(std::sin(0.123), s);
+        EXPECT_DOUBLE_EQ(std::cos(0.123), c);
+    }
+    {
+        float s{0}, c{0};
+        sincos(0.123f, &s, &c);
+        EXPECT_FLOAT_EQ(std::sin(0.123f), s);
+        EXPECT_FLOAT_EQ(std::cos(0.123f), c);
+    }
+}
+
+//---------------------------------------------------------------------------//
+
+TEST(MathTest, sincospi)
+{
+    EXPECT_DOUBLE_EQ(std::sin(m_pi * 0.1), sinpi(0.1));
+    EXPECT_DOUBLE_EQ(std::cos(m_pi * 0.1), cospi(0.1));
+
+    {
+        double s{0}, c{0};
+        sincospi(0.123, &s, &c);
+        EXPECT_DOUBLE_EQ(std::sin(m_pi * 0.123), s);
+        EXPECT_DOUBLE_EQ(std::cos(m_pi * 0.123), c);
+
+        // Test special cases
+        sincospi(0, &s, &c);
+        EXPECT_EQ(double(0.0), s);
+        EXPECT_EQ(double(1.0), c);
+
+        sincospi(0.5, &s, &c);
+        EXPECT_EQ(double(1.0), s);
+        EXPECT_EQ(double(0.0), c);
+
+        sincospi(1.0, &s, &c);
+        EXPECT_EQ(double(0.0), s);
+        EXPECT_EQ(double(-1.0), c);
+
+        sincospi(1.5, &s, &c);
+        EXPECT_EQ(double(-1.0), s);
+        EXPECT_EQ(double(0.0), c);
+    }
+    {
+        // This is about the threshold where sin(x) == 1.0f
+        float inp{0.000233115f};
+        float s{0}, c{0};
+        sincospi(inp, &s, &c);
+        EXPECT_FLOAT_EQ(1.0f, c);
+        EXPECT_FLOAT_EQ(std::sin(static_cast<float>(m_pi * inp)), s);
+        EXPECT_FLOAT_EQ(std::cos(static_cast<float>(m_pi * inp)), c);
+    }
 }
 
 //---------------------------------------------------------------------------//

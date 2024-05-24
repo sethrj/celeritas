@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -84,7 +84,7 @@ CELER_FUNCTION auto MeanELoss::calc_eloss(CoreTrackView const& track,
 
     CELER_ENSURE(eloss <= particle.energy());
     CELER_ENSURE(eloss != particle.energy()
-                 || track.make_sim_view().step_limit().action
+                 || track.make_sim_view().post_step_action()
                         == phys.scalars().range_action());
     return eloss;
 }

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -8,10 +8,9 @@
 #include "ScopedStreamRedirect.hh"
 
 #include "corecel/Assert.hh"
-#include "corecel/io/Logger.hh"
-#include "corecel/io/StringUtils.hh"
 #include "corecel/sys/Environment.hh"
 
+#include "Logger.hh"
 #include "StringUtils.hh"
 
 namespace celeritas

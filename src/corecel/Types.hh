@@ -1,29 +1,43 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
-//! \file corecel/Types.hh
-//! \brief Type definitions for common Celeritas functionality
+/*!
+ * \file corecel/Types.hh
+ * \brief Type definitions for common Celeritas functionality.
+ *
+ * This file includes types and properties particular to the build
+ * configuration.
+ */
 //---------------------------------------------------------------------------//
 #pragma once
 
 #include <cstddef>
+#include <string>
+
+#include "celeritas_config.h"
 
 #include "Macros.hh"
 
 namespace celeritas
 {
 //---------------------------------------------------------------------------//
-#if CELER_USE_DEVICE
-//! Standard type for container sizes, optimized for GPU use.
+#if CELER_USE_DEVICE || defined(__DOXYGEN__)
+//! Standard type for container sizes, optimized for GPU use
 using size_type = unsigned int;
 #else
 using size_type = std::size_t;
 #endif
 
+#if CELERITAS_REAL_TYPE == CELERITAS_REAL_TYPE_DOUBLE
 //! Numerical type for real numbers
 using real_type = double;
+#elif CELERITAS_REAL_TYPE == CELERITAS_REAL_TYPE_FLOAT
+using real_type = float;
+#else
+using real_type = void;
+#endif
 
 //! Equivalent to std::size_t but compatible with CUDA atomics
 using ull_int = unsigned long long int;
@@ -31,19 +45,15 @@ using ull_int = unsigned long long int;
 //---------------------------------------------------------------------------//
 // ENUMERATIONS
 //---------------------------------------------------------------------------//
-//! Non-convertible type for raw data modeled after std::byte (C++17)
-enum class Byte : unsigned char
-{
-};
-
-//---------------------------------------------------------------------------//
 //! Memory location of data
 enum class MemSpace
 {
-    host,
-    device,
+    host,  //!< CPU memory
+    device,  //!< GPU memory
+    mapped,  //!< Unified virtual address space (both host and device)
+    size_,
 #ifdef CELER_DEVICE_SOURCE
-    native = device,  // Included by a CUDA/HIP file
+    native = device,  //!< When included by a CUDA/HIP file; else 'host'
 #else
     native = host,
 #endif
@@ -55,6 +65,18 @@ enum class Ownership
     value,  //!< Ownership of the data, only on host
     reference,  //!< Mutable reference to the data
     const_reference,  //!< Immutable reference to the data
+};
+
+//---------------------------------------------------------------------------//
+//! Unit system used by Celeritas
+enum class UnitSystem
+{
+    none,  //!< Invalid unit system
+    cgs,  //!< Gaussian CGS
+    si,  //!< International System
+    clhep,  //!< Geant4 native
+    size_,
+    native = CELERITAS_UNITS,  //!< Compile time selected system
 };
 
 #if !defined(SWIG) || SWIG_VERSION > 0x050000
@@ -103,13 +125,14 @@ using RefPtr = ObserverPtr<S<Ownership::reference, M>, M>;
 // HELPER FUNCTIONS (HOST)
 //---------------------------------------------------------------------------//
 
-//! Get a string corresponding to a memory space
-inline constexpr char const* to_cstring(MemSpace m)
-{
-    return m == MemSpace::host     ? "host"
-           : m == MemSpace::device ? "device"
-                                   : nullptr;
-}
+// Get a string corresponding to a memory space
+char const* to_cstring(MemSpace m);
+
+// Get a string corresponding to a unit system
+char const* to_cstring(UnitSystem);
+
+// Get a unit system corresponding to a string
+UnitSystem to_unit_system(std::string const& s);
 
 //---------------------------------------------------------------------------//
 }  // namespace celeritas

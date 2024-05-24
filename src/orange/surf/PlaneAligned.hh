@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -23,9 +23,9 @@ class PlaneAligned
 {
   public:
     //@{
-    //! Type aliases
+    //! \name Type aliases
     using Intersections = Array<real_type, 1>;
-    using Storage = Span<const real_type, 1>;
+    using StorageSpan = Span<real_type const, 1>;
     //@}
 
     //// CLASS ATTRIBUTES ////
@@ -43,7 +43,8 @@ class PlaneAligned
     explicit inline CELER_FUNCTION PlaneAligned(real_type position);
 
     // Construct from raw data
-    explicit inline CELER_FUNCTION PlaneAligned(Storage);
+    template<class R>
+    explicit inline CELER_FUNCTION PlaneAligned(Span<R, StorageSpan::extent>);
 
     //// ACCESSORS ////
 
@@ -51,7 +52,10 @@ class PlaneAligned
     CELER_FUNCTION real_type position() const { return position_; }
 
     //! Get a view to the data for type-deleted storage
-    CELER_FUNCTION Storage data() const { return {&position_, 1}; }
+    CELER_FUNCTION StorageSpan data() const { return {&position_, 1}; }
+
+    // Construct outward normal vector
+    inline CELER_FUNCTION Real3 calc_normal() const;
 
     //// CALCULATION ////
 
@@ -68,11 +72,6 @@ class PlaneAligned
   private:
     //! Intersection with the axis
     real_type position_;
-
-    static CELER_CONSTEXPR_FUNCTION int t_index()
-    {
-        return static_cast<int>(T);
-    }
 };
 
 //---------------------------------------------------------------------------//
@@ -92,8 +91,10 @@ using PlaneZ = PlaneAligned<Axis::z>;
 template<Axis T>
 CELER_CONSTEXPR_FUNCTION SurfaceType PlaneAligned<T>::surface_type()
 {
-    return (T == Axis::x ? SurfaceType::px
-                         : (T == Axis::y ? SurfaceType::py : SurfaceType::pz));
+    return T == Axis::x   ? SurfaceType::px
+           : T == Axis::y ? SurfaceType::py
+           : T == Axis::z ? SurfaceType::pz
+                          : SurfaceType::size_;
 }
 
 //---------------------------------------------------------------------------//
@@ -111,8 +112,23 @@ CELER_FUNCTION PlaneAligned<T>::PlaneAligned(real_type position)
  * Construct from raw data.
  */
 template<Axis T>
-CELER_FUNCTION PlaneAligned<T>::PlaneAligned(Storage data) : position_(data[0])
+template<class R>
+CELER_FUNCTION PlaneAligned<T>::PlaneAligned(Span<R, StorageSpan::extent> data)
+    : position_(data[0])
 {
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Calculate outward normal.
+ */
+template<Axis T>
+CELER_FUNCTION Real3 PlaneAligned<T>::calc_normal() const
+{
+    Real3 norm{0, 0, 0};
+
+    norm[to_int(T)] = 1.;
+    return norm;
 }
 
 //---------------------------------------------------------------------------//
@@ -122,7 +138,7 @@ CELER_FUNCTION PlaneAligned<T>::PlaneAligned(Storage data) : position_(data[0])
 template<Axis T>
 CELER_FUNCTION SignedSense PlaneAligned<T>::calc_sense(Real3 const& pos) const
 {
-    return real_to_sense(pos[t_index()] - position_);
+    return real_to_sense(pos[to_int(T)] - position_);
 }
 
 //---------------------------------------------------------------------------//
@@ -136,9 +152,11 @@ PlaneAligned<T>::calc_intersections(Real3 const& pos,
                                     SurfaceState on_surface) const
     -> Intersections
 {
-    if (on_surface == SurfaceState::off && dir[t_index()] != 0)
+    real_type const n_dir = dir[to_int(T)];
+    if (on_surface == SurfaceState::off && n_dir != 0)
     {
-        real_type dist = (position_ - pos[t_index()]) / dir[t_index()];
+        real_type const n_pos = pos[to_int(T)];
+        real_type dist = (position_ - n_pos) / n_dir;
         if (dist > 0)
         {
             return {dist};
@@ -149,15 +167,12 @@ PlaneAligned<T>::calc_intersections(Real3 const& pos,
 
 //---------------------------------------------------------------------------//
 /*!
- * Calculate outward normal at a position.
+ * Calculate outward normal at a position on the surface.
  */
 template<Axis T>
 CELER_FUNCTION Real3 PlaneAligned<T>::calc_normal(Real3 const&) const
 {
-    Real3 norm{0, 0, 0};
-
-    norm[t_index()] = 1.;
-    return norm;
+    return this->calc_normal();
 }
 
 //---------------------------------------------------------------------------//

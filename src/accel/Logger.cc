@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -24,7 +24,7 @@
 #include "corecel/io/Logger.hh"
 #include "corecel/io/LoggerTypes.hh"
 #include "corecel/sys/MpiCommunicator.hh"
-#include "celeritas/ext/GeantSetup.hh"
+#include "geocel/GeantUtils.hh"
 
 namespace celeritas
 {
@@ -35,7 +35,7 @@ class MtLogger
 {
   public:
     explicit MtLogger(int num_threads);
-    void operator()(Provenance prov, LogLevel lev, std::string msg);
+    void operator()(LogProvenance prov, LogLevel lev, std::string msg);
 
   private:
     int num_threads_;
@@ -48,7 +48,7 @@ MtLogger::MtLogger(int num_threads) : num_threads_(num_threads)
 }
 
 //---------------------------------------------------------------------------//
-void MtLogger::operator()(Provenance prov, LogLevel lev, std::string msg)
+void MtLogger::operator()(LogProvenance prov, LogLevel lev, std::string msg)
 {
     auto& cerr = G4cerr;
 
@@ -84,24 +84,10 @@ void MtLogger::operator()(Provenance prov, LogLevel lev, std::string msg)
         cerr << color_code('W') << '[' << local_thread + 1 << '/'
              << num_threads_ << "] " << color_code(' ');
     }
-
-    // clang-format off
-    char c = ' ';
-    switch (lev)
-    {
-        case LogLevel::debug:      c = 'x'; break;
-        case LogLevel::diagnostic: c = 'x'; break;
-        case LogLevel::status:     c = 'b'; break;
-        case LogLevel::info:       c = 'g'; break;
-        case LogLevel::warning:    c = 'y'; break;
-        case LogLevel::error:      c = 'r'; break;
-        case LogLevel::critical:   c = 'R'; break;
-        case LogLevel::size_: CELER_ASSERT_UNREACHABLE();
-    };
-    // clang-format on
-    cerr << color_code(c) << to_cstring(lev) << ": " << color_code(' ') << msg
-         << std::endl;
+    cerr << to_color_code(lev) << to_cstring(lev) << ": " << color_code(' ')
+         << msg << std::endl;
 }
+
 //---------------------------------------------------------------------------//
 }  // namespace
 
@@ -121,7 +107,7 @@ void MtLogger::operator()(Provenance prov, LogLevel lev, std::string msg)
  */
 Logger MakeMTLogger(G4RunManager const& runman)
 {
-    Logger log(MpiCommunicator{}, MtLogger{get_num_threads(runman)});
+    Logger log(MpiCommunicator{}, MtLogger{get_geant_num_threads(runman)});
 
     log.level(log_level_from_env("CELER_LOG_LOCAL"));
     return log;

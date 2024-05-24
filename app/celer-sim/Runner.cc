@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -14,6 +14,10 @@
 #include <utility>
 #include <vector>
 
+#ifdef _OPENMP
+#    include <omp.h>
+#endif
+
 #include "corecel/cont/Span.hh"
 #include "corecel/io/Logger.hh"
 #include "corecel/io/OutputRegistry.hh"
@@ -22,9 +26,11 @@
 #include "corecel/sys/Device.hh"
 #include "corecel/sys/Environment.hh"
 #include "corecel/sys/ScopedMem.hh"
+#include "corecel/sys/ScopedProfiling.hh"
 #include "celeritas/Types.hh"
 #include "celeritas/Units.hh"
-#include "celeritas/em/UrbanMscParams.hh"
+#include "celeritas/em/params/UrbanMscParams.hh"
+#include "celeritas/em/params/WentzelOKVIParams.hh"
 #include "celeritas/ext/GeantImporter.hh"
 #include "celeritas/ext/GeantSetup.hh"
 #include "celeritas/ext/RootFileManager.hh"
@@ -40,6 +46,7 @@
 #include "celeritas/global/alongstep/AlongStepUniformMscAction.hh"
 #include "celeritas/io/EventReader.hh"
 #include "celeritas/io/ImportData.hh"
+#include "celeritas/io/RootEventReader.hh"
 #include "celeritas/mat/MaterialParams.hh"
 #include "celeritas/phys/CutoffParams.hh"
 #include "celeritas/phys/ParticleParams.hh"
@@ -49,6 +56,7 @@
 #include "celeritas/phys/PrimaryGeneratorOptions.hh"
 #include "celeritas/phys/Process.hh"
 #include "celeritas/phys/ProcessBuilder.hh"
+#include "celeritas/phys/RootEventSampler.hh"
 #include "celeritas/random/RngParams.hh"
 #include "celeritas/track/SimParams.hh"
 #include "celeritas/track/TrackInitParams.hh"
@@ -67,6 +75,43 @@ namespace celeritas
 {
 namespace app
 {
+namespace
+{
+//---------------------------------------------------------------------------//
+/*!
+ * Get the number of streams from the number of OpenMP threads.
+ *
+ * The OMP_NUM_THREADS environment variable can be used to control the number
+ * of threads/streams. The value of OMP_NUM_THREADS should be a list of
+ * positive integers, each of which sets the number of threads for the parallel
+ * region at the corresponding nested level. The number of streams is set to
+ * the first value in the list. If OMP_NUM_THREADS is not set, the value will
+ * be implementation defined.
+ */
+size_type calc_num_streams(RunnerInput const& inp, size_type num_events)
+{
+    size_type num_threads = 1;
+#if CELERITAS_OPENMP == CELERITAS_OPENMP_EVENT
+    if (!inp.merge_events)
+    {
+#    pragma omp parallel
+        {
+            if (omp_get_thread_num() == 0)
+            {
+                num_threads = omp_get_num_threads();
+            }
+        }
+    }
+#else
+    CELER_DISCARD(inp);
+#endif
+    // Don't create more streams than events
+    return std::min(num_threads, num_events);
+}
+
+//---------------------------------------------------------------------------//
+}  // namespace
+
 //---------------------------------------------------------------------------//
 /*!
  * Construct on all threads from a JSON input and shared output manager.
@@ -82,7 +127,6 @@ Runner::Runner(RunnerInput const& inp, SPOutputRegistry output)
     this->build_diagnostics(inp);
     this->build_step_collectors(inp);
     this->build_transporter_input(inp);
-    this->build_events(inp);
     use_device_ = inp.use_device;
 
     if (root_manager_)
@@ -91,8 +135,21 @@ Runner::Runner(RunnerInput const& inp, SPOutputRegistry output)
         write_to_root(*core_params_, root_manager_.get());
     }
 
-    CELER_ASSERT(core_params_);
     transporters_.resize(this->num_streams());
+    CELER_ENSURE(core_params_);
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Run a single step with no active states to "warm up".
+ *
+ * This is to reduce the uncertainty in timing for problems, especially on AMD
+ * hardware.
+ */
+void Runner::warm_up()
+{
+    auto& transport = this->get_transporter(StreamId{0});
+    transport();
 }
 
 //---------------------------------------------------------------------------//
@@ -106,8 +163,8 @@ auto Runner::operator()(StreamId stream, EventId event) -> RunnerResult
     CELER_EXPECT(stream < this->num_streams());
     CELER_EXPECT(event < this->num_events());
 
-    auto& transport = this->build_transporter(stream);
-    return (*transport)(make_span(events_[event.get()]));
+    auto& transport = this->get_transporter(stream);
+    return transport(make_span(events_[event.get()]));
 }
 
 //---------------------------------------------------------------------------//
@@ -117,9 +174,10 @@ auto Runner::operator()(StreamId stream, EventId event) -> RunnerResult
 auto Runner::operator()() -> RunnerResult
 {
     CELER_EXPECT(events_.size() == 1);
+    CELER_EXPECT(this->num_streams() == 1);
 
-    auto& transport = this->build_transporter(StreamId{0});
-    return (*transport)(make_span(events_.front()));
+    auto& transport = this->get_transporter(StreamId{0});
+    return transport(make_span(events_.front()));
 }
 
 //---------------------------------------------------------------------------//
@@ -128,6 +186,7 @@ auto Runner::operator()() -> RunnerResult
  */
 StreamId::size_type Runner::num_streams() const
 {
+    CELER_EXPECT(core_params_);
     return core_params_->max_streams();
 }
 
@@ -141,8 +200,37 @@ size_type Runner::num_events() const
 }
 
 //---------------------------------------------------------------------------//
+/*!
+ * Get the accumulated action times.
+ *
+ * This is a *mean* value over all streams.
+ */
+auto Runner::get_action_times() const -> MapStrDouble
+{
+    MapStrDouble result;
+    size_type num_streams{0};
+    for (auto sid : range(StreamId{this->num_streams()}))
+    {
+        if (auto* transport = this->get_transporter_ptr(sid))
+        {
+            transport->accum_action_times(&result);
+            ++num_streams;
+        }
+    }
+
+    double norm{1 / static_cast<double>(num_streams)};
+    for (auto&& [action, time] : result)
+    {
+        time *= norm;
+    }
+
+    return result;
+}
+
+//---------------------------------------------------------------------------//
 void Runner::setup_globals(RunnerInput const& inp) const
 {
+    // TODO: just use 0 instead of unspecified
     if (inp.cuda_heap_size != RunnerInput::unspecified)
     {
         set_cuda_heap_size(inp.cuda_heap_size);
@@ -161,31 +249,41 @@ void Runner::setup_globals(RunnerInput const& inp) const
 void Runner::build_core_params(RunnerInput const& inp,
                                SPOutputRegistry&& outreg)
 {
+    using SPImporter = std::shared_ptr<ImporterInterface>;
+
     CELER_LOG(status) << "Loading input and initializing problem data";
     ScopedMem record_mem("Runner.build_core_params");
+    ScopedProfiling profile_this{"construct-params"};
     CoreParams::Input params;
-    ImportData const imported = [&inp] {
-        if (ends_with(inp.physics_filename, ".root"))
+
+    // Possible Geant4 world volume so we can reuse geometry
+    G4VPhysicalVolume const* g4world{nullptr};
+
+    // Import data and load geometry
+    auto import = [&inp, &g4world]() -> SPImporter {
+        if (ends_with(inp.physics_file, ".root"))
         {
             // Load from ROOT file
-            return RootImporter(inp.physics_filename)();
+            return std::make_shared<RootImporter>(inp.physics_file);
         }
-        std::string filename = inp.physics_filename;
-        if (filename.empty())
-        {
-            filename = inp.geometry_filename;
-        }
-        // Load imported data directly from Geant4
-        return GeantImporter(GeantSetup(filename, inp.geant_options))();
+
+        std::string const& filename
+            = !inp.physics_file.empty() ? inp.physics_file : inp.geometry_file;
+
+        // Load Geant4 and retain to use geometry
+        GeantSetup setup(filename, inp.physics_options);
+        g4world = setup.world();
+        return std::make_shared<GeantImporter>(std::move(setup));
     }();
 
     // Create action manager
     params.action_reg = std::make_shared<ActionRegistry>();
     params.output_reg = std::move(outreg);
 
-    // Load geometry
-    params.geometry
-        = std::make_shared<GeoParams>(inp.geometry_filename.c_str());
+    // Load geometry: use existing world volume or reload from geometry file
+    params.geometry = g4world ? std::make_shared<GeoParams>(g4world)
+                              : std::make_shared<GeoParams>(inp.geometry_file);
+
     if (!params.geometry->supports_safety())
     {
         CELER_LOG(warning) << "Geometry contains surfaces that are "
@@ -193,6 +291,9 @@ void Runner::build_core_params(RunnerInput const& inp,
                               "safety algorithm: multiple scattering may "
                               "result in arbitrarily small steps";
     }
+
+    // Import physics
+    ImportData const imported = (*import)();
 
     // Load materials
     params.material = MaterialParams::from_import(imported);
@@ -208,6 +309,9 @@ void Runner::build_core_params(RunnerInput const& inp,
     params.cutoff = CutoffParams::from_import(
         imported, params.particle, params.material);
 
+    // Construct shared data for Coulomb scattering
+    params.wentzel = WentzelOKVIParams::from_import(imported, params.material);
+
     // Load physics: create individual processes with make_shared
     params.physics = [&params, &inp, &imported] {
         PhysicsParams::Input input;
@@ -218,14 +322,14 @@ void Runner::build_core_params(RunnerInput const& inp,
         input.options.fixed_step_limiter = inp.step_limiter;
         input.options.secondary_stack_factor = inp.secondary_stack_factor;
         input.options.linear_loss_limit = imported.em_params.linear_loss_limit;
-        input.options.lowest_electron_energy = PhysicsParamsOptions::Energy{
-            imported.em_params.lowest_electron_energy};
+        input.options.lowest_electron_energy = PhysicsParamsOptions::Energy(
+            imported.em_params.lowest_electron_energy);
 
         input.processes = [&params, &inp, &imported] {
             std::vector<std::shared_ptr<Process const>> result;
             ProcessBuilder::Options opts;
             opts.brem_combined = inp.brem_combined;
-            opts.brems_selection = inp.geant_options.brems;
+            opts.brems_selection = inp.physics_options.brems;
 
             ProcessBuilder build_process(
                 imported, params.particle, params.material, opts);
@@ -244,7 +348,7 @@ void Runner::build_core_params(RunnerInput const& inp,
     bool eloss = imported.em_params.energy_loss_fluct;
     auto msc = UrbanMscParams::from_import(
         *params.particle, *params.material, imported);
-    if (inp.mag_field == RunnerInput::no_field())
+    if (inp.field == RunnerInput::no_field())
     {
         // Create along-step action
         auto along_step = AlongStepGeneralLinearAction::from_params(
@@ -257,21 +361,23 @@ void Runner::build_core_params(RunnerInput const& inp,
     }
     else
     {
-        CELER_VALIDATE(!eloss,
-                       << "energy loss fluctuations are not supported "
-                          "simultaneoulsy with magnetic field");
         UniformFieldParams field_params;
-        field_params.field = inp.mag_field;
+        field_params.field = inp.field;
         field_params.options = inp.field_options;
 
         // Interpret input in units of Tesla
-        for (real_type& f : field_params.field)
+        for (real_type& v : field_params.field)
         {
-            f *= units::tesla;
+            v = native_value_from(units::FieldTesla{v});
         }
 
-        auto along_step = std::make_shared<AlongStepUniformMscAction>(
-            params.action_reg->next_id(), field_params, msc);
+        auto along_step = AlongStepUniformMscAction::from_params(
+            params.action_reg->next_id(),
+            *params.material,
+            *params.particle,
+            field_params,
+            msc,
+            eloss);
         CELER_ASSERT(along_step->field() != RunnerInput::no_field());
         params.action_reg->insert(along_step);
     }
@@ -280,35 +386,34 @@ void Runner::build_core_params(RunnerInput const& inp,
     params.rng = std::make_shared<RngParams>(inp.seed);
 
     // Construct simulation params
-    params.sim = SimParams::from_import(imported, params.particle);
+    params.sim = SimParams::from_import(
+        imported, params.particle, inp.field_options.max_substeps);
+
+    // Get the total number of events
+    auto num_events = this->build_events(inp, params.particle);
 
     // Store the number of simultaneous threads/tasks per process
-    params.max_streams = this->get_num_streams(inp);
-    CELER_VALIDATE(inp.mctruth_filename.empty() || params.max_streams == 1,
-                   << "MC truth output is only supported with a single "
-                      "stream.");
+    params.max_streams = calc_num_streams(inp, num_events);
+    CELER_VALIDATE(inp.mctruth_file.empty() || params.max_streams == 1,
+                   << "cannot output MC truth with multiple "
+                      "streams ("
+                   << params.max_streams << " requested)");
 
     // Construct track initialization params
-    params.init = [&inp, &params] {
+    params.init = [&inp, &params, num_events] {
         CELER_VALIDATE(inp.initializer_capacity > 0,
                        << "nonpositive initializer_capacity="
                        << inp.initializer_capacity);
-        CELER_VALIDATE(inp.max_events > 0,
-                       << "nonpositive max_events=" << inp.max_events);
-        CELER_VALIDATE(
-            !inp.primary_gen_options
-                || inp.max_events >= inp.primary_gen_options.num_events,
-            << "max_events=" << inp.max_events
-            << " cannot be less than num_events="
-            << inp.primary_gen_options.num_events);
         TrackInitParams::Input input;
         input.capacity = ceil_div(inp.initializer_capacity, params.max_streams);
-        input.max_events = inp.max_events;
+        input.max_events = num_events;
         input.track_order = inp.track_order;
         return std::make_shared<TrackInitParams>(std::move(input));
     }();
 
     core_params_ = std::make_shared<CoreParams>(std::move(params));
+
+    // TODO: if optical is enabled, construct from imported and core_params_
 }
 
 //---------------------------------------------------------------------------//
@@ -326,15 +431,20 @@ void Runner::build_transporter_input(RunnerInput const& inp)
     transporter_input_->num_track_slots
         = ceil_div(inp.num_track_slots, core_params_->max_streams());
     transporter_input_->max_steps = inp.max_steps;
-    transporter_input_->sync = inp.sync;
+    transporter_input_->store_track_counts = inp.write_track_counts;
+    transporter_input_->store_step_times = inp.write_step_times;
+    transporter_input_->action_times = inp.action_times;
     transporter_input_->params = core_params_;
 }
 
 //---------------------------------------------------------------------------//
 /*!
- * Read events from a HepMC3 file or build using a primary generator.
+ * Read events from a file or build using a primary generator.
+ *
+ * This returns the total number of events.
  */
-void Runner::build_events(RunnerInput const& inp)
+size_type
+Runner::build_events(RunnerInput const& inp, SPConstParticles particles)
 {
     ScopedMem record_mem("Runner.build_events");
 
@@ -344,40 +454,51 @@ void Runner::build_events(RunnerInput const& inp)
         events_.resize(1);
     }
 
-    auto append = [&](VecPrimary& event) {
-        if (inp.merge_events)
+    auto read_events = [&](auto&& generate) {
+        auto event = generate();
+        while (!event.empty())
         {
-            events_.front().insert(
-                events_.front().end(), event.begin(), event.end());
+            if (inp.merge_events)
+            {
+                events_.front().insert(
+                    events_.front().end(), event.begin(), event.end());
+            }
+            else
+            {
+                events_.push_back(event);
+            }
+            event = generate();
+        }
+        return generate.num_events();
+    };
+
+    if (inp.primary_options)
+    {
+        return read_events(
+            PrimaryGenerator::from_options(particles, inp.primary_options));
+    }
+    else if (ends_with(inp.event_file, ".root"))
+    {
+        if (inp.file_sampling_options)
+        {
+            // Sampling options are assigned; use ROOT event sampler
+            return read_events(
+                RootEventSampler(inp.event_file,
+                                 particles,
+                                 inp.file_sampling_options.num_events,
+                                 inp.file_sampling_options.num_merged,
+                                 inp.seed));
         }
         else
         {
-            events_.push_back(event);
-        }
-    };
-
-    if (inp.primary_gen_options)
-    {
-        std::mt19937 rng;
-        auto generate_event = PrimaryGenerator<std::mt19937>::from_options(
-            core_params_->particle(), inp.primary_gen_options);
-        auto event = generate_event(rng);
-        while (!event.empty())
-        {
-            append(event);
-            event = generate_event(rng);
+            // Use event reader
+            return read_events(RootEventReader(inp.event_file, particles));
         }
     }
     else
     {
-        EventReader read_event(inp.hepmc3_filename.c_str(),
-                               core_params_->particle());
-        auto event = read_event();
-        while (!event.empty())
-        {
-            append(event);
-            event = read_event();
-        }
+        // Assume filename is one of the HepMC3-supported extensions
+        return read_events(EventReader(inp.event_file, particles));
     }
 }
 
@@ -388,11 +509,11 @@ void Runner::build_events(RunnerInput const& inp)
 void Runner::build_step_collectors(RunnerInput const& inp)
 {
     StepCollector::VecInterface step_interfaces;
-    if (!inp.mctruth_filename.empty())
+    if (!inp.mctruth_file.empty())
     {
         // Initialize ROOT file
         root_manager_
-            = std::make_shared<RootFileManager>(inp.mctruth_filename.c_str());
+            = std::make_shared<RootFileManager>(inp.mctruth_file.c_str());
 
         // Create root step writer
         step_interfaces.push_back(std::make_shared<RootStepWriter>(
@@ -447,7 +568,7 @@ void Runner::build_diagnostics(RunnerInput const& inp)
         auto step_diagnostic = std::make_shared<StepDiagnostic>(
             core_params_->action_reg()->next_id(),
             core_params_->particle(),
-            inp.step_diagnostic_maxsteps,
+            inp.step_diagnostic_bins,
             core_params_->max_streams());
 
         // Add to action registry
@@ -459,13 +580,13 @@ void Runner::build_diagnostics(RunnerInput const& inp)
 
 //---------------------------------------------------------------------------//
 /*!
- * Build the transporter for the given stream.
+ * Get the transporter for the given stream, constructing if necessary.
  */
-auto Runner::build_transporter(StreamId stream) -> UPTransporterBase&
+auto Runner::get_transporter(StreamId stream) -> TransporterBase&
 {
-    CELER_EXPECT(stream < this->num_streams());
+    CELER_EXPECT(stream < transporters_.size());
 
-    auto& result = transporters_[stream.get()];
+    UPTransporterBase& result = transporters_[stream.get()];
     if (!result)
     {
         result = [this, stream]() -> std::unique_ptr<TransporterBase> {
@@ -489,42 +610,17 @@ auto Runner::build_transporter(StreamId stream) -> UPTransporterBase&
         }();
     }
     CELER_ENSURE(result);
-    return result;
+    return *result;
 }
 
 //---------------------------------------------------------------------------//
 /*!
- * Get the number of streams from the OMP_NUM_THREADS environment variable.
- *
- * The value of OMP_NUM_THREADS should be a list of positive integers, each of
- * which sets the number of threads for the parallel region at the
- * corresponding nested level. The number of streams is set to the first value
- * in the list.
- *
- * \note For a multithreaded CPU run, if OMP_NUM_THREADS is set to a single
- * value, the number of threads for each nested parallel region will be set to
- * that value.
+ * Get an already-constructed transporter for the given stream.
  */
-int Runner::get_num_streams(RunnerInput const& inp)
+auto Runner::get_transporter_ptr(StreamId stream) const -> TransporterBase const*
 {
-#ifdef _OPENMP
-    if (inp.merge_events)
-    {
-        return 1;
-    }
-
-    std::string const& nt_str = getenv("OMP_NUM_THREADS");
-    if (!nt_str.empty())
-    {
-        auto num_threads = std::stoi(nt_str);
-        CELER_VALIDATE(num_threads > 0,
-                       << "nonpositive num_streams=" << num_threads);
-        return num_threads;
-    }
-#else
-    (void)sizeof(inp);
-#endif
-    return 1;
+    CELER_EXPECT(stream < transporters_.size());
+    return transporters_[stream.get()].get();
 }
 
 //---------------------------------------------------------------------------//

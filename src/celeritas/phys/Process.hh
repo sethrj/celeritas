@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -13,7 +13,7 @@
 
 #include "corecel/cont/Range.hh"
 #include "celeritas/Types.hh"
-#include "celeritas/grid/ValueGridData.hh"
+#include "celeritas/grid/ValueGridType.hh"
 
 namespace celeritas
 {
@@ -37,9 +37,9 @@ class ValueGridBuilder;
  *
  * The StepLimitBuilders is a fixed-size array corresponding to the physics
  * interface enum \c ValueGridType :
- * - macro_xs:    Cross section [1/cm]
- * - energy_loss: dE/dx [MeV/cm]
- * - range:       Range limit [cm]
+ * - macro_xs:    Cross section [1/len]
+ * - energy_loss: dE/dx [MeV/len]
+ * - range:       Range limit [len]
  */
 class Process
 {
@@ -67,13 +67,13 @@ class Process
     virtual bool use_integral_xs() const = 0;
 
     //! Name of the process
-    virtual std::string label() const = 0;
+    virtual std::string_view label() const = 0;
 
   protected:
     //!@{
     //! Allow construction and assignment only through daughter classes
     Process() = default;
-    CELER_DEFAULT_COPY_MOVE(Process)
+    CELER_DEFAULT_COPY_MOVE(Process);
     //!@}
 };
 

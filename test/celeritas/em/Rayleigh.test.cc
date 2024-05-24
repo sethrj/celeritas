@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -33,13 +33,13 @@ class RayleighInteractorTest : public InteractorHostTestBase
   protected:
     void SetUp() override
     {
+        using namespace constants;
         using namespace units;
         constexpr auto zero = zero_quantity();
-        constexpr auto stable = ParticleRecord::stable_decay_constant();
 
         // Set up shared particle data for RayleighModel
         Base::set_particle_params(
-            {{"gamma", pdg::gamma(), zero, zero, stable}});
+            {{"gamma", pdg::gamma(), zero, zero, stable_decay_constant}});
         auto const& particles = *this->particle_params();
         model_ref_.ids.gamma = particles.find(pdg::gamma());
 
@@ -49,7 +49,7 @@ class RayleighInteractorTest : public InteractorHostTestBase
                         {AtomicNumber{74}, units::AmuMass{183.84}, {}, "W"},
                         {AtomicNumber{82}, units::AmuMass{207.2}, {}, "Pb"}};
         inp.materials = {
-            {1.0 * constants::na_avogadro,
+            {native_value_from(MolCcDensity{1.0}),
              293.0,
              MatterState::solid,
              {{ElementId{0}, 0.5}, {ElementId{1}, 0.3}, {ElementId{2}, 0.2}},
@@ -104,7 +104,7 @@ TEST_F(RayleighInteractorTest, basic)
     std::vector<unsigned long int> rng_counts;
 
     // Sample scattering angle and count rng used for each incident energy
-    for (double inc_e : {1e-5, 1e-4, 0.001, 0.01, 0.1, 1., 10., 100., 1000.})
+    for (real_type inc_e : {1e-5, 1e-4, 0.001, 0.01, 0.1, 1., 10., 100., 1000.})
     {
         RandomEngine& rng_engine = this->rng();
 
@@ -126,7 +126,7 @@ TEST_F(RayleighInteractorTest, basic)
         rng_counts.push_back(rng_engine.count());
     }
 
-    const real_type expected_angle[] = {0.383668498876068,
+    real_type const expected_angle[] = {0.383668498876068,
                                         -0.99294588967104,
                                         0.780467077338104,
                                         0.985521422599946,
@@ -154,7 +154,7 @@ TEST_F(RayleighInteractorTest, stress_test)
     std::vector<real_type> average_rng_counts;
 
     // Sample scattering angle and count rng used for each incident energy
-    for (double inc_e : {1e-5, 1e-4, 0.001, 0.01, 0.1, 1., 10., 100., 1000.})
+    for (real_type inc_e : {1e-5, 1e-4, 0.001, 0.01, 0.1, 1., 10., 100., 1000.})
     {
         // Set the incident particle energy
         this->set_inc_particle(pdg::gamma(), MevEnergy{inc_e});
@@ -184,7 +184,7 @@ TEST_F(RayleighInteractorTest, stress_test)
         average_angle.push_back(sum_angle / num_samples);
     }
 
-    const real_type expected_average_rng_counts[] = {10.943603515625,
+    real_type const expected_average_rng_counts[] = {10.943603515625,
                                                      11.01025390625,
                                                      11.08935546875,
                                                      9.82080078125,
@@ -194,7 +194,7 @@ TEST_F(RayleighInteractorTest, stress_test)
                                                      8,
                                                      8};
 
-    const real_type expected_average_angle[] = {0.00231121922009911,
+    real_type const expected_average_angle[] = {0.00231121922009911,
                                                 0.00899744556924152,
                                                 0.00779010297910534,
                                                 0.583035907797808,

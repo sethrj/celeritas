@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -50,6 +50,16 @@
  * side effects are as expected when leaving a function.
  */
 /*!
+ * \def CELER_ASSUME
+ *
+ * Always-on compiler assumption. This should be used very rarely: you should
+ * make sure the resulting assembly is simplified in optimize mode from using
+ * the assumption. For example, sometimes informing the compiler of an
+ * assumption can reduce code bloat by skipping standard library exception
+ * handling code (e.g. in \c std::visit by assuming \c
+ * !var_obj.valueless_by_exception() ).
+ */
+/*!
  * \def CELER_VALIDATE
  *
  * Always-on runtime assertion macro. This can check user input and input data
@@ -84,6 +94,13 @@
  * \endcode
  */
 /*!
+ * \def CELER_DEBUG_FAIL
+ *
+ * Throw a debug assertion regardless of the \c CELERITAS_DEBUG setting. This
+ * is used internally but is also useful for catching subtle programming errors
+ * in downstream code.
+ */
+/*!
  * \def CELER_ASSERT_UNREACHABLE
  *
  * Throw an assertion if the code point is reached. When debug assertions are
@@ -108,8 +125,18 @@
  * \def CELER_NOT_IMPLEMENTED
  *
  * Assert if the code point is reached because a feature has yet to be fully
- * implemented. This placeholder is so that code paths can be "declared but not
- * defined" and implementations safely postponed in a greppable manner.
+ * implemented.
+ *
+ * This placeholder is so that code paths can be "declared but not defined" and
+ * implementations safely postponed in a greppable manner. This should \em not
+ * be used to define "unused" overrides for virtual classes. A correct use case
+ * would be:
+ * \code
+   if (z > AtomicNumber{26})
+   {
+       CELER_NOT_IMPLEMENTED("physics for heavy nuclides");
+   }
+ * \endcode
  */
 
 //! \cond
@@ -140,11 +167,13 @@
             CELER_DEBUG_THROW_(#COND, WHICH); \
         }                                     \
     } while (0)
-#define CELER_DEBUG_FAIL_(MSG, WHICH)   \
+#define CELER_NDEBUG_ASSUME_(COND)      \
     do                                  \
     {                                   \
-        CELER_DEBUG_THROW_(MSG, WHICH); \
-        ::celeritas::unreachable();     \
+        if (CELER_UNLIKELY(!(COND)))    \
+        {                               \
+            ::celeritas::unreachable(); \
+        }                               \
     } while (0)
 #define CELER_NOASSERT_(COND)   \
     do                          \
@@ -153,39 +182,64 @@
     } while (0)
 //! \endcond
 
+#define CELER_DEBUG_FAIL(MSG, WHICH)    \
+    do                                  \
+    {                                   \
+        CELER_DEBUG_THROW_(MSG, WHICH); \
+        ::celeritas::unreachable();     \
+    } while (0)
+
+#if !CELER_DEVICE_COMPILE || defined(__HIP__)
+#    define CELER_RUNTIME_THROW(WHICH, WHAT, COND) \
+        throw ::celeritas::RuntimeError({          \
+            WHICH,                                 \
+            WHAT,                                  \
+            COND,                                  \
+            __FILE__,                              \
+            __LINE__,                              \
+        })
+#else
+#    define CELER_RUNTIME_THROW(WHICH, WHAT, COND)                           \
+        CELER_DEBUG_FAIL("Runtime errors cannot be thrown from device code", \
+                         unreachable);
+#endif
+
 #if CELERITAS_DEBUG
 #    define CELER_EXPECT(COND) CELER_DEBUG_ASSERT_(COND, precondition)
 #    define CELER_ASSERT(COND) CELER_DEBUG_ASSERT_(COND, internal)
 #    define CELER_ENSURE(COND) CELER_DEBUG_ASSERT_(COND, postcondition)
+#    define CELER_ASSUME(COND) CELER_DEBUG_ASSERT_(COND, assumption)
 #    define CELER_ASSERT_UNREACHABLE() \
-        CELER_DEBUG_FAIL_("unreachable code point encountered", unreachable)
+        CELER_DEBUG_FAIL("unreachable code point encountered", unreachable)
 #else
 #    define CELER_EXPECT(COND) CELER_NOASSERT_(COND)
 #    define CELER_ASSERT(COND) CELER_NOASSERT_(COND)
 #    define CELER_ENSURE(COND) CELER_NOASSERT_(COND)
+#    define CELER_ASSUME(COND) CELER_NDEBUG_ASSUME_(COND)
 #    define CELER_ASSERT_UNREACHABLE() ::celeritas::unreachable()
 #endif
 
 #if !CELER_DEVICE_COMPILE || defined(__HIP__)
-#    define CELER_VALIDATE(COND, MSG)                                     \
-        do                                                                \
-        {                                                                 \
-            if (CELER_UNLIKELY(!(COND)))                                  \
-            {                                                             \
-                std::ostringstream celer_runtime_msg_;                    \
-                celer_runtime_msg_ MSG;                                   \
-                throw ::celeritas::RuntimeError::from_validate(           \
-                    celer_runtime_msg_.str(), #COND, __FILE__, __LINE__); \
-            }                                                             \
+#    define CELER_VALIDATE(COND, MSG)                            \
+        do                                                       \
+        {                                                        \
+            if (CELER_UNLIKELY(!(COND)))                         \
+            {                                                    \
+                std::ostringstream celer_runtime_msg_;           \
+                celer_runtime_msg_ MSG;                          \
+                CELER_RUNTIME_THROW(                             \
+                    "runtime", celer_runtime_msg_.str(), #COND); \
+            }                                                    \
         } while (0)
 #else
-#    define CELER_VALIDATE(COND, MSG)                                         \
-        CELER_DEBUG_FAIL_("CELER_VALIDATE cannot be called from device code", \
-                          unreachable);
+#    define CELER_VALIDATE(COND, MSG) \
+        CELER_RUNTIME_THROW("unreachable", "", #COND)
 #endif
 
-#define CELER_NOT_CONFIGURED(WHAT) CELER_DEBUG_FAIL_(WHAT, unconfigured)
-#define CELER_NOT_IMPLEMENTED(WHAT) CELER_DEBUG_FAIL_(WHAT, unimplemented)
+#define CELER_NOT_CONFIGURED(WHAT) \
+    CELER_RUNTIME_THROW("configuration", WHAT, {})
+#define CELER_NOT_IMPLEMENTED(WHAT) \
+    CELER_RUNTIME_THROW("implementation", WHAT, {})
 
 /*!
  * \def CELER_CUDA_CALL
@@ -194,7 +248,10 @@
  * RuntimeError if it fails. If CUDA is disabled, throw an unconfigured
  * assertion.
  *
- * If it fails, we call \c cudaGetLastError to clear the error code.
+ * If it fails, we call \c cudaGetLastError to clear the error code. Note that
+ * this will \em not clear the code in a few fatal error cases (kernel
+ * assertion failure, invalid memory access) and all subsequent CUDA calls will
+ * fail.
  *
  * \code
    CELER_CUDA_CALL(cudaMalloc(&ptr_gpu, 100 * sizeof(float)));
@@ -205,26 +262,22 @@
  * corecel/device_runtime_api.h .
  */
 #if CELERITAS_USE_CUDA
-#    define CELER_CUDA_CALL(STATEMENT)                             \
-        do                                                         \
-        {                                                          \
-            cudaError_t cuda_result_ = (STATEMENT);                \
-            if (CELER_UNLIKELY(cuda_result_ != cudaSuccess))       \
-            {                                                      \
-                cuda_result_ = cudaGetLastError();                 \
-                throw ::celeritas::RuntimeError::from_device_call( \
-                    cudaGetErrorString(cuda_result_),              \
-                    #STATEMENT,                                    \
-                    __FILE__,                                      \
-                    __LINE__);                                     \
-            }                                                      \
+#    define CELER_CUDA_CALL(STATEMENT)                                     \
+        do                                                                 \
+        {                                                                  \
+            cudaError_t cuda_result_ = (STATEMENT);                        \
+            if (CELER_UNLIKELY(cuda_result_ != cudaSuccess))               \
+            {                                                              \
+                CELER_RUNTIME_THROW(                                       \
+                    "CUDA", cudaGetErrorString(cuda_result_), #STATEMENT); \
+            }                                                              \
         } while (0)
 #else
 #    define CELER_CUDA_CALL(STATEMENT)                     \
         do                                                 \
         {                                                  \
             CELER_NOT_CONFIGURED("CUDA");                  \
-            (void)sizeof(celeritas_device_runtime_api_h_); \
+            CELER_DISCARD(celeritas_device_runtime_api_h_) \
         } while (0)
 #endif
 
@@ -247,26 +300,23 @@
  * declaration enforces this when HIP is disabled.
  */
 #if CELERITAS_USE_HIP
-#    define CELER_HIP_CALL(STATEMENT)                              \
-        do                                                         \
-        {                                                          \
-            hipError_t hip_result_ = (STATEMENT);                  \
-            if (CELER_UNLIKELY(hip_result_ != hipSuccess))         \
-            {                                                      \
-                hip_result_ = hipGetLastError();                   \
-                throw ::celeritas::RuntimeError::from_device_call( \
-                    hipGetErrorString(hip_result_),                \
-                    #STATEMENT,                                    \
-                    __FILE__,                                      \
-                    __LINE__);                                     \
-            }                                                      \
+#    define CELER_HIP_CALL(STATEMENT)                                   \
+        do                                                              \
+        {                                                               \
+            hipError_t hip_result_ = (STATEMENT);                       \
+            if (CELER_UNLIKELY(hip_result_ != hipSuccess))              \
+            {                                                           \
+                hip_result_ = hipGetLastError();                        \
+                CELER_RUNTIME_THROW(                                    \
+                    "HIP", hipGetErrorString(hip_result_), #STATEMENT); \
+            }                                                           \
         } while (0)
 #else
 #    define CELER_HIP_CALL(STATEMENT)                      \
         do                                                 \
         {                                                  \
             CELER_NOT_CONFIGURED("HIP");                   \
-            (void)sizeof(celeritas_device_runtime_api_h_); \
+            CELER_DISCARD(celeritas_device_runtime_api_h_) \
         } while (0)
 #endif
 
@@ -296,7 +346,7 @@
         do                                                 \
         {                                                  \
             CELER_NOT_CONFIGURED("CUDA or HIP");           \
-            (void)sizeof(celeritas_device_runtime_api_h_); \
+            CELER_DISCARD(celeritas_device_runtime_api_h_) \
         } while (0)
 #endif
 
@@ -319,15 +369,15 @@
  * \note A file that uses this macro must include \c mpi.h.
  */
 #if CELERITAS_USE_MPI
-#    define CELER_MPI_CALL(STATEMENT)                             \
-        do                                                        \
-        {                                                         \
-            int mpi_result_ = (STATEMENT);                        \
-            if (CELER_UNLIKELY(mpi_result_ != MPI_SUCCESS))       \
-            {                                                     \
-                throw ::celeritas::RuntimeError::from_mpi_call(   \
-                    mpi_result_, #STATEMENT, __FILE__, __LINE__); \
-            }                                                     \
+#    define CELER_MPI_CALL(STATEMENT)                                     \
+        do                                                                \
+        {                                                                 \
+            int mpi_result_ = (STATEMENT);                                \
+            if (CELER_UNLIKELY(mpi_result_ != MPI_SUCCESS))               \
+            {                                                             \
+                CELER_RUNTIME_THROW(                                      \
+                    "MPI", mpi_error_to_string(mpi_result_), #STATEMENT); \
+            }                                                             \
         } while (0)
 #else
 #    define CELER_MPI_CALL(STATEMENT)    \
@@ -351,18 +401,8 @@ enum class DebugErrorType
     precondition,  //!< Precondition contract violation
     internal,  //!< Internal assertion check failure
     unreachable,  //!< Internal assertion: unreachable code path
-    unconfigured,  //!< Internal assertion: required feature not enabled
-    unimplemented,  //!< Internal assertion: not yet implemented
     postcondition,  //!< Postcondition contract violation
-};
-
-enum class RuntimeErrorType
-{
-    validate,  //!< Celeritas runtime error
-    device,  //!< CUDA or HIP
-    mpi,  //!< Coarse-grain parallelism
-    geant,  //!< Error from Geant4
-    root  //!< Error from ROOT
+    assumption,  //!< "Assume" violation
 };
 
 //! Detailed properties of a debug assertion failure
@@ -377,11 +417,11 @@ struct DebugErrorDetails
 //! Detailed properties of a runtime error
 struct RuntimeErrorDetails
 {
-    RuntimeErrorType which{RuntimeErrorType::validate};
-    std::string what{};
-    char const* condition{nullptr};
-    char const* file{nullptr};
-    int line{0};
+    std::string which{};  //!< Type of error (runtime, Geant4, MPI)
+    std::string what{};  //!< Descriptive message
+    std::string condition{};  //!< Code/test that failed
+    std::string file{};  //!< Source file
+    int line{0};  //!< Source line
 };
 
 //---------------------------------------------------------------------------//
@@ -394,11 +434,11 @@ struct RuntimeErrorDetails
     CELER_UNREACHABLE;
 }
 
-//! Get a pretty string version of a debug error
+// Get a pretty string version of a debug error
 char const* to_cstring(DebugErrorType which);
 
-//! Get a pretty string version of a runtime error
-char const* to_cstring(RuntimeErrorType which);
+// Get an MPI error string
+std::string mpi_error_to_string(int);
 
 //---------------------------------------------------------------------------//
 // TYPES
@@ -414,7 +454,7 @@ class DebugError : public std::logic_error
 {
   public:
     // Construct from debug attributes
-    explicit DebugError(DebugErrorDetails);
+    explicit DebugError(DebugErrorDetails&&);
 
     //! Access the debug data
     DebugErrorDetails const& details() const { return details_; }
@@ -430,30 +470,8 @@ class DebugError : public std::logic_error
 class RuntimeError : public std::runtime_error
 {
   public:
-    // Construct from validation failure
-    static RuntimeError
-    from_validate(std::string msg, char const* code, char const* file, int line);
-
-    // Construct from device call
-    static RuntimeError from_device_call(char const* error_string,
-                                         char const* code,
-                                         char const* file,
-                                         int line);
-
-    // Construct from MPI call
-    static RuntimeError
-    from_mpi_call(int errorcode, char const* code, char const* file, int line);
-
-    // Construct from call to Geant4
-    static RuntimeError from_geant_exception(char const* origin,
-                                             char const* code,
-                                             char const* desc);
-
-    // Construct from call to ROOT
-    static RuntimeError from_root_error(char const* origin, char const* msg);
-
     // Construct from details
-    explicit RuntimeError(RuntimeErrorDetails);
+    explicit RuntimeError(RuntimeErrorDetails&&);
 
     //! Access detailed information
     RuntimeErrorDetails const& details() const { return details_; }
@@ -488,7 +506,7 @@ class RichContextException : public std::exception
 #if defined(__CUDA_ARCH__) && defined(NDEBUG)
 //! Host+device definition for CUDA when \c assert is unavailable
 inline __attribute__((noinline)) __host__ __device__ void device_debug_error(
-    DebugErrorType, char const* condition, char const* file, unsigned int line)
+    DebugErrorType, char const* condition, char const* file, int line)
 {
     printf("%s:%u:\nceleritas: internal assertion failed: %s\n",
            file,
@@ -501,15 +519,15 @@ inline __attribute__((noinline)) __host__ __device__ void device_debug_error(
 inline __host__ void device_debug_error(DebugErrorType which,
                                         char const* condition,
                                         char const* file,
-                                        unsigned int line)
+                                        int line)
 {
-    throw DebugError({which, condition, __FILE__, __LINE__});
+    throw DebugError({which, condition, file, line});
 }
 
 //! Device-only call for HIP (must always be declared; only used if
 //! NDEBUG)
 inline __attribute__((noinline)) __device__ void device_debug_error(
-    DebugErrorType, char const* condition, char const* file, unsigned int line)
+    DebugErrorType, char const* condition, char const* file, int line)
 {
     printf("%s:%u:\nceleritas: internal assertion failed: %s\n",
            file,

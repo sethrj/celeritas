@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -13,7 +13,8 @@
 #include <utility>
 
 #include "celeritas_config.h"
-#include "corecel/io/OutputInterface.hh"
+
+#include "OutputInterface.hh"
 #if CELERITAS_USE_JSON
 #    include <nlohmann/json.hpp>
 #endif
@@ -40,7 +41,7 @@ void OutputRegistry::insert(SPConstInterface interface)
 
     Category cat = interface->category();
     auto [prev, inserted]
-        = interfaces_[cat].insert({std::move(label), std::move(interface)});
+        = interfaces_[cat].insert({std::string{label}, std::move(interface)});
     CELER_VALIDATE(inserted,
                    << "duplicate output entry '" << prev->first
                    << "' for category '" << to_cstring(cat) << "'");
@@ -88,7 +89,7 @@ void OutputRegistry::output(JsonPimpl* j) const
 
     j->obj = std::move(result);
 #else
-    (void)sizeof(j);
+    CELER_DISCARD(j);
     CELER_NOT_CONFIGURED("nljson");
 #endif
 }

@@ -1,11 +1,12 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
 //! \file example/minimal/minimal.cc
 //---------------------------------------------------------------------------//
 #include <memory>
+#include <celeritas/Constants.hh>
 #include <celeritas/phys/PDGNumber.hh>
 #include <celeritas/phys/ParticleParams.hh>
 #include <corecel/io/Logger.hh>
@@ -26,7 +27,7 @@ namespace
 std::shared_ptr<ParticleParams> make_particles()
 {
     constexpr auto zero = celeritas::zero_quantity();
-    constexpr auto stable = celeritas::ParticleRecord::stable_decay_constant();
+    constexpr auto stable = celeritas::constants::stable_decay_constant;
 
     ParticleParams::Input defs;
     defs.push_back({"electron",

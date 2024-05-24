@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -10,12 +10,13 @@
 #include <string>
 
 #include "celeritas_cmake_strings.h"
+#include "celeritas_config.h"
 #include "corecel/io/Logger.hh"
-#include "celeritas/em/UrbanMscParams.hh"
+#include "geocel/ScopedGeantExceptionHandler.hh"
+#include "celeritas/em/params/UrbanMscParams.hh"
 #include "celeritas/ext/GeantImporter.hh"
 #include "celeritas/ext/GeantPhysicsOptions.hh"
 #include "celeritas/ext/GeantSetup.hh"
-#include "celeritas/ext/ScopedGeantExceptionHandler.hh"
 #include "celeritas/global/ActionRegistry.hh"
 #include "celeritas/global/alongstep/AlongStepGeneralLinearAction.hh"
 #include "celeritas/io/ImportData.hh"
@@ -69,12 +70,14 @@ class GeantTestBase::CleanupGeantEnvironment : public ::testing::Environment
 //! Whether Geant4 dependencies match those on the CI build
 bool GeantTestBase::is_ci_build()
 {
-    return cstring_equal(celeritas_core_rng, "xorwow")
+    return CELERITAS_REAL_TYPE == CELERITAS_REAL_TYPE_DOUBLE
+           && CELERITAS_CORE_GEO != CELERITAS_CORE_GEO_GEANT4
+           && CELERITAS_UNITS == CELERITAS_UNITS_CGS
+           && cstring_equal(celeritas_core_rng, "xorwow")
            && (cstring_equal(celeritas_clhep_version, "2.4.6.0")
                || cstring_equal(celeritas_clhep_version, "2.4.6.4"))
            && (cstring_equal(celeritas_geant4_version, "11.0.3")
-               || cstring_equal(celeritas_geant4_version, "11.0.4"))
-           && CELERITAS_CORE_GEO != CELERITAS_CORE_GEO_GEANT4;
+               || cstring_equal(celeritas_geant4_version, "11.0.4"));
 }
 
 //---------------------------------------------------------------------------//
@@ -124,6 +127,7 @@ auto GeantTestBase::build_init() -> SPConstTrackInit
     TrackInitParams::Input input;
     input.capacity = 4096 * 2;
     input.max_events = 4096;
+    input.track_order = TrackOrder::unsorted;
     return std::make_shared<TrackInitParams>(input);
 }
 
@@ -179,7 +183,7 @@ auto GeantTestBase::imported_data() const -> ImportData const&
         i.geometry_basename = this->geometry_basename();
         i.options = opts;
         std::string gdml_inp = this->test_data_path(
-            "celeritas", (i.geometry_basename + ".gdml").c_str());
+            "geocel", (i.geometry_basename + ".gdml").c_str());
         i.import = std::make_unique<GeantImporter>(
             GeantSetup{gdml_inp.c_str(), i.options});
         i.scoped_exceptions = std::make_unique<ScopedGeantExceptionHandler>();

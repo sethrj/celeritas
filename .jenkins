@@ -1,4 +1,9 @@
 pipeline {
+  options {
+    disableConcurrentBuilds(abortPrevious: true)
+    newContainerPerStage()
+    timeout(time: 7, unit: 'HOURS')
+  }
   triggers {
     issueCommentTrigger('.*do: test')
   }
@@ -6,63 +11,15 @@ pipeline {
   stages {
     stage('Build') {
       parallel {
-        stage('clang-minitest') {
+        stage('cuda-debug-orange') {
           agent {
             docker {
-              image 'celeritas/ci-centos7-rocm5:2022-12-14.2'
-              // Note: this image does not require CUDA or HIP
-            }
-          }
-          steps {
-            sh 'entrypoint-shell ./scripts/ci/run-ci.sh  centos-rocm minitest'
-          }
-          post {
-            always {
-              xunit reduceLog: false, tools:[CTest(deleteOutputFiles: true, failIfNotNew: true, pattern: 'build/Testing/**/*.xml', skipNoTestFiles: false, stopProcessingIfError: true)]
-            }
-          }
-        }
-        stage('clang-asan') {
-          agent {
-            docker {
-              image 'celeritas/ci-centos7-rocm5:2022-12-14.2'
-            }
-          }
-          steps {
-            sh 'entrypoint-shell ./scripts/ci/run-ci.sh centos-rocm asan'
-          }
-          post {
-            always {
-              xunit reduceLog: false, tools:[CTest(deleteOutputFiles: true, failIfNotNew: true, pattern: 'build/Testing/**/*.xml', skipNoTestFiles: false, stopProcessingIfError: true)]
-            }
-          }
-        }
-        stage('hip-ndebug') {
-          agent {
-            docker {
-              image 'celeritas/ci-centos7-rocm5:2022-12-14.2'
-              label 'AMD_Radeon_Instinct_MI100 && rocm-docker'
-              args '--device=/dev/kfd --device=/dev/dri --security-opt seccomp=unconfined'
-            }
-          }
-          steps {
-            sh 'entrypoint-shell ./scripts/ci/run-ci.sh centos-rocm ndebug'
-          }
-          post {
-            always {
-              xunit reduceLog: false, tools:[CTest(deleteOutputFiles: true, failIfNotNew: true, pattern: 'build/Testing/**/*.xml', skipNoTestFiles: false, stopProcessingIfError: true)]
-            }
-          }
-        }
-        stage('full-novg') {
-          agent {
-            docker {
-              image 'celeritas/ci-jammy-cuda11:2023-03-13'
+              image 'celeritas/ci-jammy-cuda11:2023-08-02'
               label 'NVIDIA_Tesla_V100-PCIE-32GB && nvidia-docker && large_images'
             }
           }
           steps {
-            sh 'entrypoint-shell ./scripts/ci/run-ci.sh ubuntu-cuda full-novg'
+            sh 'entrypoint-shell ./scripts/ci/run-ci.sh ubuntu-cuda debug-orange'
           }
           post {
             always {
@@ -70,15 +27,15 @@ pipeline {
             }
           }
         }
-        stage('full-novg-ndebug') {
+        stage('cuda-ndebug-orange') {
           agent {
             docker {
-              image 'celeritas/ci-jammy-cuda11:2023-03-13'
+              image 'celeritas/ci-jammy-cuda11:2023-08-02'
               label 'NVIDIA_Tesla_V100-PCIE-32GB && nvidia-docker && large_images'
             }
           }
           steps {
-            sh 'entrypoint-shell ./scripts/ci/run-ci.sh ubuntu-cuda full-novg-ndebug'
+            sh 'entrypoint-shell ./scripts/ci/run-ci.sh ubuntu-cuda ndebug-orange'
           }
           post {
             always {
@@ -86,15 +43,15 @@ pipeline {
             }
           }
         }
-        stage('vecgeom-reldeb') {
+        stage('cuda-debug-vecgeom') {
           agent {
             docker {
-              image 'celeritas/ci-jammy-cuda11:2023-06-20'
+              image 'celeritas/ci-jammy-cuda11:2023-08-02'
               label 'NVIDIA_Tesla_V100-PCIE-32GB && nvidia-docker && large_images'
             }
           }
           steps {
-            sh 'entrypoint-shell ./scripts/ci/run-ci.sh ubuntu-cuda vecgeom-reldeb'
+            sh 'entrypoint-shell ./scripts/ci/run-ci.sh ubuntu-cuda debug-vecgeom'
           }
           post {
             always {
@@ -102,15 +59,15 @@ pipeline {
             }
           }
         }
-        stage('vecgeom-demos') {
+        stage('cuda-reldeb-vecgeom') {
           agent {
             docker {
-              image 'celeritas/ci-jammy-cuda11:2023-06-20'
+              image 'celeritas/ci-jammy-cuda11:2023-08-02'
               label 'NVIDIA_Tesla_V100-PCIE-32GB && nvidia-docker && large_images'
             }
           }
           steps {
-            sh 'entrypoint-shell ./scripts/ci/run-ci.sh ubuntu-cuda vecgeom-demos'
+            sh 'entrypoint-shell ./scripts/ci/run-ci.sh ubuntu-cuda reldeb-vecgeom'
           }
           post {
             always {
@@ -118,35 +75,19 @@ pipeline {
             }
           }
         }
-        stage('vecgeom-tests') {
+        stage('cuda-ndebug-vecgeom') {
           agent {
             docker {
-              image 'celeritas/ci-jammy-cuda11:2023-06-20'
+              image 'celeritas/ci-jammy-cuda11:2023-08-02'
               label 'NVIDIA_Tesla_V100-PCIE-32GB && nvidia-docker && large_images'
             }
           }
           steps {
-            sh 'entrypoint-shell ./scripts/ci/run-ci.sh ubuntu-cuda vecgeom-tests'
+            sh 'entrypoint-shell ./scripts/ci/run-ci.sh ubuntu-cuda ndebug-vecgeom'
           }
           post {
             always {
               xunit reduceLog: false, tools:[CTest(deleteOutputFiles: true, failIfNotNew: true, pattern: 'build/Testing/**/Test.xml', skipNoTestFiles: false, stopProcessingIfError: true)]
-            }
-          }
-        }
-        stage('clang-geant4') {
-          agent {
-            docker {
-              image 'celeritas/ci-centos7-rocm5:2022-12-14.2'
-              // Note: this image does not require CUDA or HIP
-            }
-          }
-          steps {
-            sh 'entrypoint-shell ./scripts/ci/run-ci.sh  centos-rocm geant4'
-          }
-          post {
-            always {
-              xunit reduceLog: false, tools:[CTest(deleteOutputFiles: true, failIfNotNew: true, pattern: 'build/Testing/**/*.xml', skipNoTestFiles: false, stopProcessingIfError: true)]
             }
           }
         }

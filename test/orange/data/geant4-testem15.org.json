@@ -1,20 +1,9 @@
 {
-"_format": "SCALE ORANGE",
+"_format": "ORANGE",
 "_version": 0,
-"materials": {
-"cell_to_mat": [
--1,
-0,
-1
-],
-"names": [
-"G4_STAINLESS-STEEL",
-"G4_Galactic"
-]
-},
 "universes": [
 {
-"_type": "simple unit",
+"_type": "unit",
 "bbox": [
 [
 -60000.0,
@@ -27,65 +16,10 @@
 60000.0
 ]
 ],
-"cell_names": [
-"[EXTERIOR]",
-"box",
-"World"
-],
-"cells": [
-{
-"faces": [
-0,
-1,
-2,
-3,
-4,
-5
-],
-"flags": 1,
-"logic": "0 1 ~ & 2 & 3 ~ & 4 & 5 ~ & ~",
-"num_intersections": 6,
-"zorder": 2
-},
-{
-"faces": [
-6,
-7,
-8,
-9,
-10,
-11
-],
-"logic": "0 1 ~ & 2 & 3 ~ & 4 & 5 ~ &",
-"num_intersections": 6,
-"zorder": 2
-},
-{
-"faces": [
-0,
-1,
-2,
-3,
-4,
-5,
-6,
-7,
-8,
-9,
-10,
-11
-],
-"flags": 1,
-"logic": "0 1 ~ & 2 & 3 ~ & 4 & 5 ~ & 6 7 ~ & 8 & 9 ~ & 10 & 11 ~ & ~ &",
-"num_intersections": 12,
-"zorder": 2
-}
-],
 "md": {
-"name": "global",
-"provenance": "geant4-testem15.org.omn:13"
+"name": "global"
 },
-"surface_names": [
+"surface_labels": [
 "World.mx",
 "World.px",
 "World.my",
@@ -142,7 +76,79 @@
 "pz",
 "pz"
 ]
+},
+"volume_labels": [
+"[EXTERIOR]",
+"box",
+"World"
+],
+"volumes": [
+{
+"faces": [
+0,
+1,
+2,
+3,
+4,
+5
+],
+"flags": 1,
+"logic": "0 1 ~ & 2 & 3 ~ & 4 & 5 ~ & ~"
+},
+{
+"bbox": [
+[
+-5000.0,
+-5000.0,
+-5000.0
+],
+[
+5000.0,
+5000.0,
+5000.0
+]
+],
+"faces": [
+6,
+7,
+8,
+9,
+10,
+11
+],
+"logic": "0 1 ~ & 2 & 3 ~ & 4 & 5 ~ &"
+},
+{
+"bbox": [
+[
+-60000.0,
+-60000.0,
+-60000.0
+],
+[
+60000.0,
+60000.0,
+60000.0
+]
+],
+"faces": [
+0,
+1,
+2,
+3,
+4,
+5,
+6,
+7,
+8,
+9,
+10,
+11
+],
+"flags": 1,
+"logic": "0 1 ~ & 2 & 3 ~ & 4 & 5 ~ & 6 7 ~ & 8 & 9 ~ & 10 & 11 ~ & ~ &"
 }
+]
 }
 ]
 }

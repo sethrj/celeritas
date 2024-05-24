@@ -1,5 +1,5 @@
 //---------------------------------*-CUDA-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -18,38 +18,34 @@
 #include "corecel/sys/MultiExceptionHandler.hh"
 #include "corecel/sys/Stream.hh"
 #include "corecel/sys/ThreadId.hh"
-#include "celeritas/global/CoreParams.hh"
 #include "celeritas/track/TrackInitParams.hh"
 
 #include "ActionInterface.hh"
 #include "CoreParams.hh"
 #include "CoreState.hh"
 #include "KernelContextException.hh"
+#include "detail/ActionLauncherKernel.device.hh"
+#include "detail/ApplierTraits.hh"
 
 namespace celeritas
 {
-namespace
-{
-//---------------------------------------------------------------------------//
-/*!
- * Launch the given executor using thread ids in the thread_range
- */
-template<class F>
-__global__ void
-launch_action_impl(Range<ThreadId> const thread_range, F execute_thread)
-{
-    auto tid = celeritas::KernelParamCalculator::thread_id();
-    if (!(tid < thread_range.size()))
-        return;
-    execute_thread(*(thread_range.cbegin() + tid.get()));
-}
-
-//---------------------------------------------------------------------------//
-}  // namespace
-
 //---------------------------------------------------------------------------//
 /*!
  * Profile and launch Celeritas kernels from inside an action.
+ *
+ * The template argument \c F may define a member type named \c Applier.
+ * \c F::Applier should have up to two static constexpr int variables named
+ * \c max_block_size and/or \c min_warps_per_eu.
+ * If present, the kernel will use appropriate \c __launch_bounds__.
+ * If \c F::Applier::min_warps_per_eu exists then \c F::Applier::max_block_size
+ * must also be present or we get a compile error.
+ *
+ * The semantics of the second \c __launch_bounds__ argument differs between
+ * CUDA and HIP.  \c ActionLauncher expects HIP semantics. If Celeritas is
+ * built targeting CUDA, it will automatically convert that argument to match
+ * CUDA semantics.
+ *
+ * The CUDA-specific 3rd argument \c maxBlocksPerCluster is not supported.
  *
  * Example:
  * \code
@@ -73,14 +69,13 @@ class ActionLauncher
   public:
     //! Create a launcher from an action
     explicit ActionLauncher(ExplicitActionInterface const& action)
-        : calc_launch_params_{action.label(), &launch_action_impl<F>}
+        : ActionLauncher{action.label()}
     {
     }
 
     //! Create a launcher with a string extension
     ActionLauncher(ExplicitActionInterface const& action, std::string_view ext)
-        : calc_launch_params_{action.label() + "-" + std::string(ext),
-                              &launch_action_impl<F>}
+        : ActionLauncher{std::string(action.label()) + "-" + std::string(ext)}
     {
     }
 
@@ -91,10 +86,10 @@ class ActionLauncher
     {
         if (!threads.empty())
         {
-            CELER_DEVICE_PREFIX(Stream_t)
-            stream = celeritas::device().stream(stream_id).get();
+            using StreamT = CELER_DEVICE_PREFIX(Stream_t);
+            StreamT stream = celeritas::device().stream(stream_id).get();
             auto config = calc_launch_params_(threads.size());
-            launch_action_impl<F>
+            detail::launch_action_impl<F>
                 <<<config.blocks_per_grid, config.threads_per_block, 0, stream>>>(
                     threads, call_thread);
         }
@@ -118,10 +113,8 @@ class ActionLauncher
         (*this)(range(ThreadId{num_threads}), stream_id, call_thread);
     }
 
-    //! Launch a Kernel with reduced grid size if tracks are sorted using the
-    //! expected track order strategy.
-    //! TODO: Always use an ActionLauncher instance with the action passed as
-    //! constructor argument
+    //! Launch with reduced grid size for when tracks are sorted
+    // TODO: Reuse ActionLauncher order/ID from constructor argument
     void operator()(CoreParams const& params,
                     CoreState<MemSpace::device> const& state,
                     ExplicitActionInterface const& action,
@@ -144,8 +137,13 @@ class ActionLauncher
 
   private:
     KernelParamCalculator calc_launch_params_;
+
+    //// PRIVATE CONSTRUCTORS ////
+    explicit ActionLauncher(std::string_view name)
+        : calc_launch_params_{name, &detail::launch_action_impl<F>}
+    {
+    }
 };
 
 //---------------------------------------------------------------------------//
 }  // namespace celeritas
-// vim: set ft=cuda

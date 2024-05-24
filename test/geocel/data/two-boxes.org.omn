@@ -1,0 +1,27 @@
+! Copyright 2022-2024 UT-Battelle, LLC and other Celeritas Developers.
+! See the top-level COPYRIGHT file for details.
+! SPDX-License-Identifier: (Apache-2.0 OR MIT)
+
+[GEOMETRY]
+global "global"
+
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
+
+[UNIVERSE=general global]
+interior world_box
+
+[UNIVERSE][SHAPE=box world_box]
+widths 100 100 100  ! note: units are in cm
+
+[UNIVERSE][SHAPE=box inner_box]
+widths 10 10 10
+
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
+
+[UNIVERSE][CELL inner]
+comp 0
+shapes inner_box
+
+[UNIVERSE][CELL world]
+comp 1
+shapes world_box ~inner_box

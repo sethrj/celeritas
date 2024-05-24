@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -27,7 +27,7 @@ bool is_ignored_trailing(unsigned char c);
 
 //---------------------------------------------------------------------------//
 // Return a string view with leading and trailing whitespace removed
-std::string_view trim(std::string_view input);
+[[nodiscard]] std::string_view trim(std::string_view input);
 
 //---------------------------------------------------------------------------//
 }  // namespace celeritas

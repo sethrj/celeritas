@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -50,7 +50,7 @@ TEST_F(UniformRealDistributionTest, bin)
 
     double min = 0.0;
     double max = 5.0;
-    UniformRealDistribution<> sample_uniform{min, max};
+    UniformRealDistribution<double> sample_uniform{min, max};
 
     std::vector<int> counters(5);
     for ([[maybe_unused]] int i : range(num_samples))

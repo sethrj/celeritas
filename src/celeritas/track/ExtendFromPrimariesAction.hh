@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -22,7 +22,7 @@ struct Primary;
  * This will append to the queued TrackInitializer vector any primaries added
  * with \c CoreState::insert_primaries .
  */
-class ExtendFromPrimariesAction final : public ExplicitActionInterface
+class ExtendFromPrimariesAction final : public ExplicitCoreActionInterface
 {
   public:
     //! Construct with explicit Id
@@ -38,10 +38,10 @@ class ExtendFromPrimariesAction final : public ExplicitActionInterface
     ActionId action_id() const final { return id_; }
 
     //! Short name for the action
-    std::string label() const final { return "extend-from-primaries"; }
+    std::string_view label() const final { return "extend-from-primaries"; }
 
     //! Description of the action for user interaction
-    std::string description() const final
+    std::string_view description() const final
     {
         return "create track initializers from primaries";
     }

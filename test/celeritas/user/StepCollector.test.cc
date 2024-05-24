@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -9,7 +9,9 @@
 
 #include "corecel/cont/Span.hh"
 #include "corecel/io/LogContextException.hh"
-#include "celeritas/em/UrbanMscParams.hh"
+#include "geocel/UnitUtils.hh"
+#include "celeritas/em/params/UrbanMscParams.hh"
+#include "celeritas/geo/GeoParams.hh"
 #include "celeritas/global/ActionRegistry.hh"
 #include "celeritas/global/Stepper.hh"
 #include "celeritas/global/alongstep/AlongStepUniformMscAction.hh"
@@ -18,13 +20,13 @@
 #include "celeritas/phys/Primary.hh"
 #include "celeritas/user/SimpleCalo.hh"
 
-#include "../SimpleTestBase.hh"
-#include "../TestEm15Base.hh"
-#include "../TestEm3Base.hh"
 #include "CaloTestBase.hh"
 #include "ExampleMctruth.hh"
 #include "MctruthTestBase.hh"
 #include "celeritas_test.hh"
+#include "../SimpleTestBase.hh"
+#include "../TestEm15Base.hh"
+#include "../TestEm3Base.hh"
 
 using celeritas::units::MevEnergy;
 
@@ -83,7 +85,7 @@ class TestEm3CollectorTestBase : public TestEm3Base,
             *this->particle(), *this->material(), this->imported_data());
 
         auto result = std::make_shared<AlongStepUniformMscAction>(
-            action_reg.next_id(), field_params, msc);
+            action_reg.next_id(), field_params, nullptr, msc);
         CELER_ASSERT(result);
         CELER_ASSERT(result->has_msc());
         action_reg.insert(result);
@@ -94,7 +96,7 @@ class TestEm3CollectorTestBase : public TestEm3Base,
     {
         Primary p;
         p.energy = MevEnergy{10.0};
-        p.position = {-22, 0, 0};
+        p.position = from_cm(Real3{-22, 0, 0});
         p.direction = {1, 0, 0};
         p.time = 0;
         std::vector<Primary> result(count, p);
@@ -125,7 +127,7 @@ class TestEm3CaloTest : public TestEm3CollectorTestBase, public CaloTestBase
 {
     VecString get_detector_names() const final
     {
-        return {"gap_lv_0", "gap_lv_1", "gap_lv_2"};
+        return {"gap_0", "gap_1", "gap_2"};
     }
 };
 
@@ -207,31 +209,42 @@ TEST_F(KnMctruthTest, two_step)
 {
     auto result = this->run(4, 2);
 
-    // clang-format off
-    static const int expected_event[] = {0, 0, 1, 1, 2, 2, 3, 3};
+    static int const expected_event[] = {0, 0, 1, 1, 2, 2, 3, 3};
     EXPECT_VEC_EQ(expected_event, result.event);
-    static const int expected_track[] = {0, 0, 0, 0, 0, 0, 0, 0};
+    static int const expected_track[] = {0, 0, 0, 0, 0, 0, 0, 0};
     EXPECT_VEC_EQ(expected_track, result.track);
-    static const int expected_step[] = {1, 2, 1, 2, 1, 2, 1, 2};
+    static int const expected_step[] = {1, 2, 1, 2, 1, 2, 1, 2};
     EXPECT_VEC_EQ(expected_step, result.step);
     if (CELERITAS_CORE_GEO == CELERITAS_CORE_GEO_ORANGE)
     {
-        static const int expected_volume[] = {1, 1, 1, 1, 1, 2, 1, 2};
+        static int const expected_volume[] = {1, 1, 1, 1, 1, 2, 1, 2};
         EXPECT_VEC_EQ(expected_volume, result.volume);
     }
-    static const double expected_pos[] = {0, 0, 0, 2.6999255778482, 0, 0, 0, 0, 0, 3.5717683161497, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 5, 0, 0};
-    EXPECT_VEC_SOFT_EQ(expected_pos, result.pos);
-    static const double expected_dir[] = {1, 0, 0, 0.45619379667222, 0.14402721708137, -0.87814769863479, 1, 0, 0, 0.8985574206844, -0.27508545475671, -0.34193940152356, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0};
-    EXPECT_VEC_SOFT_EQ(expected_dir, result.dir);
-    // clang-format on
+    if (CELERITAS_CORE_RNG == CELERITAS_CORE_RNG_XORWOW)
+    {
+        // clang-format off
+        static const double expected_pos[] = {0, 0, 0, 2.6999255778482, 0, 0, 0, 0, 0, 3.5717683161497, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 5, 0, 0};
+        EXPECT_VEC_SOFT_EQ(expected_pos, result.pos);
+        static const double expected_dir[] = {1, 0, 0, 0.45619379667222, 0.14402721708137, -0.87814769863479, 1, 0, 0, 0.8985574206844, -0.27508545475671, -0.34193940152356, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0};
+        EXPECT_VEC_SOFT_EQ(expected_dir, result.dir);
+        // clang-format on
+    }
 }
 
-TEST_F(KnCaloTest, single_event)
+TEST_F(KnCaloTest, single_track)
 {
     auto result = this->run<MemSpace::host>(1, 64);
 
-    static double const expected_edep[] = {0.00043564799352598};
-    EXPECT_VEC_SOFT_EQ(expected_edep, result.edep);
+    if (CELERITAS_CORE_RNG == CELERITAS_CORE_RNG_XORWOW)
+    {
+        static double const expected_edep[] = {0.00043564799352598};
+        EXPECT_VEC_SOFT_EQ(expected_edep, result.edep);
+    }
+    else
+    {
+        static double const expected_edep[] = {0};
+        EXPECT_VEC_SOFT_EQ(expected_edep, result.edep);
+    }
 }
 
 //---------------------------------------------------------------------------//
@@ -254,7 +267,9 @@ TEST_F(TestEm3MctruthTest, four_step)
         EXPECT_VEC_EQ(expected_step, result.step);
         if (CELERITAS_CORE_GEO == CELERITAS_CORE_GEO_ORANGE)
         {
-            static const int expected_volume[] = {1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2};
+            // 1 is gap_0
+            // 101 is world
+            static const int expected_volume[] = {101, 1, 1, 1, 101, 1, 1, 1, 101, 1, 1, 1, 101, 1, 1, 1};
             EXPECT_VEC_EQ(expected_volume, result.volume);
         }
         static const double expected_pos[] = {-22, 0, 0, -20, 0.62729376699828,
@@ -268,7 +283,7 @@ TEST_F(TestEm3MctruthTest, four_step)
             -20, -0.62729376699778, 0, -19.969797686903, -0.66354024672438,
             -0.0032805361823643, -19.956976222507, -0.71463257305966,
             0.010438618638369};
-        EXPECT_VEC_SOFT_EQ(expected_pos, result.pos);
+        EXPECT_VEC_NEAR(expected_pos, result.pos, 1e-11);
         static const double expected_dir[] = {1, 0, 0, 0.82087264698347,
             0.57111128288133, 0, 0.86898688645512, 0.46973495237486,
             0.15559841158064, 0.99921943764862, 0.020164890030908,
@@ -281,7 +296,7 @@ TEST_F(TestEm3MctruthTest, four_step)
             -0.57111128288041, 0, 0.45731722153487, -0.78666386310603,
             0.41475405407388, 0.35982246270509, -0.81678277174296,
             0.45099190582174};
-        EXPECT_VEC_SOFT_EQ(expected_dir, result.dir);
+        EXPECT_VEC_NEAR(expected_dir, result.dir, 1e-10);
         // clang-format on
     }
     else
@@ -289,6 +304,12 @@ TEST_F(TestEm3MctruthTest, four_step)
         cout << "No output saved for combination of "
              << test::PrintableBuildConf{} << std::endl;
         result.print_expected();
+
+        if (this->strict_testing())
+        {
+            FAIL() << "Updated step collector results are required for CI "
+                      "tests";
+        }
     }
 }
 

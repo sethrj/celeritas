@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -36,6 +36,11 @@ struct ImportData;
  * the list of `volume_names` strings is provided, it must be the same size as
  * `volume_to_mat` and indicate a mapping for the geometry's volume IDs.
  * Otherwise, the array is required to have exactly one entry per volume ID.
+ *
+ * Warnings are emitted if materials are unavailable for any volumes, *unless*
+ * the corresponding volume name is empty (corresponding perhaps to a "parallel
+ * world" or otherwise unused volume) or is enclosed with braces (used for
+ * virtual volumes such as `[EXTERIOR]` or temporary boolean/reflected volumes.
  */
 class GeoMaterialParams final
     : public ParamsDataInterface<GeoMaterialParamsData>
@@ -67,10 +72,10 @@ class GeoMaterialParams final
     explicit GeoMaterialParams(Input);
 
     //! Access material properties on the host
-    HostRef const& host_ref() const final { return data_.host(); }
+    HostRef const& host_ref() const final { return data_.host_ref(); }
 
     //! Access material properties on the device
-    DeviceRef const& device_ref() const final { return data_.device(); }
+    DeviceRef const& device_ref() const final { return data_.device_ref(); }
 
   private:
     CollectionMirror<GeoMaterialParamsData> data_;

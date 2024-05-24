@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -13,6 +13,7 @@
 #include "corecel/io/LogContextException.hh"
 #include "corecel/io/Repr.hh"
 #include "corecel/math/ArrayUtils.hh"
+#include "geocel/UnitUtils.hh"
 #include "celeritas/global/ActionRegistry.hh"
 #include "celeritas/global/CoreParams.hh"
 #include "celeritas/global/CoreState.hh"
@@ -22,6 +23,8 @@
 #include "celeritas/track/ExtendFromPrimariesAction.hh"
 #include "celeritas/track/TrackInitData.hh"
 #include "celeritas/track/TrackInitParams.hh"
+
+using TimeSecond = celeritas::Quantity<celeritas::units::Second>;
 
 namespace celeritas
 {
@@ -44,9 +47,9 @@ auto AlongStepTestBase::run(Input const& inp, size_type num_tracks) -> RunResult
         Primary p;
         p.particle_id = inp.particle_id;
         p.energy = inp.energy;
-        p.position = inp.position;
+        p.position = from_cm(inp.position);
         p.direction = inp.direction;
-        p.time = inp.time;
+        p.time = native_value_from(TimeSecond{inp.time});
 
         std::vector<Primary> primaries(num_tracks, p);
         for (auto i : range(num_tracks))
@@ -95,13 +98,13 @@ auto AlongStepTestBase::run(Input const& inp, size_type num_tracks) -> RunResult
 
         result.eloss += value_as<MevEnergy>(inp.energy)
                         - value_as<MevEnergy>(particle.energy());
-        result.displacement += distance(geo.pos(), inp.position);
+        result.displacement += distance(to_cm(geo.pos()), inp.position);
         result.angle += dot_product(geo.dir(), inp.direction);
-        result.time += sim.time();
-        result.step += sim.step_limit().step;
+        result.time += native_value_to<TimeSecond>(sim.time()).value();
+        result.step += to_cm(sim.step_length());
         result.mfp += inp.phys_mfp - phys.interaction_mfp();
         result.alive += sim.status() == TrackStatus::alive ? 1 : 0;
-        actions[sim.step_limit().action] += 1;
+        actions[sim.post_step_action()] += 1;
     }
 
     real_type norm = 1 / real_type(num_tracks);
@@ -183,7 +186,7 @@ void AlongStepTestBase::execute_action(std::string const& label,
 
     auto action_id = areg.find_action(label);
     CELER_VALIDATE(action_id, << "no '" << label << "' action found");
-    auto const* expl_action = dynamic_cast<ExplicitActionInterface const*>(
+    auto const* expl_action = dynamic_cast<ExplicitCoreActionInterface const*>(
         areg.action(action_id).get());
     CELER_VALIDATE(expl_action, << "action '" << label << "' cannot execute");
     CELER_TRY_HANDLE(expl_action->execute(*this->core(), *state),

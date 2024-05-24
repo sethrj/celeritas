@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -23,10 +23,14 @@ namespace app
  */
 struct SimulationResult
 {
+    using MapStrDouble = std::unordered_map<std::string, double>;
+
     //// DATA ////
 
-    real_type total_time{};  //!< Total simulation time
-    real_type setup_time{};  //!< One-time initialization cost
+    double total_time{};  //!< Total simulation time
+    double setup_time{};  //!< One-time initialization cost
+    double warmup_time{};  //!< One-time warmup cost
+    MapStrDouble action_times{};  //!< Accumulated mean action wall times
     std::vector<TransporterResult> events;  //!< Results tallied for each event
     size_type num_streams{};  //!< Number of CPU/OpenMP threads
 };
@@ -38,12 +42,6 @@ struct SimulationResult
 class RunnerOutput final : public OutputInterface
 {
   public:
-    //!@{
-    //! \name Type aliases
-
-    //!@}
-
-  public:
     // Construct from simulation result
     explicit RunnerOutput(SimulationResult result);
 
@@ -51,7 +49,7 @@ class RunnerOutput final : public OutputInterface
     Category category() const final { return Category::result; }
 
     //! Name of the entry inside the category.
-    std::string label() const final { return "runner"; }
+    std::string_view label() const final { return "runner"; }
 
     // Write output to the given JSON object
     void output(JsonPimpl*) const final;

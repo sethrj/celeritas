@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -67,7 +67,7 @@ class PoissonDistribution
     static CELER_CONSTEXPR_FUNCTION int lambda_threshold() { return 16; }
 
   private:
-    const real_type lambda_;
+    real_type const lambda_;
     NormalDistribution<real_type> sample_normal_;
 };
 
@@ -102,7 +102,7 @@ CELER_FUNCTION auto PoissonDistribution<RealType>::operator()(Generator& rng)
         do
         {
             ++k;
-            p *= generate_canonical(rng);
+            p *= generate_canonical<real_type>(rng);
         } while (p > 1);
         return static_cast<result_type>(k - 1);
     }

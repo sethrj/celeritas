@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -14,11 +14,13 @@
 #include "celeritas/Quantities.hh"
 #include "celeritas/Types.hh"
 #include "celeritas/em/xs/EPlusGGMacroXsCalculator.hh"
-#include "celeritas/em/xs/LivermorePEMacroXsCalculator.hh"
+#include "celeritas/em/xs/LivermorePEMicroXsCalculator.hh"
 #include "celeritas/grid/GridIdFinder.hh"
 #include "celeritas/grid/XsCalculator.hh"
 #include "celeritas/mat/MaterialView.hh"
 #include "celeritas/mat/TabulatedElementSelector.hh"
+#include "celeritas/neutron/xs/NeutronElasticMicroXsCalculator.hh"
+#include "celeritas/phys/MacroXsCalculator.hh"
 
 #include "PhysicsData.hh"
 
@@ -162,9 +164,9 @@ class PhysicsTrackView
   private:
     PhysicsParamsRef const& params_;
     PhysicsStateRef const& states_;
-    const ParticleId particle_;
-    const MaterialId material_;
-    const TrackSlotId track_slot_;
+    ParticleId const particle_;
+    MaterialId const material_;
+    TrackSlotId const track_slot_;
 
     //// IMPLEMENTATION HELPER FUNCTIONS ////
 
@@ -406,7 +408,7 @@ CELER_FUNCTION real_type PhysicsTrackView::calc_xs(ParticleProcessId ppid,
         // hardwired processes.
         if (model_id == params_.hardwired.livermore_pe)
         {
-            auto calc_xs = LivermorePEMacroXsCalculator(
+            auto calc_xs = MacroXsCalculator<LivermorePEMicroXsCalculator>(
                 params_.hardwired.livermore_pe_data, material);
             result = calc_xs(energy);
         }
@@ -414,6 +416,12 @@ CELER_FUNCTION real_type PhysicsTrackView::calc_xs(ParticleProcessId ppid,
         {
             auto calc_xs = EPlusGGMacroXsCalculator(
                 params_.hardwired.eplusgg_data, material);
+            result = calc_xs(energy);
+        }
+        else if (model_id == params_.hardwired.chips)
+        {
+            auto calc_xs = MacroXsCalculator<NeutronElasticMicroXsCalculator>(
+                params_.hardwired.chips_data, material);
             result = calc_xs(energy);
         }
     }
@@ -476,7 +484,8 @@ CELER_FUNCTION ModelId PhysicsTrackView::hardwired_model(ParticleProcessId ppid,
     ProcessId process = this->process(ppid);
     if ((process == params_.hardwired.photoelectric
          && energy < params_.hardwired.photoelectric_table_thresh)
-        || (process == params_.hardwired.positron_annihilation))
+        || (process == params_.hardwired.positron_annihilation)
+        || (process == params_.hardwired.neutron_elastic))
     {
         auto find_model = this->make_model_finder(ppid);
         return this->model_id(find_model(energy));
@@ -616,8 +625,8 @@ CELER_FUNCTION ModelId PhysicsTrackView::model_id(ParticleModelId pmid) const
 CELER_FUNCTION real_type PhysicsTrackView::range_to_step(real_type range) const
 {
     CELER_ASSERT(range >= 0);
-    const real_type rho = params_.scalars.min_range;
-    if (range < rho * real_type(1.000001))
+    real_type const rho = params_.scalars.min_range;
+    if (range < rho * (1 + celeritas::sqrt_tol()))
     {
         // Small range returns the step. The fudge factor avoids floating point
         // error in the interpolation below while preserving the near-linear
@@ -625,7 +634,7 @@ CELER_FUNCTION real_type PhysicsTrackView::range_to_step(real_type range) const
         return range;
     }
 
-    const real_type alpha = params_.scalars.max_step_over_range;
+    real_type const alpha = params_.scalars.max_step_over_range;
     real_type step = alpha * range + rho * (1 - alpha) * (2 - rho / range);
     CELER_ENSURE(step > 0 && step <= range);
     return step;

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -11,20 +11,12 @@
 #include <gtest/gtest.h>
 
 #include "celeritas_config.h"
-#include "orange/OrangeData.hh"
-#include "orange/OrangeParams.hh"
-#include "orange/OrangeTrackView.hh"
-
-#include "GenericGeoTestBase.hh"
+#include "orange/OrangeTestBase.hh"
 #if CELERITAS_USE_VECGEOM
-#    include "celeritas/ext/VecgeomData.hh"
-#    include "celeritas/ext/VecgeomParams.hh"
-#    include "celeritas/ext/VecgeomTrackView.hh"
+#    include "geocel/vg/VecgeomTestBase.hh"
 #endif
 #if CELERITAS_USE_GEANT4
-#    include "celeritas/ext/GeantGeoData.hh"
-#    include "celeritas/ext/GeantGeoParams.hh"
-#    include "celeritas/ext/GeantGeoTrackView.hh"
+#    include "geocel/g4/GeantGeoTestBase.hh"
 #endif
 
 namespace celeritas
@@ -39,7 +31,7 @@ namespace test
  *
  * To use this class to test all available geometry types, add
  * \code
- *   ${_needs_geo} LINK_LIBRARIES ${_geo_libs}
+ *   ${_needs_geo} LINK_LIBRARIES ${_all_geo_libs}
  * \endcode
  *
  * to the \c celeritas_add_test argument in CMakeLists.txt, and instantiate all
@@ -68,6 +60,8 @@ class AllGeoTypedTestBase : public GenericGeoTestBase<HP>
   public:
     using SPConstGeo = typename GenericGeoTestBase<HP>::SPConstGeo;
 
+    static std::string geo_name() { return GeoTraits<HP>::name; }
+
     SPConstGeo build_geometry() override
     {
         return this->build_geometry_from_basename();
@@ -78,17 +72,11 @@ class AllGeoTypedTestBase : public GenericGeoTestBase<HP>
 // TYPE ALIASES
 //---------------------------------------------------------------------------//
 
-using GenericVecgeomTestBase = GenericGeoTestBase<VecgeomParams>;
-using GenericOrangeTestBase = GenericGeoTestBase<OrangeParams>;
-using GenericGeantGeoTestBase = GenericGeoTestBase<GeantGeoParams>;
-
-using GenericCoreGeoTestBase = GenericGeoTestBase<GeoParams>;
-
 using AllGeoTestingTypes = ::testing::Types<
 #if CELERITAS_USE_VECGEOM
     VecgeomParams,
 #endif
-#if CELERITAS_USE_GEANT4
+#if CELERITAS_USE_GEANT4 && CELERITAS_REAL_TYPE == CELERITAS_REAL_TYPE_DOUBLE
     GeantGeoParams,
 #endif
     OrangeParams>;
@@ -99,7 +87,7 @@ struct AllGeoTestingTypeNames
     template<class U>
     static std::string GetName(int)
     {
-        return testdetail::GenericGeoTraits<U>::name;
+        return GeoTraits<U>::name;
     }
 };
 

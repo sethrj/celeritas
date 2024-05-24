@@ -1,5 +1,5 @@
 //---------------------------------*-CUDA-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -41,7 +41,6 @@ RangeTestOutput rangedev_test(RangeTestInput input)
 
     // Test kernel
     CELER_LAUNCH_KERNEL(rangedev_test,
-                        input.threads_per_block,
                         input.num_threads,
                         0,
                         input.a,

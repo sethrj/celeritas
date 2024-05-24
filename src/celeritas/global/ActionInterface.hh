@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -8,9 +8,11 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 
 #include "celeritas/Types.hh"  // IWYU pragma: export
-#include "celeritas/global/CoreTrackDataFwd.hh"  // IWYU pragma: export
+
+#include "CoreTrackDataFwd.hh"  // IWYU pragma: export
 
 namespace celeritas
 {
@@ -18,6 +20,9 @@ namespace celeritas
 class CoreParams;
 template<MemSpace M>
 class CoreState;
+class OpticalParams;
+template<MemSpace M>
+class OpticalState;
 
 //---------------------------------------------------------------------------//
 /*!
@@ -47,13 +52,6 @@ class CoreState;
 class ActionInterface
 {
   public:
-    //@{
-    //! \name Type aliases
-    using CoreStateHost = CoreState<MemSpace::host>;
-    using CoreStateDevice = CoreState<MemSpace::device>;
-    //@}
-
-  public:
     // Default virtual destructor allows deletion by pointer-to-interface
     virtual ~ActionInterface();
 
@@ -61,16 +59,16 @@ class ActionInterface
     virtual ActionId action_id() const = 0;
 
     //! Short unique label of the action
-    virtual std::string label() const = 0;
+    virtual std::string_view label() const = 0;
 
     //! Description of the action
-    virtual std::string description() const = 0;
+    virtual std::string_view description() const = 0;
 
   protected:
     //!@{
     //! Allow construction and assignment only through daughter classes
     ActionInterface() = default;
-    CELER_DEFAULT_COPY_MOVE(ActionInterface)
+    CELER_DEFAULT_COPY_MOVE(ActionInterface);
     //!@}
 };
 
@@ -88,6 +86,13 @@ class ActionInterface
 class BeginRunActionInterface : public virtual ActionInterface
 {
   public:
+    //@{
+    //! \name Type aliases
+    using CoreStateHost = CoreState<MemSpace::host>;
+    using CoreStateDevice = CoreState<MemSpace::device>;
+    //@}
+
+  public:
     //! Set host data at the beginning of a run
     virtual void begin_run(CoreParams const&, CoreStateHost&) = 0;
     //! Set device data at the beginning of a run
@@ -101,14 +106,53 @@ class BeginRunActionInterface : public virtual ActionInterface
 class ExplicitActionInterface : public virtual ActionInterface
 {
   public:
+    //! Dependency ordering of the action
+    virtual ActionOrder order() const = 0;
+};
+
+//---------------------------------------------------------------------------//
+/*!
+ * Interface for an action that launches a kernel or performs an action
+ * specialized for particles using CoreParams.
+ * TODO: Template this on 'Core' and 'Optical' and ...
+ */
+class ExplicitCoreActionInterface : public virtual ExplicitActionInterface
+{
+  public:
+    //@{
+    //! \name Type aliases
+    using CoreStateHost = CoreState<MemSpace::host>;
+    using CoreStateDevice = CoreState<MemSpace::device>;
+    //@}
+
+  public:
     //! Execute the action with host data
     virtual void execute(CoreParams const&, CoreStateHost&) const = 0;
 
     //! Execute the action with device data
     virtual void execute(CoreParams const&, CoreStateDevice&) const = 0;
+};
 
-    //! Dependency ordering of the action
-    virtual ActionOrder order() const = 0;
+//---------------------------------------------------------------------------//
+/*!
+ * Interface for an action that launches a kernel or performs an action
+ * specialized for particles using OpticalParams.
+ */
+class ExplicitOpticalActionInterface : public virtual ExplicitActionInterface
+{
+  public:
+    //@{
+    //! \name Type aliases
+    using OpticalStateHost = OpticalState<MemSpace::host>;
+    using OpticalStateDevice = OpticalState<MemSpace::device>;
+    //@}
+
+  public:
+    //! Execute the action with host data
+    virtual void execute(OpticalParams const&, OpticalStateHost&) const = 0;
+
+    //! Execute the action with device data
+    virtual void execute(OpticalParams const&, OpticalStateDevice&) const = 0;
 };
 
 //---------------------------------------------------------------------------//
@@ -117,7 +161,7 @@ class ExplicitActionInterface : public virtual ActionInterface
  *
  * Example:
  * \code
-  class KernellyPhysicsAction final : public ExplicitActionInterface,
+  class KernellyPhysicsAction final : public ExplicitCoreActionInterface,
                                       public ConcreteAction
   {
     public:
@@ -151,10 +195,10 @@ class ConcreteAction : public virtual ActionInterface
     ActionId action_id() const final { return id_; }
 
     //! Short label
-    std::string label() const final { return label_; }
+    std::string_view label() const final { return label_; }
 
     //! Descriptive label
-    std::string description() const final { return description_; }
+    std::string_view description() const final { return description_; }
 
   private:
     ActionId id_;

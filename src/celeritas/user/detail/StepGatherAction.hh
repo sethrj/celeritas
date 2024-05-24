@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -18,9 +18,9 @@
 #include "corecel/data/CollectionStateStore.hh"
 #include "celeritas/global/ActionInterface.hh"
 
+#include "StepStorage.hh"
 #include "../StepData.hh"
 #include "../StepInterface.hh"
-#include "StepStorage.hh"
 
 namespace celeritas
 {
@@ -33,7 +33,7 @@ namespace detail
  * This implementation class is constructed by the StepCollector.
  */
 template<StepPoint P>
-class StepGatherAction final : public ExplicitActionInterface
+class StepGatherAction final : public ExplicitCoreActionInterface
 {
   public:
     //!@{
@@ -57,15 +57,15 @@ class StepGatherAction final : public ExplicitActionInterface
     ActionId action_id() const final { return id_; }
 
     //! Short name for the action
-    std::string label() const final
+    std::string_view label() const final
     {
         return P == StepPoint::pre    ? "step-gather-pre"
                : P == StepPoint::post ? "step-gather-post"
-                                      : "";
+                                      : std::string_view{};
     }
 
     // Name of the action (for user output)
-    std::string description() const final;
+    std::string_view description() const final { return description_; }
 
     //! Dependency ordering of the action
     ActionOrder order() const final
@@ -81,6 +81,7 @@ class StepGatherAction final : public ExplicitActionInterface
     ActionId id_;
     SPStepStorage storage_;
     VecInterface callbacks_;
+    std::string description_;
 };
 
 //---------------------------------------------------------------------------//

@@ -1,5 +1,5 @@
 #!/bin/sh -ex
-# Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+# Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 # See the top-level COPYRIGHT file for details.
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
@@ -43,5 +43,4 @@ if [ -z "${SKIP_FORMAT}" ]; then
   git add -u :/
   SKIP_GCF=1 git commit --amend -m "IWYU+Clean" >/dev/null
   git reset HEAD^
-  git co HEAD -- ":/src/celeritas/*/generated/*"
 fi

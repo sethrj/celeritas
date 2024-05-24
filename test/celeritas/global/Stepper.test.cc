@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -12,7 +12,8 @@
 #include "corecel/Types.hh"
 #include "corecel/cont/Range.hh"
 #include "corecel/cont/Span.hh"
-#include "celeritas/em/UrbanMscParams.hh"
+#include "geocel/UnitUtils.hh"
+#include "celeritas/em/params/UrbanMscParams.hh"
 #include "celeritas/ext/GeantPhysicsOptions.hh"
 #include "celeritas/field/UniformFieldData.hh"
 #include "celeritas/global/ActionInterface.hh"
@@ -23,12 +24,12 @@
 #include "celeritas/phys/Primary.hh"
 #include "celeritas/random/distribution/IsotropicDistribution.hh"
 
+#include "StepperTestBase.hh"
+#include "celeritas_test.hh"
 #include "../OneSteelSphereBase.hh"
 #include "../SimpleTestBase.hh"
 #include "../TestEm15Base.hh"
 #include "../TestEm3Base.hh"
-#include "StepperTestBase.hh"
-#include "celeritas_test.hh"
 
 using celeritas::units::MevEnergy;
 
@@ -50,7 +51,7 @@ class SimpleComptonTest : public SimpleTestBase, public StepperTestBase
         CELER_ASSERT(p.particle_id);
         p.energy = units::MevEnergy{100};
         p.track_id = TrackId{0};
-        p.position = {-22, 0, 0};
+        p.position = from_cm(Real3{-22, 0, 0});
         p.direction = {1, 0, 0};
         p.time = 0;
 
@@ -80,7 +81,7 @@ class TestEm3StepperTestBase : public TestEm3Base, public StepperTestBase
         CELER_ASSERT(p.particle_id);
         p.energy = energy;
         p.track_id = TrackId{0};
-        p.position = {-22, 0, 0};
+        p.position = from_cm(Real3{-22, 0, 0});
         p.direction = {1, 0, 0};
         p.time = 0;
 
@@ -208,7 +209,7 @@ class TestEm15FieldMsc : public TestEm15Base, public StepperTestBase
         CELER_ASSERT(msc);
 
         auto result = std::make_shared<AlongStepUniformMscAction>(
-            action_reg.next_id(), field_params, msc);
+            action_reg.next_id(), field_params, nullptr, msc);
         action_reg.insert(result);
         return result;
     }
@@ -298,10 +299,14 @@ TEST_F(SimpleComptonTest, host)
 
     Stepper<MemSpace::host> step(this->make_stepper_input(num_tracks));
     auto result = this->run(step, num_primaries);
-    EXPECT_EQ(919, result.num_step_iters());
-    EXPECT_SOFT_EQ(53.8125, result.calc_avg_steps_per_primary());
+
+    if (this->is_default_build())
+    {
+        EXPECT_EQ(919, result.num_step_iters());
+        EXPECT_SOFT_EQ(53.8125, result.calc_avg_steps_per_primary());
+        EXPECT_EQ(RunResult::StepCount({1, 6}), result.calc_queue_hwm());
+    }
     EXPECT_EQ(3, result.calc_emptying_step());
-    EXPECT_EQ(RunResult::StepCount({1, 6}), result.calc_queue_hwm());
 }
 
 TEST_F(SimpleComptonTest, TEST_IF_CELER_DEVICE(device))
@@ -311,10 +316,13 @@ TEST_F(SimpleComptonTest, TEST_IF_CELER_DEVICE(device))
 
     Stepper<MemSpace::device> step(this->make_stepper_input(num_tracks));
     auto result = this->run(step, num_primaries);
-    EXPECT_EQ(919, result.num_step_iters());
-    EXPECT_SOFT_EQ(53.8125, result.calc_avg_steps_per_primary());
+    if (this->is_default_build())
+    {
+        EXPECT_EQ(919, result.num_step_iters());
+        EXPECT_SOFT_EQ(53.8125, result.calc_avg_steps_per_primary());
+        EXPECT_EQ(RunResult::StepCount({1, 6}), result.calc_queue_hwm());
+    }
     EXPECT_EQ(3, result.calc_emptying_step());
-    EXPECT_EQ(RunResult::StepCount({1, 6}), result.calc_queue_hwm());
 }
 
 //---------------------------------------------------------------------------//
@@ -404,10 +412,10 @@ TEST_F(TestEm3NoMsc, host)
 
     if (this->is_ci_build())
     {
-        EXPECT_EQ(331, result.num_step_iters());
-        EXPECT_SOFT_EQ(62216, result.calc_avg_steps_per_primary());
-        EXPECT_EQ(256, result.calc_emptying_step());
-        EXPECT_EQ(RunResult::StepCount({95, 1182}), result.calc_queue_hwm());
+        EXPECT_EQ(308, result.num_step_iters());
+        EXPECT_SOFT_EQ(61355, result.calc_avg_steps_per_primary());
+        EXPECT_EQ(255, result.calc_emptying_step());
+        EXPECT_EQ(RunResult::StepCount({99, 1229}), result.calc_queue_hwm());
     }
     else
     {
@@ -449,13 +457,19 @@ TEST_F(TestEm3NoMsc, host_multi)
     // Add some more primaries
     primaries = this->make_primaries(num_primaries);
     counts = step(make_span(primaries));
-    EXPECT_EQ(24, counts.active);
-    EXPECT_EQ(24, counts.alive);
+    if (this->is_default_build())
+    {
+        EXPECT_EQ(24, counts.active);
+        EXPECT_EQ(24, counts.alive);
+    }
 
     // Transport existing tracks
     counts = step();
-    EXPECT_EQ(44, counts.active);
-    EXPECT_EQ(44, counts.alive);
+    if (this->is_default_build())
+    {
+        EXPECT_EQ(44, counts.active);
+        EXPECT_EQ(43, counts.alive);
+    }
 }
 
 TEST_F(TestEm3NoMsc, TEST_IF_CELER_DEVICE(device))
@@ -471,9 +485,9 @@ TEST_F(TestEm3NoMsc, TEST_IF_CELER_DEVICE(device))
     if (this->is_ci_build())
     {
         EXPECT_EQ(206, result.num_step_iters());
-        EXPECT_SOFT_EQ(62127.625, result.calc_avg_steps_per_primary());
-        EXPECT_EQ(72, result.calc_emptying_step());
-        EXPECT_EQ(RunResult::StepCount({70, 908}), result.calc_queue_hwm());
+        EXPECT_SOFT_EQ(62331.25, result.calc_avg_steps_per_primary());
+        EXPECT_EQ(94, result.calc_emptying_step());
+        EXPECT_EQ(RunResult::StepCount({78, 3692}), result.calc_queue_hwm());
     }
     else
     {
@@ -555,15 +569,14 @@ TEST_F(TestEm3Msc, host)
 
     Stepper<MemSpace::host> step(this->make_stepper_input(num_tracks));
     auto result = this->run(step, num_primaries);
-    EXPECT_SOFT_NEAR(45.125, result.calc_avg_steps_per_primary(), 0.10);
 
     if (this->is_ci_build())
     {
-        EXPECT_EQ(86, result.num_step_iters());
-        EXPECT_LE(46, result.calc_avg_steps_per_primary());
+        EXPECT_EQ(70, result.num_step_iters());
+        EXPECT_LE(42.125, result.calc_avg_steps_per_primary());
         EXPECT_GE(46.125, result.calc_avg_steps_per_primary());
         EXPECT_EQ(10, result.calc_emptying_step());
-        EXPECT_EQ(RunResult::StepCount({1, 4}), result.calc_queue_hwm());
+        EXPECT_EQ(RunResult::StepCount({8, 6}), result.calc_queue_hwm());
     }
     else
     {
@@ -588,9 +601,8 @@ TEST_F(TestEm3Msc, TEST_IF_CELER_DEVICE(device))
 
     if (this->is_ci_build())
     {
-        EXPECT_EQ(64, result.num_step_iters());
-        EXPECT_SOFT_EQ(CELERITAS_USE_VECGEOM ? 44.5 : 44.375,
-                       result.calc_avg_steps_per_primary());
+        EXPECT_EQ(75, result.num_step_iters());
+        EXPECT_SOFT_EQ(46.25, result.calc_avg_steps_per_primary());
         EXPECT_EQ(8, result.calc_emptying_step());
         EXPECT_EQ(RunResult::StepCount({5, 6}), result.calc_queue_hwm());
     }
@@ -618,7 +630,6 @@ TEST_F(TestEm3MscNofluct, host)
 
     Stepper<MemSpace::host> step(this->make_stepper_input(num_tracks));
     auto result = this->run(step, num_primaries);
-    EXPECT_SOFT_NEAR(58, result.calc_avg_steps_per_primary(), 0.10);
 
     if (this->is_ci_build())
     {
@@ -652,19 +663,10 @@ TEST_F(TestEm3MscNofluct, TEST_IF_CELER_DEVICE(device))
 
     if (this->is_ci_build())
     {
-        if (CELERITAS_CORE_GEO == CELERITAS_CORE_GEO_VECGEOM)
-        {
-            EXPECT_EQ(66, result.num_step_iters());
-            EXPECT_SOFT_EQ(56.125, result.calc_avg_steps_per_primary());
-        }
-        else
-        {
-            EXPECT_EQ(64, result.num_step_iters());
-            EXPECT_SOFT_EQ(52.5, result.calc_avg_steps_per_primary());
-        }
-
+        EXPECT_EQ(31, result.num_step_iters());
+        EXPECT_SOFT_EQ(37.875, result.calc_avg_steps_per_primary());
         EXPECT_EQ(7, result.calc_emptying_step());
-        EXPECT_EQ(RunResult::StepCount({5, 8}), result.calc_queue_hwm());
+        EXPECT_EQ(RunResult::StepCount({5, 7}), result.calc_queue_hwm());
     }
     else
     {
@@ -724,7 +726,6 @@ TEST_F(TestEm15FieldMsc, host)
 
     Stepper<MemSpace::host> step(this->make_stepper_input(num_tracks));
     auto result = this->run(step, num_primaries);
-    EXPECT_SOFT_NEAR(35, result.calc_avg_steps_per_primary(), 0.10);
 
     if (this->is_ci_build())
     {
@@ -756,9 +757,9 @@ TEST_F(TestEm15FieldMsc, TEST_IF_CELER_DEVICE(device))
     if (this->is_ci_build())
     {
         EXPECT_EQ(17, result.num_step_iters());
-        EXPECT_SOFT_EQ(34, result.calc_avg_steps_per_primary());
+        EXPECT_SOFT_EQ(32.25, result.calc_avg_steps_per_primary());
         EXPECT_EQ(5, result.calc_emptying_step());
-        EXPECT_EQ(RunResult::StepCount({1, 10}), result.calc_queue_hwm());
+        EXPECT_EQ(RunResult::StepCount({3, 11}), result.calc_queue_hwm());
     }
     else
     {
@@ -822,10 +823,10 @@ TEST_F(OneSteelSphere, host)
 
     if (this->is_ci_build())
     {
-        EXPECT_EQ(16, result.num_step_iters());
-        EXPECT_SOFT_EQ(15.8671875, result.calc_avg_steps_per_primary());
+        EXPECT_EQ(18, result.num_step_iters());
+        EXPECT_SOFT_EQ(16.578125, result.calc_avg_steps_per_primary());
         EXPECT_EQ(7, result.calc_emptying_step());
-        EXPECT_EQ(RunResult::StepCount({5, 114}), result.calc_queue_hwm());
+        EXPECT_EQ(RunResult::StepCount({5, 119}), result.calc_queue_hwm());
     }
     else
     {

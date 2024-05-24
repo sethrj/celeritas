@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -46,7 +46,7 @@ void ExtendFromPrimariesAction::execute_impl(CoreParams const& params,
                                              CoreState<M>& state) const
 {
     auto primary_range = state.primary_range();
-    if (primary_range.empty())
+    if (primary_range.empty() && !state.warming_up())
         return;
 
     auto primaries = state.primary_storage()[primary_range];

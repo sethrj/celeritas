@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+# Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 # See the top-level COPYRIGHT file for details.
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 """
@@ -8,15 +8,22 @@
 import json
 import re
 import subprocess
-from distutils.util import strtobool
 from os import environ, path
 from sys import exit, argv, stderr
 
 try:
-    (geometry_filename, hepmc3_filename, rootout_filename) = argv[1:]
+    (geometry_filename, event_filename, rootout_filename) = argv[1:]
 except ValueError:
     print("usage: {} inp.gdml inp.hepmc3 mctruth.root (use '' for no ROOT output)".format(argv[0]))
     exit(1)
+
+def strtobool(text):
+    text = text.lower()
+    if text in {"true", "on", "yes", "1"}:
+        return True
+    if text in {"false", "off", "no", "0"}:
+        return False
+    raise ValueError(text)
 
 # We reuse the "disable device" environment variable, which prevents the GPU
 # from being initialized at runtime.
@@ -27,7 +34,7 @@ geant_exp_exe = environ.get('CELER_EXPORT_GEANT_EXE', './celer-export-geant')
 run_name = (path.splitext(path.basename(geometry_filename))[0]
             + ('-gpu' if use_device else '-cpu'))
 
-geant_options = {
+physics_options = {
     'coulomb_scattering': False,
     'compton_scattering': True,
     'photoelectric': True,
@@ -37,7 +44,7 @@ geant_options = {
     'ionization': True,
     'annihilation': True,
     'brems': "all",
-    'msc': "urban_extended" if core_geo == "vecgeom" else "none",
+    'msc': "urban" if core_geo == "vecgeom" else "none",
     'eloss_fluctuation': True,
     'lpm': True,
 }
@@ -47,7 +54,7 @@ if geant_exp_exe:
     print("Running", geant_exp_exe, file=stderr)
     result_ge = subprocess.run(
         [geant_exp_exe, geometry_filename, "-", physics_filename],
-        input=json.dumps(geant_options).encode()
+        input=json.dumps(physics_options).encode()
     )
 
     if result_ge.returncode:
@@ -57,7 +64,7 @@ else:
     # Load directly from Geant4 rather than ROOT file
     physics_filename = geometry_filename
 
-if core_geo == "orange":
+if core_geo == "orange-json":
     print("Replacing .gdml extension since VecGeom is disabled", file=stderr)
     geometry_filename = re.sub(r"\.gdml$", ".org.json", geometry_filename)
 
@@ -67,7 +74,7 @@ if not rootout_filename:
 
 num_tracks = 128*32 if use_device else 32
 num_primaries = 3 * 15 # assuming test hepmc input
-max_steps = 512 if geant_options['msc'] else 128
+max_steps = 512 if physics_options['msc'] else 128
 
 if not use_device:
     # Way more steps are needed since we're not tracking in parallel, but
@@ -76,25 +83,26 @@ if not use_device:
 
 inp = {
     'use_device': use_device,
-    'geometry_filename': geometry_filename,
-    'physics_filename': physics_filename,
-    'hepmc3_filename': hepmc3_filename,
-    'mctruth_filename': rootout_filename,
+    'geometry_file': geometry_filename,
+    'physics_file': physics_filename,
+    'event_file': event_filename,
+    'mctruth_file': rootout_filename,
     'seed': 12345,
     'num_track_slots': num_tracks,
     'max_steps': max_steps,
     'initializer_capacity': 100 * max([num_tracks, num_primaries]),
-    'max_events': 1000,
     'secondary_stack_factor': 3,
     'action_diagnostic': True,
     'step_diagnostic': True,
-    'step_diagnostic_maxsteps': 200,
+    'step_diagnostic_bins': 200,
+    'write_step_times': use_device,
     'simple_calo': simple_calo,
-    'sync': True,
+    'action_times': True,
     'merge_events': False,
     'default_stream': False,
     'brem_combined': True,
-    'geant_options': geant_options,
+    'physics_options': physics_options,
+    'field': None,
 }
 
 with open(f'{run_name}.inp.json', 'w') as f:
@@ -121,8 +129,6 @@ if result.returncode:
 
 print("Received {} bytes of data".format(len(result.stdout)), file=stderr)
 out_text = result.stdout.decode()
-# Filter out spurious HepMC3 output
-out_text = out_text[out_text.find('\n{') + 1:]
 try:
     j = json.loads(out_text)
 except json.decoder.JSONDecodeError as e:
@@ -136,6 +142,13 @@ with open(outfilename, 'w') as f:
     json.dump(j, f, indent=1)
 print("Results written to", outfilename, file=stderr)
 
-time = j['result']['runner']['time'].copy()
-time.pop('steps')
+run_output =j['result']['runner']
+time = run_output['time'].copy()
+steps = time.pop('steps')
+if use_device:
+    assert steps
+    assert len(steps[0]) == run_output['num_step_iterations'][0]
+else:
+    # Step times disabled on CPU from input
+    assert steps is None
 print(json.dumps(time, indent=1))

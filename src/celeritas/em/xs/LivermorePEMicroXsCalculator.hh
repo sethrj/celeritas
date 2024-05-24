@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -14,7 +14,7 @@
 #include "celeritas/Quantities.hh"
 #include "celeritas/Types.hh"
 #include "celeritas/em/data/LivermorePEData.hh"
-#include "celeritas/grid/GenericXsCalculator.hh"
+#include "celeritas/grid/GenericCalculator.hh"
 #include "celeritas/grid/PolyEvaluator.hh"
 
 namespace celeritas
@@ -28,23 +28,24 @@ class LivermorePEMicroXsCalculator
   public:
     //!@{
     //! \name Type aliases
-    using XsUnits = LivermoreSubshell::XsUnits;
+    using ParamsRef = LivermorePERef;
     using Energy = Quantity<LivermoreSubshell::EnergyUnits>;
+    using BarnXs = units::BarnXs;
     //!@}
 
   public:
     // Construct with shared and state data
     inline CELER_FUNCTION
-    LivermorePEMicroXsCalculator(LivermorePERef const& shared, Energy energy);
+    LivermorePEMicroXsCalculator(ParamsRef const& shared, Energy energy);
 
     // Compute cross section
-    inline CELER_FUNCTION real_type operator()(ElementId el_id) const;
+    inline CELER_FUNCTION BarnXs operator()(ElementId el_id) const;
 
   private:
     // Shared constant physics properties
     LivermorePERef const& shared_;
     // Incident gamma energy
-    const Energy inc_energy_;
+    Energy const inc_energy_;
 };
 
 //---------------------------------------------------------------------------//
@@ -54,7 +55,7 @@ class LivermorePEMicroXsCalculator
  * Construct with shared and state data.
  */
 CELER_FUNCTION LivermorePEMicroXsCalculator::LivermorePEMicroXsCalculator(
-    LivermorePERef const& shared, Energy energy)
+    ParamsRef const& shared, Energy energy)
     : shared_(shared), inc_energy_(energy.value())
 {
 }
@@ -64,7 +65,7 @@ CELER_FUNCTION LivermorePEMicroXsCalculator::LivermorePEMicroXsCalculator(
  * Compute cross section
  */
 CELER_FUNCTION
-real_type LivermorePEMicroXsCalculator::operator()(ElementId el_id) const
+auto LivermorePEMicroXsCalculator::operator()(ElementId el_id) const -> BarnXs
 {
     CELER_EXPECT(el_id);
     LivermoreElement const& el = shared_.xs.elements[el_id];
@@ -91,17 +92,17 @@ real_type LivermorePEMicroXsCalculator::operator()(ElementId el_id) const
     {
         // Use tabulated cross sections above K-shell energy but below energy
         // limit for parameterization
-        GenericXsCalculator calc_xs(el.xs_hi, shared_.xs.reals);
+        GenericCalculator calc_xs(el.xs_hi, shared_.xs.reals);
         result = ipow<3>(inv_energy) * calc_xs(energy.value());
     }
     else
     {
         CELER_ASSERT(el.xs_lo);
         // Use tabulated cross sections below K-shell energy
-        GenericXsCalculator calc_xs(el.xs_lo, shared_.xs.reals);
+        GenericCalculator calc_xs(el.xs_lo, shared_.xs.reals);
         result = ipow<3>(inv_energy) * calc_xs(energy.value());
     }
-    return result;
+    return BarnXs{result};
 }
 
 //---------------------------------------------------------------------------//

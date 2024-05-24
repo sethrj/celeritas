@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -26,28 +26,31 @@
 #include "corecel/io/Logger.hh"
 #include "corecel/sys/ScopedMem.hh"
 #include "celeritas/Types.hh"
-#include "celeritas/em/AtomicRelaxationParams.hh"  // IWYU pragma: keep
 #include "celeritas/em/data/AtomicRelaxationData.hh"
 #include "celeritas/em/data/EPlusGGData.hh"
 #include "celeritas/em/data/LivermorePEData.hh"
 #include "celeritas/em/model/CombinedBremModel.hh"
 #include "celeritas/em/model/EPlusGGModel.hh"
 #include "celeritas/em/model/LivermorePEModel.hh"
+#include "celeritas/em/params/AtomicRelaxationParams.hh"  // IWYU pragma: keep
 #include "celeritas/global/ActionInterface.hh"
 #include "celeritas/global/ActionRegistry.hh"
 #include "celeritas/grid/ValueGridBuilder.hh"
-#include "celeritas/grid/ValueGridData.hh"
 #include "celeritas/grid/ValueGridInserter.hh"
+#include "celeritas/grid/ValueGridType.hh"
 #include "celeritas/grid/XsCalculator.hh"
 #include "celeritas/grid/XsGridData.hh"
 #include "celeritas/mat/MaterialData.hh"
 #include "celeritas/mat/MaterialParams.hh"
 #include "celeritas/mat/MaterialView.hh"
-#include "celeritas/phys/Model.hh"
-#include "celeritas/phys/PhysicsData.hh"
-#include "celeritas/phys/Process.hh"
+#include "celeritas/neutron/data/NeutronElasticData.hh"
+#include "celeritas/neutron/model/ChipsNeutronElasticModel.hh"
 
+#include "Model.hh"
 #include "ParticleParams.hh"
+#include "PhysicsData.hh"
+#include "Process.hh"
+
 #include "detail/DiscreteSelectAction.hh"
 #include "detail/PreStepAction.hh"
 
@@ -181,7 +184,7 @@ PhysicsParams::PhysicsParams(Input inp)
  */
 auto PhysicsParams::processes(ParticleId id) const -> SpanConstProcessId
 {
-    CELER_EXPECT(id < this->num_processes());
+    CELER_EXPECT(id < this->host_ref().process_groups.size());
     auto const& data = this->host_ref();
     return data.process_ids[data.process_groups[id].processes];
 }
@@ -240,12 +243,34 @@ void PhysicsParams::build_options(Options const& opts, HostValue* data) const
     CELER_VALIDATE(opts.secondary_stack_factor > 0,
                    << "invalid secondary_stack_factor="
                    << opts.secondary_stack_factor << " (should be positive)");
+    CELER_VALIDATE(opts.lambda_limit > 0,
+                   << "invalid lambda_limit=" << opts.lambda_limit
+                   << " (should be positive)");
+    CELER_VALIDATE(opts.safety_factor >= 0.1,
+                   << "invalid safety_factor=" << opts.safety_factor
+                   << " (should be >= 0.1)");
+    CELER_VALIDATE(opts.range_factor > 0 && opts.range_factor < 1,
+                   << "invalid range_factor=" << opts.range_factor
+                   << " (should be within 0 < limit < 1)");
     data->scalars.min_range = opts.min_range;
     data->scalars.max_step_over_range = opts.max_step_over_range;
     data->scalars.min_eprime_over_e = opts.min_eprime_over_e;
     data->scalars.lowest_electron_energy = opts.lowest_electron_energy;
     data->scalars.linear_loss_limit = opts.linear_loss_limit;
     data->scalars.secondary_stack_factor = opts.secondary_stack_factor;
+    data->scalars.lambda_limit = opts.lambda_limit;
+    data->scalars.range_factor = opts.range_factor;
+    data->scalars.safety_factor = opts.safety_factor;
+    data->scalars.step_limit_algorithm = opts.step_limit_algorithm;
+    if (data->scalars.step_limit_algorithm
+        == MscStepLimitAlgorithm::distance_to_boundary)
+    {
+        CELER_LOG(warning) << "Unsupported step limit algorithm '"
+                           << to_cstring(data->scalars.step_limit_algorithm)
+                           << "': defaulting to '"
+                           << to_cstring(MscStepLimitAlgorithm::safety) << "'";
+        data->scalars.step_limit_algorithm = MscStepLimitAlgorithm::safety;
+    }
 }
 
 //---------------------------------------------------------------------------//
@@ -272,12 +297,12 @@ void PhysicsParams::build_ids(ParticleParams const& particles,
     for (auto mid : range(ModelId{this->num_models()}))
     {
         Model const& m = *this->model(mid);
-        const ProcessId process_id = this->process_id(mid);
+        ProcessId const process_id = this->process_id(mid);
         for (Applicability const& applic : m.applicability())
         {
             if (applic.material)
             {
-                CELER_NOT_IMPLEMENTED("Material-dependent models");
+                CELER_NOT_IMPLEMENTED("material-dependent models");
             }
             CELER_VALIDATE(applic.particle < particles.size(),
                            << "invalid particle ID "
@@ -380,7 +405,7 @@ void PhysicsParams::build_ids(ParticleParams const& particles,
     for (auto model_idx : range(this->num_models()))
     {
         Model const& model = *models_[model_idx].first;
-        const ProcessId process_id = models_[model_idx].second;
+        ProcessId const process_id = models_[model_idx].second;
         if (auto* pe_model = dynamic_cast<LivermorePEModel const*>(&model))
         {
             data->hardwired.photoelectric = process_id;
@@ -393,6 +418,13 @@ void PhysicsParams::build_ids(ParticleParams const& particles,
             data->hardwired.positron_annihilation = process_id;
             data->hardwired.eplusgg = ModelId{model_idx};
             data->hardwired.eplusgg_data = epgg_model->device_ref();
+        }
+        else if (auto* ne_model
+                 = dynamic_cast<ChipsNeutronElasticModel const*>(&model))
+        {
+            data->hardwired.neutron_elastic = process_id;
+            data->hardwired.chips = ModelId{model_idx};
+            data->hardwired.chips_data = ne_model->device_ref();
         }
     }
 
@@ -519,8 +551,8 @@ void PhysicsParams::build_xs(Options const& opts,
                 {
                     auto const& grid_data = data->value_grids[grid_id];
                     auto data_ref = make_const_ref(*data);
-                    const UniformGrid loge_grid(grid_data.log_energy);
-                    const XsCalculator calc_xs(grid_data, data_ref.reals);
+                    UniformGrid const loge_grid(grid_data.log_energy);
+                    XsCalculator const calc_xs(grid_data, data_ref.reals);
 
                     // Check if the particle can have a discrete interaction at
                     // rest

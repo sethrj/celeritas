@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -15,6 +15,7 @@
 #include "corecel/cont/Span.hh"
 #include "corecel/data/Collection.hh"
 #include "celeritas/GlobalGeoTestBase.hh"
+#include "celeritas/OnlyCoreTestBase.hh"
 #include "celeritas/OnlyGeoTestBase.hh"
 
 #include "HeuristicGeoData.hh"
@@ -30,7 +31,9 @@ namespace test
 /*!
  * Manage a "heuristic" stepper-like test that accumulates path length.
  */
-class HeuristicGeoTestBase : public GlobalGeoTestBase, public OnlyGeoTestBase
+class HeuristicGeoTestBase : public GlobalGeoTestBase,
+                             public OnlyGeoTestBase,
+                             public OnlyCoreTestBase
 {
   public:
     //!@{
@@ -41,7 +44,7 @@ class HeuristicGeoTestBase : public GlobalGeoTestBase, public OnlyGeoTestBase
     using PathLengthRef
         = Collection<real_type, Ownership::reference, M, VolumeId>;
     using SpanConstReal = Span<real_type const>;
-    using SpanConstStr = Span<const std::string>;
+    using SpanConstStr = Span<std::string const>;
     //!@}
 
     //// INTERFACE ////
@@ -51,9 +54,9 @@ class HeuristicGeoTestBase : public GlobalGeoTestBase, public OnlyGeoTestBase
     //! Get the number of steps to execute
     virtual size_type num_steps() const = 0;
     //! Build a list of volumes to compare average paths
-    virtual SpanConstStr reference_volumes() const;
+    virtual SpanConstStr reference_volumes() const = 0;
     //! Return the vector of path lengths mapped by sorted volume name
-    virtual SpanConstReal reference_avg_path() const;
+    virtual SpanConstReal reference_avg_path() const = 0;
 
   protected:
     //// TEST EXECUTION ////
@@ -65,11 +68,6 @@ class HeuristicGeoTestBase : public GlobalGeoTestBase, public OnlyGeoTestBase
     //!@}
 
   private:
-    //// DATA ////
-
-    // Backend data for default reference_volumes implementation
-    mutable std::vector<std::string> temp_str_;
-
     //// HELPER FUNCTIONS ////
 
     template<MemSpace M>

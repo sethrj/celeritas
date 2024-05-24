@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -15,12 +15,12 @@
 #include "corecel/data/CollectionStateStore.hh"
 #include "celeritas/Types.hh"
 #include "celeritas/geo/GeoFwd.hh"
-#include "celeritas/global/CoreTrackData.hh"
 #include "celeritas/phys/Primary.hh"
 #include "celeritas/random/RngParamsFwd.hh"
 #include "celeritas/track/TrackInitData.hh"
 
 #include "CoreState.hh"
+#include "CoreTrackData.hh"
 
 namespace celeritas
 {
@@ -30,6 +30,7 @@ struct Primary;
 
 namespace detail
 {
+template<class Params>
 class ActionSequence;
 }
 
@@ -40,14 +41,14 @@ class ActionSequence;
  * - \c params : Problem definition
  * - \c num_track_slots : Maximum number of threads to run in parallel on GPU
  *   \c stream_id : Unique (thread/task) ID for this process
- * - \c sync : Whether to synchronize device between actions
+ * - \c action_times : Whether to synchronize device between actions for timing
  */
 struct StepperInput
 {
     std::shared_ptr<CoreParams const> params;
     StreamId stream_id{};
     size_type num_track_slots{};
-    bool sync{false};
+    bool action_times{false};
 
     //! True if defined
     explicit operator bool() const
@@ -78,7 +79,7 @@ class StepperInterface
     //!@{
     //! \name Type aliases
     using Input = StepperInput;
-    using ActionSequence = detail::ActionSequence;
+    using ActionSequence = detail::ActionSequence<CoreParams>;
     using SpanConstPrimary = Span<Primary const>;
     using result_type = StepperResult;
     //!@}
@@ -89,6 +90,9 @@ class StepperInterface
 
     // Transport existing states and these new primaries
     virtual StepperResult operator()(SpanConstPrimary primaries) = 0;
+
+    // Reseed the RNGs at the start of an event for reproducibility
+    virtual void reseed(EventId event_id) = 0;
 
     //! Get action sequence for timing diagnostics
     virtual ActionSequence const& actions() const = 0;
@@ -139,6 +143,9 @@ class Stepper final : public StepperInterface
     // Transport existing states and these new primaries
     StepperResult operator()(SpanConstPrimary primaries) final;
 
+    // Reseed the RNGs at the start of an event for reproducibility
+    void reseed(EventId event_id) final;
+
     //! Get action sequence for timing diagnostics
     ActionSequence const& actions() const final { return *actions_; }
 
@@ -151,7 +158,7 @@ class Stepper final : public StepperInterface
   private:
     // Params and call sequence
     std::shared_ptr<CoreParams const> params_;
-    std::shared_ptr<detail::ActionSequence> actions_;
+    std::shared_ptr<ActionSequence> actions_;
     // State data
     CoreState<M> state_;
 };

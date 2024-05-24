@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -45,7 +45,7 @@ void from_json(nlohmann::json const& j, Quantity<UnitT, ValueT>& q)
 
 //---------------------------------------------------------------------------//
 /*!
- * Write an array to a JSON file.
+ * Write a quantity to a JSON file.
  */
 template<class UnitT, class ValueT>
 void to_json(nlohmann::json& j, Quantity<UnitT, ValueT> const& q)

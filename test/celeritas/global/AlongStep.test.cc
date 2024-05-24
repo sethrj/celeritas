@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -7,9 +7,13 @@
 //---------------------------------------------------------------------------//
 #include <fstream>
 
+#include "corecel/ScopedLogStorer.hh"
+#include "corecel/io/Logger.hh"
+#include "geocel/UnitUtils.hh"
+#include "celeritas/LeadBoxTestBase.hh"
 #include "celeritas/SimpleCmsTestBase.hh"
 #include "celeritas/TestEm3Base.hh"
-#include "celeritas/em/UrbanMscParams.hh"
+#include "celeritas/em/params/UrbanMscParams.hh"
 #include "celeritas/ext/GeantPhysicsOptions.hh"
 #include "celeritas/field/RZMapFieldInput.hh"
 #include "celeritas/field/UniformFieldData.hh"
@@ -19,10 +23,10 @@
 #include "celeritas/phys/PDGNumber.hh"
 #include "celeritas/phys/ParticleParams.hh"
 
-#include "../MockTestBase.hh"
-#include "../SimpleTestBase.hh"
 #include "AlongStepTestBase.hh"
 #include "celeritas_test.hh"
+#include "../MockTestBase.hh"
+#include "../SimpleTestBase.hh"
 
 namespace celeritas
 {
@@ -51,7 +55,7 @@ class MockAlongStepFieldTest : public MockAlongStepTest
 
         auto& action_reg = *this->action_reg();
         auto result = std::make_shared<AlongStepUniformMscAction>(
-            action_reg.next_id(), field_params, nullptr);
+            action_reg.next_id(), field_params, nullptr, nullptr);
         action_reg.insert(result);
         return result;
     }
@@ -100,7 +104,7 @@ class SimpleCmsAlongStepTest : public SimpleCmsTestBase,
         CELER_ASSERT(msc);
 
         auto result = std::make_shared<AlongStepUniformMscAction>(
-            action_reg.next_id(), field_params, msc);
+            action_reg.next_id(), field_params, nullptr, msc);
         action_reg.insert(result);
         return result;
     }
@@ -142,7 +146,8 @@ class SimpleCmsRZFieldAlongStepTest : public SimpleCmsAlongStepTest
                                                         *this->material(),
                                                         *this->particle(),
                                                         field_map,
-                                                        msc);
+                                                        msc,
+                                                        fluct_);
         action_reg.insert(result);
         return result;
     }
@@ -150,6 +155,11 @@ class SimpleCmsRZFieldAlongStepTest : public SimpleCmsAlongStepTest
     size_type bpd_{14};
     bool msc_{true};
     bool fluct_{true};
+};
+
+#define LeadBoxAlongStepTest TEST_IF_CELERITAS_GEANT(LeadBoxAlongStepTest)
+class LeadBoxAlongStepTest : public LeadBoxTestBase, public AlongStepTestBase
+{
 };
 
 //---------------------------------------------------------------------------//
@@ -240,7 +250,7 @@ TEST_F(MockAlongStepTest, basic)
     }
 }
 
-TEST_F(MockAlongStepFieldTest, basic)
+TEST_F(MockAlongStepFieldTest, TEST_IF_CELERITAS_DOUBLE(basic))
 {
     size_type num_tracks = 10;
     Input inp;
@@ -263,10 +273,10 @@ TEST_F(MockAlongStepFieldTest, basic)
         inp.phys_mfp = 100;
         auto result = this->run(inp, num_tracks);
         EXPECT_SOFT_EQ(0.001, result.eloss);
-        EXPECT_SOFT_NEAR(0.014776612598411, result.displacement, 1e-10);
-        EXPECT_SOFT_NEAR(-0.57745338446847, result.angle, 1e-10);
-        EXPECT_SOFT_EQ(5.5782096149372e-09, result.time);
-        EXPECT_SOFT_EQ(7.4731723740905, result.step);
+        EXPECT_SOFT_NEAR(0.014775335072293276, result.displacement, 1e-10);
+        EXPECT_SOFT_NEAR(-0.57704594283791188, result.angle, 1e-10);
+        EXPECT_SOFT_EQ(5.5782056196201597e-09, result.time);
+        EXPECT_SOFT_EQ(7.4731670215320127, result.step);
         EXPECT_SOFT_EQ(0, result.mfp);
         EXPECT_SOFT_EQ(1, result.alive);
         EXPECT_EQ("physics-discrete-select", result.action);
@@ -340,12 +350,20 @@ TEST_F(Em3AlongStepTest, nofluct_nomsc)
             inp.energy = MevEnergy{0.01};
 
             real_type step = range_limit * (1 - 1e-5);
-            inp.position = {0.0 - step};
+            inp.position = {0 - step};
             inp.direction = {1, 0, 0};
             inp.phys_mfp = 100;
 
             auto result = this->run(inp, num_tracks);
-            EXPECT_SOFT_EQ(0.0099999992401263, result.eloss);
+            if (is_ci_build())
+            {
+                EXPECT_SOFT_EQ(0.0099999992401263, result.eloss);
+            }
+            else
+            {
+                // Changed in Geant4 11.2
+                EXPECT_SOFT_NEAR(0.0099999989996113689, result.eloss, 1e-7);
+            }
             EXPECT_SOFT_EQ(0.00028363764374689, result.displacement);
             EXPECT_SOFT_EQ(1, result.angle);
             EXPECT_SOFT_EQ(4.8522211972805e-14, result.time);
@@ -371,7 +389,7 @@ TEST_F(Em3AlongStepTest, msc_nofluct)
         auto result = this->run(inp, num_tracks);
         EXPECT_SOFT_NEAR(2.2870403276278, result.eloss, 5e-4);
         EXPECT_SOFT_NEAR(1.1622519442871, result.displacement, 5e-4);
-        EXPECT_SOFT_NEAR(0.85325942256503251, result.angle, 1e-3);
+        EXPECT_SOFT_NEAR(0.85325942256503251, result.angle, 5e-2);
         EXPECT_SOFT_NEAR(4.083585865972e-11, result.time, 1e-5);
         EXPECT_SOFT_NEAR(1.222780668781, result.step, 5e-4);
         EXPECT_EQ("eloss-range", result.action);
@@ -383,11 +401,11 @@ TEST_F(Em3AlongStepTest, msc_nofluct)
         inp.position = {0.0 - 0.25};
         inp.direction = {1, 0, 0};
         auto result = this->run(inp, num_tracks);
-        EXPECT_SOFT_NEAR(0.28579817262705, result.eloss, 5e-4);
-        EXPECT_SOFT_NEAR(0.13028709259427, result.displacement, 5e-4);
-        EXPECT_SOFT_NEAR(0.42060290539404, result.angle, 1e-3);
-        EXPECT_SOFT_EQ(5.3240431819014e-12, result.time);
-        EXPECT_SOFT_EQ(0.1502064087009, result.step);
+        EXPECT_SOFT_NEAR(0.28579817262705, result.eloss, 5e-2);
+        EXPECT_SOFT_NEAR(0.13028709259427, result.displacement, 1e-2);
+        EXPECT_SOFT_NEAR(0.42060290539404, result.angle, 5e-2);
+        EXPECT_SOFT_NEAR(5.3240431819014e-12, result.time, 5e-12);
+        EXPECT_SOFT_NEAR(0.1502064087009, result.step, 5e-2);
         EXPECT_EQ("msc-range", result.action);
     }
     {
@@ -489,11 +507,11 @@ TEST_F(SimpleCmsAlongStepTest, msc_field)
                          -0.0391118941072485030};
         // Step limited by distance to interaction = 2.49798914193346685e21
         auto result = this->run(inp, num_tracks);
-        EXPECT_SOFT_EQ(27.208980085333259, result.step);
+        EXPECT_SOFT_EQ(27.208989423735016, result.step);
         EXPECT_EQ(0, result.eloss);
         EXPECT_EQ(0, result.mfp);
         EXPECT_EQ("geo-propagation-limit", result.action);
-        EXPECT_DOUBLE_EQ(1, result.alive);
+        EXPECT_REAL_EQ(1, result.alive);
     }
 }
 
@@ -509,22 +527,36 @@ TEST_F(SimpleCmsAlongStepTest, msc_field_finegrid)
         inp.energy = MevEnergy{1.76660104663773580e-3};
         // The track is taking its second step in the EM calorimeter, so uses
         // the cached MSC range values from the previous step
-        inp.msc_range = {8.43525996595540601e-4, 0.04, 1.34976131122020193e-5};
+        inp.msc_range = {from_cm(8.43525996595540601e-4),
+                         0.04,
+                         from_cm(1.34976131122020193e-5)};
         inp.position = {
             59.3935490766840459, -109.988210668881749, -81.7228237502843484};
         inp.direction = {
             -0.333769826820287552, 0.641464235110772663, -0.690739703345700562};
         auto result = this->run(inp, num_tracks);
-        // Range = 6.41578930992857482e-06
-        EXPECT_SOFT_EQ(6.41578930992857482e-6, result.step);
-        EXPECT_SOFT_EQ(inp.energy.value(), result.eloss);
+        if (is_ci_build())
+        {
+            // Range = 6.41578930992857482e-06
+            EXPECT_SOFT_EQ(6.41578930992857482e-6, result.step);
+        }
+        else
+        {
+            EXPECT_SOFT_EQ(inp.energy.value(), result.eloss);
+        }
         EXPECT_EQ("eloss-range", result.action);
-        EXPECT_DOUBLE_EQ(0, result.alive);
+        EXPECT_REAL_EQ(0, result.alive);
     }
 }
 
+// Test nearly tangent value nearly on the boundary
 TEST_F(SimpleCmsRZFieldAlongStepTest, msc_rzfield)
 {
+    if (CELERITAS_REAL_TYPE != CELERITAS_REAL_TYPE_DOUBLE)
+    {
+        GTEST_SKIP() << "This edge case only occurs with double";
+    }
+
     size_type num_tracks = 128;
     Input inp;
     {
@@ -537,8 +569,8 @@ TEST_F(SimpleCmsRZFieldAlongStepTest, msc_rzfield)
                          -0.0391118941072485030};
 
         auto result = this->run(inp, num_tracks);
-        EXPECT_SOFT_EQ(4.1632771293464517, result.displacement);
-        EXPECT_SOFT_NEAR(-0.59445466152831616, result.angle, 2e-12);
+        EXPECT_SOFT_EQ(4.1632772063250023, result.displacement);
+        EXPECT_SOFT_NEAR(-0.59445532857679839, result.angle, 1e-11);
     }
 }
 
@@ -553,14 +585,74 @@ TEST_F(SimpleCmsRZFieldAlongStepTest, msc_rzfield_finegrid)
         inp.energy = MevEnergy{1.76660104663773580e-3};
         // The track is taking its second step in the EM calorimeter, so uses
         // the cached MSC range values from the previous step
-        inp.msc_range = {8.43525996595540601e-4, 0.04, 1.34976131122020193e-5};
+        inp.msc_range = {from_cm(8.43525996595540601e-4),
+                         0.04,
+                         from_cm(1.34976131122020193e-5)};
         inp.position = {
             59.3935490766840459, -109.988210668881749, -81.7228237502843484};
         inp.direction = {
             -0.333769826820287552, 0.641464235110772663, -0.690739703345700562};
         auto result = this->run(inp, num_tracks);
-        EXPECT_SOFT_EQ(6.113290482072715e-07, result.displacement);
+        if (is_ci_build())
+        {
+            EXPECT_SOFT_EQ(6.113290482072715e-07, result.displacement);
+        }
+        else
+        {
+            // Changed in Geant4 11.2
+            EXPECT_SOFT_NEAR(6.1133229218682668e-07, result.displacement, 1e-5);
+        }
         EXPECT_SOFT_EQ(0.99999999288499986, result.angle);
+    }
+}
+
+TEST_F(LeadBoxAlongStepTest, position_change)
+{
+    size_type num_tracks = 1;
+    Input inp;
+    inp.particle_id = this->particle()->find(pdg::electron());
+    inp.direction = {-1, 0, 0};
+    inp.phys_mfp = 1;
+    {
+        SCOPED_TRACE("Electron with no change in position after propagation");
+        inp.energy = MevEnergy{1e-6};
+        inp.position = {1e9, 0, 0};
+        ScopedLogStorer scoped_log{&celeritas::world_logger(), LogLevel::error};
+        auto result = this->run(inp, num_tracks);
+        static double const expected_step_length = 5.38228333877273e-8;
+        if (CELERITAS_DEBUG)
+        {
+            static double const expected_distance = 5.3822833387727e-8;
+            std::stringstream ss;
+            ss << "Propagation of step length "
+               << repr(from_cm(expected_step_length))
+               << " due to post-step action 2 leading to distance "
+               << repr(from_cm(expected_distance))
+               << " failed to change position at "
+               << repr(from_cm(inp.position)) << " with ending direction "
+               << repr(inp.direction);
+            EXPECT_EQ(ss.str(), scoped_log.messages().front());
+            static char const* const expected_log_levels[] = {"error"};
+            EXPECT_VEC_EQ(expected_log_levels, scoped_log.levels());
+        }
+        else
+        {
+            EXPECT_TRUE(scoped_log.empty()) << scoped_log;
+        }
+        EXPECT_SOFT_NEAR(expected_step_length, result.step, 1e-13);
+        EXPECT_EQ(0, result.displacement);
+        EXPECT_EQ("eloss-range", result.action);
+    }
+    {
+        SCOPED_TRACE("Electron changes position");
+        inp.energy = MevEnergy{1};
+        inp.position = {1, 0, 0};
+        ScopedLogStorer scoped_log{&celeritas::world_logger(), LogLevel::error};
+        auto result = this->run(inp, num_tracks);
+        EXPECT_TRUE(scoped_log.empty()) << scoped_log;
+        EXPECT_SOFT_EQ(0.072970479114469966, result.step);
+        EXPECT_SOFT_EQ(0.0056608379081902749, result.displacement);
+        EXPECT_EQ("eloss-range", result.action);
     }
 }
 //---------------------------------------------------------------------------//

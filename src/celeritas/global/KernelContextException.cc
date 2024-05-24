@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -46,8 +46,8 @@ KernelContextException::KernelContextException(
     HostCRef<CoreParamsData> const& params,
     HostRef<CoreStateData> const& states,
     ThreadId thread,
-    std::string&& label)
-    : thread_(thread), label_(std::move(label))
+    std::string_view label)
+    : thread_(thread), label_{label}
 {
     try
     {
@@ -108,7 +108,7 @@ void KernelContextException::output(JsonPimpl* json) const
 #    undef KCE_INSERT_IF_VALID
     json->obj = std::move(j);
 #else
-    (void)sizeof(json);
+    CELER_DISCARD(json);
 #endif
 }
 

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -19,6 +19,10 @@
 #include "celeritas/random/distribution/ReciprocalDistribution.hh"
 #include "celeritas/random/distribution/UniformBoxDistribution.hh"
 #include "celeritas/random/distribution/UniformRealDistribution.hh"
+
+#if !CELER_DEVICE_SOURCE
+#    include "corecel/cont/ArrayIO.hh"
+#endif
 
 #include "HeuristicGeoData.hh"
 
@@ -48,7 +52,7 @@ struct HeuristicGeoExecutor
  */
 CELER_FUNCTION void HeuristicGeoExecutor::operator()(TrackSlotId tid) const
 {
-    RngEngine rng(state.rng, tid);
+    RngEngine rng(params.rng, state.rng, tid);
     GeoTrackView geo(params.geometry, state.geometry, tid);
     if (state.status[tid] == LifeStatus::unborn)
     {
@@ -62,7 +66,12 @@ CELER_FUNCTION void HeuristicGeoExecutor::operator()(TrackSlotId tid) const
         init.pos = sample_pos(rng);
         init.dir = sample_dir(rng);
         geo = init;
+#if !CELER_DEVICE_SOURCE
+        CELER_VALIDATE(!geo.is_outside(),
+                       << "failed to initialize at " << init.pos);
+#else
         CELER_ASSERT(!geo.is_outside());
+#endif
 
         state.status[tid] = LifeStatus::alive;
     }
@@ -81,7 +90,7 @@ CELER_FUNCTION void HeuristicGeoExecutor::operator()(TrackSlotId tid) const
 
     // Calculate latest safety and truncate estimated step length (MSC-like)
     // half the time
-    if (!geo.is_on_boundary())
+    if (!geo.is_on_boundary() && geo.volume_id() != params.s.world_volume)
     {
         real_type safety = geo.find_safety();
         constexpr real_type safety_tol = 0.01;
@@ -112,8 +121,15 @@ CELER_FUNCTION void HeuristicGeoExecutor::operator()(TrackSlotId tid) const
             // Check for similar assertions in FieldPropagator before loosening
             // this one!
             CELER_ASSERT(prop.distance == step);
+            CELER_ASSERT(prop.distance > 0);
+#if CELERITAS_DEBUG
+            auto orig_pos = geo.pos();
+#endif
             geo.move_internal(prop.distance);
             CELER_ASSERT(!geo.is_on_boundary());
+#if CELERITAS_DEBUG
+            CELER_ASSERT(orig_pos != geo.pos());
+#endif
         }
 
         CELER_ASSERT(geo.volume_id() < state.accum_path.size());
@@ -127,8 +143,7 @@ CELER_FUNCTION void HeuristicGeoExecutor::operator()(TrackSlotId tid) const
         // boundary, otherwise pretty close to forward peaked
         real_type min_angle = (geo.is_on_boundary() ? real_type(0.9) : 0);
         real_type mu = UniformRealDistribution<>{min_angle, 1}(rng);
-        real_type phi
-            = UniformRealDistribution<real_type>{0, 2 * constants::pi}(rng);
+        real_type phi = UniformRealDistribution<>{0, 2 * constants::pi}(rng);
 
         Real3 dir = geo.dir();
         dir = rotate(from_spherical(mu, phi), dir);

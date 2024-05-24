@@ -1,5 +1,5 @@
 //---------------------------------*-CUDA-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -27,7 +27,10 @@ void ExtendFromPrimariesAction::process_primaries(
     detail::ProcessPrimariesExecutor execute_thread{
         state.ptr(), primaries, state.counters()};
     static ActionLauncher<decltype(execute_thread)> const launch_kernel(*this);
-    launch_kernel(primaries.size(), state.stream_id(), execute_thread);
+    if (!primaries.empty())
+    {
+        launch_kernel(primaries.size(), state.stream_id(), execute_thread);
+    }
 }
 
 //---------------------------------------------------------------------------//

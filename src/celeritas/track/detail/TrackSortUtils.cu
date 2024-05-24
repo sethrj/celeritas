@@ -1,5 +1,5 @@
 //---------------------------------*-CUDA-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -19,11 +19,13 @@
 #include "corecel/Macros.hh"
 #include "corecel/data/Collection.hh"
 #include "corecel/data/Copier.hh"
+#include "corecel/data/DeviceVector.hh"
 #include "corecel/data/ObserverPtr.device.hh"
 #include "corecel/data/ObserverPtr.hh"
 #include "corecel/sys/Device.hh"
 #include "corecel/sys/KernelParamCalculator.device.hh"
 #include "corecel/sys/Stream.hh"
+#include "corecel/sys/Thrust.device.hh"
 
 namespace celeritas
 {
@@ -44,39 +46,78 @@ using ThreadItems
 using TrackSlots = ThreadItems<TrackSlotId::size_type>;
 
 //---------------------------------------------------------------------------//
-
+/*!
+ * Partition track_slots based on predicate.
+ */
 template<class F>
 void partition_impl(TrackSlots const& track_slots, F&& func, StreamId stream_id)
 {
     auto start = device_pointer_cast(track_slots.data());
-    thrust::partition(
-        thrust::device.on(celeritas::device().stream(stream_id).get()),
-        start,
-        start + track_slots.size(),
-        std::forward<F>(func));
+    thrust::partition(thrust_execute_on(stream_id),
+                      start,
+                      start + track_slots.size(),
+                      std::forward<F>(func));
     CELER_DEVICE_CHECK_ERROR();
 }
 
 //---------------------------------------------------------------------------//
-
-template<class F>
-void sort_impl(TrackSlots const& track_slots, F&& func, StreamId stream_id)
+/*!
+ * Reorder OpaqueId's based on track_slots so that track_slots[tid] correspond
+ * to ids[tid] instead of ids[tacks_slots[tid]].
+ */
+template<class Id>
+__global__ void
+reorder_ids_kernel(ObserverPtr<TrackSlotId::size_type const> track_slots,
+                   ObserverPtr<Id const> ids,
+                   ObserverPtr<typename Id::size_type> ids_out,
+                   size_type size)
 {
-    auto start = device_pointer_cast(track_slots.data());
-    thrust::sort(thrust::device.on(celeritas::device().stream(stream_id).get()),
-                 start,
-                 start + track_slots.size(),
-                 std::forward<F>(func));
+    if (ThreadId tid = celeritas::KernelParamCalculator::thread_id();
+        tid < size)
+    {
+        ids_out.get()[tid.get()]
+            = ids.get()[track_slots.get()[tid.get()]].unchecked_get();
+    }
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Sort track slots using ids as keys.
+ */
+template<class Id, class IdT = typename Id::size_type>
+void sort_impl(TrackSlots const& track_slots,
+               ObserverPtr<Id const> ids,
+               StreamId stream_id)
+{
+    DeviceVector<IdT> reordered_ids(track_slots.size(), stream_id);
+    CELER_LAUNCH_KERNEL_TEMPLATE_1(reorder_ids,
+                                   Id,
+                                   track_slots.size(),
+                                   celeritas::device().stream(stream_id).get(),
+                                   track_slots.data(),
+                                   ids,
+                                   make_observer(reordered_ids.data()),
+                                   track_slots.size());
+    thrust::sort_by_key(thrust_execute_on(stream_id),
+                        reordered_ids.data(),
+                        reordered_ids.data() + reordered_ids.size(),
+                        device_pointer_cast(track_slots.data()));
     CELER_DEVICE_CHECK_ERROR();
 }
 
-// PRE: get_action is sorted, i.e. i <= j ==> get_action(i) <=
-// get_action(j)
-template<class F>
-__device__ void
-tracks_per_action_impl(Span<ThreadId> offsets, size_type size, F&& get_action)
+//---------------------------------------------------------------------------//
+/*!
+ * Calculate thread boundaries based on action ID.
+ * \pre actions are sorted
+ */
+__global__ void
+tracks_per_action_kernel(ObserverPtr<ActionId const> actions,
+                         ObserverPtr<TrackSlotId::size_type const> track_slots,
+                         Span<ThreadId> offsets,
+                         size_type size)
 {
     ThreadId tid = celeritas::KernelParamCalculator::thread_id();
+    ActionAccessor get_action{actions, track_slots};
 
     if ((tid < size) && tid != ThreadId{0})
     {
@@ -97,30 +138,6 @@ tracks_per_action_impl(Span<ThreadId> offsets, size_type size, F&& get_action)
     }
 }
 
-__global__ void tracks_per_action_kernel(DeviceRef<CoreStateData> const states,
-                                         Span<ThreadId> offsets,
-                                         size_type size,
-                                         TrackOrder order)
-{
-    switch (order)
-    {
-        case TrackOrder::sort_along_step_action:
-            return tracks_per_action_impl(
-                offsets,
-                size,
-                AlongStepActionAccessor{states.sim.along_step_action.data(),
-                                        states.track_slots.data()});
-        case TrackOrder::sort_step_limit_action:
-            return tracks_per_action_impl(
-                offsets,
-                size,
-                StepLimitActionAccessor{states.sim.step_limit.data(),
-                                        states.track_slots.data()});
-        default:
-            CELER_ASSERT_UNREACHABLE();
-    }
-}
-
 //---------------------------------------------------------------------------//
 }  // namespace
 
@@ -131,9 +148,11 @@ __global__ void tracks_per_action_kernel(DeviceRef<CoreStateData> const states,
  * TODO: move to global/detail
  */
 template<>
-void fill_track_slots<MemSpace::device>(Span<TrackSlotId::size_type> track_slots)
+void fill_track_slots<MemSpace::device>(Span<TrackSlotId::size_type> track_slots,
+                                        StreamId stream_id)
 {
     thrust::sequence(
+        thrust_execute_on(stream_id),
         thrust::device_pointer_cast(track_slots.data()),
         thrust::device_pointer_cast(track_slots.data() + track_slots.size()),
         0);
@@ -148,13 +167,14 @@ void fill_track_slots<MemSpace::device>(Span<TrackSlotId::size_type> track_slots
  */
 template<>
 void shuffle_track_slots<MemSpace::device>(
-    Span<TrackSlotId::size_type> track_slots)
+    Span<TrackSlotId::size_type> track_slots, StreamId stream_id)
 {
     using result_type = thrust::default_random_engine::result_type;
     thrust::default_random_engine g{
         static_cast<result_type>(track_slots.size())};
     auto start = thrust::device_pointer_cast(track_slots.data());
-    thrust::shuffle(thrust::device, start, start + track_slots.size(), g);
+    thrust::shuffle(
+        thrust_execute_on(stream_id), start, start + track_slots.size(), g);
     CELER_DEVICE_CHECK_ERROR();
 }
 
@@ -168,18 +188,20 @@ void sort_tracks(DeviceRef<CoreStateData> const& states, TrackOrder order)
     {
         case TrackOrder::partition_status:
             return partition_impl(states.track_slots,
-                                  alive_predicate{states.sim.status.data()},
+                                  AlivePredicate{states.sim.status.data()},
                                   states.stream_id);
         case TrackOrder::sort_along_step_action:
-            return sort_impl(
-                states.track_slots,
-                along_action_comparator{states.sim.along_step_action.data()},
-                states.stream_id);
         case TrackOrder::sort_step_limit_action:
-            return sort_impl(
-                states.track_slots,
-                step_limit_comparator{states.sim.step_limit.data()},
-                states.stream_id);
+            return sort_impl(states.track_slots,
+                             get_action_ptr(states, order),
+                             states.stream_id);
+        case TrackOrder::sort_particle_type: {
+            using Id =
+                typename decltype(states.particles.particle_id)::value_type;
+            return sort_impl<Id>(states.track_slots,
+                                 states.particles.particle_id.data(),
+                                 states.stream_id);
+        }
         default:
             CELER_ASSERT_UNREACHABLE();
     }
@@ -194,30 +216,34 @@ void sort_tracks(DeviceRef<CoreStateData> const& states, TrackOrder order)
 void count_tracks_per_action(
     DeviceRef<CoreStateData> const& states,
     Span<ThreadId> offsets,
-    Collection<ThreadId, Ownership::value, MemSpace::host, ActionId>& out,
+    Collection<ThreadId, Ownership::value, MemSpace::mapped, ActionId>& out,
     TrackOrder order)
 {
-    if (order == TrackOrder::sort_along_step_action
-        || order == TrackOrder::sort_step_limit_action)
-    {
-        // dispatch in the kernel since CELER_LAUNCH_KERNEL doesn't work
-        // with templated kernels
-        auto start = device_pointer_cast(make_observer(offsets.data()));
-        thrust::fill(start, start + offsets.size(), ThreadId{});
-        CELER_DEVICE_CHECK_ERROR();
-        CELER_LAUNCH_KERNEL(tracks_per_action,
-                            celeritas::device().default_block_size(),
-                            states.size(),
-                            celeritas::device().stream(states.stream_id).get(),
-                            states,
-                            offsets,
-                            states.size(),
-                            order);
-        Span<ThreadId> sout = out[AllItems<ThreadId, MemSpace::host>{}];
-        Copier<ThreadId, MemSpace::host> copy_to_host{sout};
-        copy_to_host(MemSpace::device, offsets);
-        backfill_action_count(sout, states.size());
-    }
+    CELER_ASSERT(order == TrackOrder::sort_along_step_action
+                 || order == TrackOrder::sort_step_limit_action);
+
+    auto start = device_pointer_cast(make_observer(offsets.data()));
+    thrust::fill(thrust_execute_on(states.stream_id),
+                 start,
+                 start + offsets.size(),
+                 ThreadId{});
+    CELER_DEVICE_CHECK_ERROR();
+    auto* stream = celeritas::device().stream(states.stream_id).get();
+    CELER_LAUNCH_KERNEL(tracks_per_action,
+                        states.size(),
+                        stream,
+                        get_action_ptr(states, order),
+                        states.track_slots.data(),
+                        offsets,
+                        states.size());
+
+    Span<ThreadId> sout = out[AllItems<ThreadId, MemSpace::mapped>{}];
+    Copier<ThreadId, MemSpace::host> copy_to_host{sout, states.stream_id};
+    copy_to_host(MemSpace::device, offsets);
+
+    // Copies must be complete before backfilling
+    CELER_DEVICE_CALL_PREFIX(StreamSynchronize(stream));
+    backfill_action_count(sout, states.size());
 }
 
 //---------------------------------------------------------------------------//

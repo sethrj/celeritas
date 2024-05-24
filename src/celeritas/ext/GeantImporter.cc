@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -23,9 +23,12 @@
 #include <G4ElementVector.hh>
 #include <G4EmParameters.hh>
 #include <G4GammaGeneralProcess.hh>
+#include <G4LogicalVolumeStore.hh>
 #include <G4Material.hh>
 #include <G4MaterialCutsCouple.hh>
+#include <G4MscStepLimitType.hh>
 #include <G4Navigator.hh>
+#include <G4NuclearFormfactorType.hh>
 #include <G4NucleiProperties.hh>
 #include <G4ParticleDefinition.hh>
 #include <G4ParticleTable.hh>
@@ -48,32 +51,32 @@
 #include <G4VPhysicalVolume.hh>
 #include <G4VProcess.hh>
 #include <G4VRangeToEnergyConverter.hh>
+#include <G4Version.hh>
 
+#include "celeritas_config.h"
 #include "corecel/Assert.hh"
 #include "corecel/cont/Range.hh"
 #include "corecel/io/Logger.hh"
 #include "corecel/io/ScopedTimeLog.hh"
 #include "corecel/math/SoftEqual.hh"
 #include "corecel/sys/ScopedMem.hh"
+#include "corecel/sys/ScopedProfiling.hh"
 #include "corecel/sys/TypeDemangler.hh"
-#include "celeritas/ext/GeantSetup.hh"
+#include "geocel/GeantGeoUtils.hh"
+#include "geocel/ScopedGeantExceptionHandler.hh"
+#include "geocel/g4/VisitGeantVolumes.hh"
 #include "celeritas/io/AtomicRelaxationReader.hh"
 #include "celeritas/io/ImportData.hh"
 #include "celeritas/io/LivermorePEReader.hh"
 #include "celeritas/io/SeltzerBergerReader.hh"
 #include "celeritas/phys/PDGNumber.hh"
 
-#include "ScopedGeantExceptionHandler.hh"
+#include "GeantSetup.hh"
+
 #include "detail/AllElementReader.hh"
 #include "detail/GeantProcessImporter.hh"
-#include "detail/GeantVolumeVisitor.hh"
 
-using CLHEP::cm;
-using CLHEP::cm2;
-using CLHEP::cm3;
-using CLHEP::g;
-using CLHEP::MeV;
-using CLHEP::s;
+inline constexpr double mev_scale = 1 / CLHEP::MeV;
 
 namespace celeritas
 {
@@ -84,7 +87,7 @@ namespace
 //---------------------------------------------------------------------------//
 decltype(auto) em_basic_particles()
 {
-    static const std::unordered_set<PDGNumber> particles
+    static std::unordered_set<PDGNumber> const particles
         = {pdg::electron(), pdg::positron(), pdg::gamma()};
     return particles;
 }
@@ -92,7 +95,7 @@ decltype(auto) em_basic_particles()
 //---------------------------------------------------------------------------//
 decltype(auto) em_ex_particles()
 {
-    static const std::unordered_set<PDGNumber> particles
+    static std::unordered_set<PDGNumber> const particles
         = {pdg::mu_minus(), pdg::mu_plus()};
     return particles;
 }
@@ -150,6 +153,117 @@ struct ProcessFilter
 };
 
 //---------------------------------------------------------------------------//
+//! Retrieve and store optical material properties, if present.
+struct MatPropGetter
+{
+    using MPT = G4MaterialPropertiesTable;
+
+    MPT const& mpt;
+
+    void scalar(double* dst, char const* name, ImportUnits q)
+    {
+        if (!mpt.ConstPropertyExists(name))
+        {
+            return;
+        }
+        *dst = mpt.GetConstProperty(name) * native_value_from_clhep(q);
+    }
+
+    void scalar(double* dst, std::string name, int comp, ImportUnits q)
+    {
+        // Geant4 10.6 and earlier require a const char* argument
+        name += std::to_string(comp);
+        this->scalar(dst, name.c_str(), q);
+    }
+
+    void
+    vector(ImportPhysicsVector* dst, std::string const& name, ImportUnits q)
+    {
+        // Geant4@10.7: G4MaterialPropertiesTable.GetProperty is not const
+        // and <=10.6 require const char*
+        auto const* g4vector = const_cast<MPT&>(mpt).GetProperty(name.c_str());
+        if (!g4vector)
+        {
+            return;
+        }
+        CELER_ASSERT(g4vector->GetType()
+                     == G4PhysicsVectorType::T_G4PhysicsFreeVector);
+        double const y_scale = native_value_from_clhep(q);
+        dst->vector_type = ImportPhysicsVectorType::free;
+        dst->x.resize(g4vector->GetVectorLength());
+        dst->y.resize(dst->x.size());
+        for (auto i : range(dst->x.size()))
+        {
+            dst->x[i] = g4vector->Energy(i);
+            dst->y[i] = (*g4vector)[i] * y_scale;
+        }
+    }
+};
+
+//---------------------------------------------------------------------------//
+//! Map particles defined in \c G4MaterialConstPropertyIndex .
+auto& optical_particles_map()
+{
+    static std::unordered_map<std::string, PDGNumber> const map
+        = {{"PROTON", pdg::proton()},
+           {"DEUTERON", pdg::deuteron()},
+           {"TRITON", pdg::triton()},
+           {"ALPHA", pdg::alpha()},
+           {"ION", pdg::ion()},
+           {"ELECTRON", pdg::electron()}};
+    return map;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Populate an \c ImportScintComponent .
+ * To retrieve a material-only component simply do not use particle name.
+ */
+std::vector<ImportScintComponent>
+fill_vec_import_scint_comp(MatPropGetter& get_property,
+                           std::string particle_name = "")
+{
+    CELER_EXPECT(particle_name.empty()
+                 || optical_particles_map().count(particle_name));
+
+    std::vector<ImportScintComponent> components;
+    for (int comp_idx : range(1, 4))
+    {
+        ImportScintComponent comp;
+        get_property.scalar(&comp.yield_per_energy,
+                            particle_name + "SCINTILLATIONYIELD",
+                            comp_idx,
+                            ImportUnits::inv_mev);
+
+        // Custom-defined properties not available in G4MaterialPropertyIndex
+        get_property.scalar(&comp.lambda_mean,
+                            particle_name + "SCINTILLATIONLAMBDAMEAN",
+                            comp_idx,
+                            ImportUnits::len);
+        get_property.scalar(&comp.lambda_sigma,
+                            particle_name + "SCINTILLATIONLAMBDASIGMA",
+                            comp_idx,
+                            ImportUnits::len);
+
+        // Rise time is not defined for particle type in Geant4
+        get_property.scalar(&comp.rise_time,
+                            particle_name + "SCINTILLATIONRISETIME",
+                            comp_idx,
+                            ImportUnits::time);
+
+        get_property.scalar(&comp.fall_time,
+                            particle_name + "SCINTILLATIONTIMECONSTANT",
+                            comp_idx,
+                            ImportUnits::time);
+        if (comp)
+        {
+            components.push_back(std::move(comp));
+        }
+    }
+    return components;
+}
+
+//---------------------------------------------------------------------------//
 /*!
  * Safely switch from G4State [G4Material.hh] to ImportMaterialState.
  */
@@ -194,6 +308,50 @@ PDGNumber to_pdg(G4ProductionCutsIndex const& index)
 
 //---------------------------------------------------------------------------//
 /*!
+ * Safely switch from G4MscStepLimitType [G4MscStepLimitType.hh] to
+ * MscStepLimitAlgorithm.
+ */
+MscStepLimitAlgorithm
+to_msc_step_algorithm(G4MscStepLimitType const& msc_step_algorithm)
+{
+    switch (msc_step_algorithm)
+    {
+        case G4MscStepLimitType::fMinimal:
+            return MscStepLimitAlgorithm::minimal;
+        case G4MscStepLimitType::fUseSafety:
+            return MscStepLimitAlgorithm::safety;
+        case G4MscStepLimitType::fUseSafetyPlus:
+            return MscStepLimitAlgorithm::safety_plus;
+        case G4MscStepLimitType::fUseDistanceToBoundary:
+            return MscStepLimitAlgorithm::distance_to_boundary;
+    }
+    CELER_ASSERT_UNREACHABLE();
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Safely switch from G4NuclearFormfactorType [G4NuclearFormfactorType.hh] to
+ * NuclearFormFactorType.
+ */
+NuclearFormFactorType
+to_form_factor_type(G4NuclearFormfactorType const& form_factor_type)
+{
+    switch (form_factor_type)
+    {
+        case G4NuclearFormfactorType::fNoneNF:
+            return NuclearFormFactorType::none;
+        case G4NuclearFormfactorType::fExponentialNF:
+            return NuclearFormFactorType::exponential;
+        case G4NuclearFormfactorType::fGaussianNF:
+            return NuclearFormFactorType::gaussian;
+        case G4NuclearFormfactorType::fFlatNF:
+            return NuclearFormFactorType::flat;
+    }
+    CELER_ASSERT_UNREACHABLE();
+}
+
+//---------------------------------------------------------------------------//
+/*!
  * Return a populated \c ImportParticle vector.
  */
 std::vector<ImportParticle>
@@ -204,6 +362,8 @@ import_particles(GeantImporter::DataSelection::Flags particle_flags)
     particle_iterator.reset();
 
     std::vector<ImportParticle> particles;
+
+    double const time_scale = native_value_from_clhep(ImportUnits::time);
 
     ParticleFilter include_particle{particle_flags};
     while (particle_iterator())
@@ -229,7 +389,7 @@ import_particles(GeantImporter::DataSelection::Flags particle_flags)
         if (!particle.is_stable)
         {
             // Convert lifetime of unstable particles to seconds
-            particle.lifetime /= s;
+            particle.lifetime *= time_scale;
         }
 
         particles.push_back(particle);
@@ -297,8 +457,6 @@ std::vector<ImportElement> import_elements()
         element.name = g4element->GetName();
         element.atomic_number = g4element->GetZ();
         element.atomic_mass = g4element->GetAtomicMassAmu();
-        element.radiation_length_tsai = g4element->GetfRadTsai() / (g / cm2);
-        element.coulomb_factor = g4element->GetfCoulomb();
 
         // Despite the function name, this is *NOT* a vector, it's an array
         double* const g4rel_abundance = g4element->GetRelativeAbundanceVector();
@@ -329,12 +487,120 @@ std::vector<ImportElement> import_elements()
 
 //---------------------------------------------------------------------------//
 /*!
+ * Store material-dependent optical properties.
+ *
+ * This returns a map of material index to imported optical property data.
+ */
+ImportData::ImportOpticalMap import_optical()
+{
+    auto const& pct = *G4ProductionCutsTable::GetProductionCutsTable();
+    auto num_materials = pct.GetTableSize();
+    CELER_ASSERT(num_materials > 0);
+
+    auto const& particle_map = optical_particles_map();
+    ImportData::ImportOpticalMap result;
+
+    // Loop over optical materials
+    for (auto mat_idx : range(num_materials))
+    {
+        auto const* mcc = pct.GetMaterialCutsCouple(mat_idx);
+        CELER_ASSERT(mcc);
+        CELER_ASSERT(static_cast<std::size_t>(mcc->GetIndex()) == mat_idx);
+
+        auto const* material = mcc->GetMaterial();
+        CELER_ASSERT(material);
+
+        // Add optical material properties, if any are present
+        auto const* mpt = material->GetMaterialPropertiesTable();
+        if (!mpt)
+        {
+            continue;
+        }
+        ImportOpticalMaterial optical;
+        MatPropGetter get_property{*mpt};
+
+        // Save common properties
+        get_property.vector(&optical.properties.refractive_index,
+                            "RINDEX",
+                            ImportUnits::unitless);
+
+        // Save scintillation properties
+        {
+            // Material scintillation properties
+            get_property.scalar(
+                &optical.scintillation.material.yield_per_energy,
+                "SCINTILLATIONYIELD",
+                ImportUnits::inv_mev);
+            get_property.scalar(&optical.scintillation.resolution_scale,
+                                "RESOLUTIONSCALE",
+                                ImportUnits::unitless);
+            optical.scintillation.material.components
+                = fill_vec_import_scint_comp(get_property);
+
+            // Particle scintillation properties
+            for (auto const& iter : particle_map)
+            {
+                auto const& particle_name = iter.first;
+
+                ImportScintData::IPSS scint_part_spec;
+                get_property.vector(&scint_part_spec.yield_vector,
+                                    particle_name + "SCINTILLATIONYIELD",
+                                    ImportUnits::inv_mev);
+                scint_part_spec.components
+                    = fill_vec_import_scint_comp(get_property, particle_name);
+
+                if (scint_part_spec)
+                {
+                    optical.scintillation.particles.insert(
+                        {iter.second.get(), std::move(scint_part_spec)});
+                }
+            }
+        }
+
+        // Save Rayleigh properties
+        get_property.vector(
+            &optical.rayleigh.mfp, "RAYLEIGH", ImportUnits::len);
+        get_property.scalar(&optical.rayleigh.scale_factor,
+                            "RS_SCALE_FACTOR",
+                            ImportUnits::unitless);
+        get_property.scalar(&optical.rayleigh.compressibility,
+                            "ISOTHERMAL_COMPRESSIBILITY",
+                            ImportUnits::len_time_sq_per_mass);
+
+        // Save absorption properties
+        get_property.vector(&optical.absorption.absorption_length,
+                            "ABSLENGTH",
+                            ImportUnits::len);
+
+        // Save WLS properties
+        get_property.scalar(&optical.wls.mean_num_photons,
+                            "WLSMEANNUMBERPHOTONS",
+                            ImportUnits::unitless);
+        get_property.scalar(
+            &optical.wls.time_constant, "WLSTIMECONSTANT", ImportUnits::time);
+        get_property.vector(
+            &optical.wls.absorption_length, "WLSABSLENGTH", ImportUnits::len);
+        get_property.vector(
+            &optical.wls.component, "WLSCOMPONENT", ImportUnits::unitless);
+
+        if (optical)
+        {
+            result[mat_idx] = optical;
+        }
+    }
+
+    CELER_LOG(debug) << "Loaded " << result.size() << " optical materials";
+    return result;
+}
+
+//---------------------------------------------------------------------------//
+/*!
  * Return a populated \c ImportMaterial vector.
  *
- * TODO: there seems to be an inconsitency between "materials" (index in the
+ * TODO: there is an inconsitency between "materials" (index in the
  * global material table) and "material cut couple" (which is what we're
- * defining here?) Maybe we need another level of indirection for material and
- * material+cutoff values?
+ * defining here?). We need another level of indirection for material and
+ * material+cutoff ("physics material").
  */
 std::vector<ImportMaterial>
 import_materials(GeantImporter::DataSelection::Flags particle_flags)
@@ -346,8 +612,8 @@ import_materials(GeantImporter::DataSelection::Flags particle_flags)
     std::vector<ImportMaterial> materials;
     materials.resize(g4production_cuts_table.GetTableSize());
     CELER_VALIDATE(!materials.empty(),
-                   << "no Geant4 production cuts are defined (you may need "
-                      "to call G4RunManager::RunInitialization)");
+                   << "no Geant4 production cuts are defined (you may "
+                      "need to call G4RunManager::RunInitialization)");
 
     using CutRange = std::pair<G4ProductionCutsIndex,
                                std::unique_ptr<G4VRangeToEnergyConverter>>;
@@ -383,6 +649,10 @@ import_materials(GeantImporter::DataSelection::Flags particle_flags)
         cut_converters.emplace_back(gi, std::move(converter));
     }
 
+    double const numdens_scale
+        = native_value_from_clhep(ImportUnits::inv_len_cb);
+    double const len_scale = native_value_from_clhep(ImportUnits::len);
+
     // Loop over material data
     for (auto i : range(materials.size()))
     {
@@ -405,13 +675,8 @@ import_materials(GeantImporter::DataSelection::Flags particle_flags)
         material.name = g4material->GetName();
         material.state = to_material_state(g4material->GetState());
         material.temperature = g4material->GetTemperature();  // [K]
-        material.density = g4material->GetDensity() / (g / cm3);
-        material.electron_density = g4material->GetTotNbOfElectPerVolume()
-                                    / (1. / cm3);
         material.number_density = g4material->GetTotNbOfAtomsPerVolume()
-                                  / (1. / cm3);
-        material.radiation_length = g4material->GetRadlen() / cm;
-        material.nuclear_int_length = g4material->GetNuclearInterLength() / cm;
+                                  * numdens_scale;
 
         // Populate material production cut values
         for (auto const& idx_convert : cut_converters)
@@ -423,8 +688,8 @@ import_materials(GeantImporter::DataSelection::Flags particle_flags)
             double const energy = converter.Convert(range, g4material);
 
             ImportProductionCut cutoffs;
-            cutoffs.energy = energy / MeV;
-            cutoffs.range = range / cm;
+            cutoffs.energy = energy * mev_scale;
+            cutoffs.range = range * len_scale;
 
             material.pdg_cutoffs.insert({to_pdg(g4i).get(), cutoffs});
         }
@@ -437,9 +702,8 @@ import_materials(GeantImporter::DataSelection::Flags particle_flags)
 
             ImportMatElemComponent elem_comp;
             elem_comp.element_id = g4element->GetIndex();
-            elem_comp.mass_fraction = g4material->GetFractionVector()[j];
             double elem_num_density = g4material->GetVecNbOfAtomsPerVolume()[j]
-                                      / (1. / cm3);
+                                      * numdens_scale;
             elem_comp.number_fraction = elem_num_density
                                         / material.number_density;
 
@@ -480,7 +744,7 @@ auto import_processes(GeantImporter::DataSelection::Flags process_flags,
     std::vector<ImportProcess> processes;
     std::vector<ImportMscModel> msc_models;
 
-    static const celeritas::TypeDemangler<G4VProcess> demangle_process;
+    static celeritas::TypeDemangler<G4VProcess> const demangle_process;
     std::unordered_map<G4VProcess const*, G4ParticleDefinition const*> visited;
     detail::GeantProcessImporter import_process(
         detail::TableSelection::minimal, materials, elements);
@@ -504,6 +768,7 @@ auto import_processes(GeantImporter::DataSelection::Flags process_flags,
         if (auto const* gg_process
             = dynamic_cast<G4GammaGeneralProcess const*>(&process))
         {
+#if G4VERSION_NUMBER >= 1060
             // Extract the real EM processes embedded inside "gamma general"
             // using an awkward string-based lookup which is the only one
             // available to us :(
@@ -516,6 +781,10 @@ auto import_processes(GeantImporter::DataSelection::Flags process_flags,
                     processes.push_back(import_process(particle, *subprocess));
                 }
             }
+#else
+            CELER_DISCARD(gg_process);
+            CELER_NOT_IMPLEMENTED("GammaGeneralProcess for Geant4 < 10.6");
+#endif
         }
         else if (auto const* em_process
                  = dynamic_cast<G4VEmProcess const*>(&process))
@@ -638,7 +907,8 @@ import_trans_parameters(GeantImporter::DataSelection::Flags particle_flags)
         // Get the threshold values for killing looping tracks
         ImportLoopingThreshold looping;
         looping.threshold_trials = trans->GetThresholdTrials();
-        looping.important_energy = trans->GetThresholdImportantEnergy() / MeV;
+        looping.important_energy = trans->GetThresholdImportantEnergy()
+                                   * mev_scale;
         CELER_ASSERT(looping);
         result.looping.insert({particle->GetPDGEncoding(), looping});
     }
@@ -656,18 +926,27 @@ ImportEmParameters import_em_parameters()
     ImportEmParameters import;
 
     auto const& g4 = *G4EmParameters::Instance();
+    double const len_scale = native_value_from_clhep(ImportUnits::len);
 
     import.energy_loss_fluct = g4.LossFluctuation();
     import.lpm = g4.LPM();
     import.integral_approach = g4.Integral();
     import.linear_loss_limit = g4.LinearLossLimit();
-    import.lowest_electron_energy = g4.LowestElectronEnergy() / MeV;
+    import.lowest_electron_energy = g4.LowestElectronEnergy() * mev_scale;
     import.auger = g4.Auger();
+    import.msc_step_algorithm = to_msc_step_algorithm(g4.MscStepLimitType());
     import.msc_range_factor = g4.MscRangeFactor();
+#if G4VERSION_NUMBER >= 1060
     import.msc_safety_factor = g4.MscSafetyFactor();
-    import.msc_lambda_limit = g4.MscLambdaLimit() / cm;
+    import.msc_lambda_limit = g4.MscLambdaLimit() * len_scale;
+#else
+    CELER_DISCARD(len_scale);
+#endif
+    import.msc_theta_limit = g4.MscThetaLimit();
+    import.angle_limit_factor = g4.FactorForAngleLimit();
     import.apply_cuts = g4.ApplyCuts();
     import.screening_factor = g4.ScreeningFactor();
+    import.form_factor = to_form_factor_type(g4.NuclearFormfactorType());
 
     CELER_ENSURE(import);
     return import;
@@ -726,6 +1005,7 @@ ImportData GeantImporter::operator()(DataSelection const& selected)
             || selected.processes == DataSelection::none,
         << "materials and particles must be enabled if requesting processes");
     ScopedMem record_mem("GeantImporter.load");
+    ScopedProfiling profile_this{"import-geant"};
     ImportData imported;
 
     {
@@ -741,6 +1021,7 @@ ImportData GeantImporter::operator()(DataSelection const& selected)
             imported.isotopes = import_isotopes();
             imported.elements = import_elements();
             imported.materials = import_materials(selected.particles);
+            imported.optical = import_optical();
         }
         if (selected.processes != DataSelection::none)
         {
@@ -797,6 +1078,7 @@ ImportData GeantImporter::operator()(DataSelection const& selected)
         }
     }
 
+    imported.units = units::NativeTraits::label();
     return imported;
 }
 
@@ -807,15 +1089,49 @@ ImportData GeantImporter::operator()(DataSelection const& selected)
 std::vector<ImportVolume>
 GeantImporter::import_volumes(bool unique_volumes) const
 {
-    detail::GeantVolumeVisitor visitor(unique_volumes);
-    // Recursive loop over all logical volumes to populate map
-    visitor.visit(*world_->GetLogicalVolume());
+    // Note: if the LV has been purged (i.e. by trying to run multiple
+    // geometries in the same execution), the instance ID's won't correspond to
+    // the location in the vector.
+    G4LogicalVolumeStore* lv_store = G4LogicalVolumeStore::GetInstance();
+    CELER_ASSERT(lv_store);
+    std::vector<ImportVolume> result;
+    result.reserve(lv_store->size());
 
-    auto volumes = visitor.build_volume_vector();
-    CELER_LOG(debug) << "Loaded " << volumes.size() << " volumes with "
+    // Recursive loop over all logical volumes to populate volumes
+    visit_geant_volumes(
+        [unique_volumes, &result](G4LogicalVolume const& lv) {
+            auto i = static_cast<std::size_t>(lv.GetInstanceID());
+            if (i >= result.size())
+            {
+                result.resize(i + 1);
+            }
+
+            ImportVolume& volume = result[lv.GetInstanceID()];
+            if (auto* cuts = lv.GetMaterialCutsCouple())
+            {
+                volume.material_id = cuts->GetIndex();
+            }
+            volume.name = lv.GetName();
+            volume.solid_name = lv.GetSolid()->GetName();
+
+            if (volume.name.empty())
+            {
+                CELER_LOG(warning)
+                    << "No logical volume name specified for instance ID " << i
+                    << " (material " << volume.material_id << ")";
+            }
+            else if (unique_volumes)
+            {
+                // Add pointer as GDML writer does
+                volume.name = make_gdml_name(lv);
+            }
+        },
+        *world_->GetLogicalVolume());
+
+    CELER_LOG(debug) << "Loaded " << result.size() << " volumes with "
                      << (unique_volumes ? "uniquified" : "original")
                      << " names";
-    return volumes;
+    return result;
 }
 
 //---------------------------------------------------------------------------//

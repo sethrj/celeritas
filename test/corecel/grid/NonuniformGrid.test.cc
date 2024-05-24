@@ -1,9 +1,9 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
-//! \file celeritas/grid/NonuniformGrid.test.cc
+//! \file corecel/grid/NonuniformGrid.test.cc
 //---------------------------------------------------------------------------//
 
 #include "corecel/grid/NonuniformGrid.hh"

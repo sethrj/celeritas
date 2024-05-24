@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -8,6 +8,7 @@
 #pragma once
 
 #include "celeritas_config.h"
+#include "corecel/Assert.hh"
 
 #if CELERITAS_USE_JSON
 #    include <nlohmann/json.hpp>
@@ -28,7 +29,7 @@ namespace celeritas
 #if CELERITAS_USE_JSON
         json->obj = value_;
 #else
-        (void)sizeof(json);
+        CELER_DISCARD(json);
 #endif
     }
  * \endcode
@@ -41,6 +42,25 @@ struct JsonPimpl
     JsonPimpl() = delete;
 #endif
 };
+
+//---------------------------------------------------------------------------//
+/*!
+ * Helper function to write an object to JSON.
+ *
+ * This hides the "not configured" boilerplate.
+ */
+template<class T>
+void to_json_pimpl(JsonPimpl* jp, T const& self)
+{
+#if CELERITAS_USE_JSON
+    CELER_EXPECT(jp);
+    to_json(jp->obj, self);
+#else
+    CELER_DISCARD(jp);
+    CELER_DISCARD(self);
+    CELER_NOT_CONFIGURED("JSON");
+#endif
+}
 
 //---------------------------------------------------------------------------//
 }  // namespace celeritas

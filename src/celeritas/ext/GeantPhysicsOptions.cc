@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -35,10 +35,8 @@ char const* to_cstring(MscModelSelection value)
     static EnumStringMapper<MscModelSelection> const to_cstring_impl{
         "none",
         "urban",
-        "urban_extended",
-        "wentzel_vi",
-        "urban_wentzel",
-        "goudsmit_saunderson",
+        "wentzelvi",
+        "urban_wentzelvi",
     };
     return to_cstring_impl(value);
 }

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -9,8 +9,9 @@
 
 #include <string_view>
 
+#include "geocel/LazyGeoManager.hh"
+
 #include "GlobalTestBase.hh"
-#include "LazyGeoManager.hh"
 
 namespace celeritas
 {
@@ -36,9 +37,6 @@ class GlobalGeoTestBase : virtual public GlobalTestBase,
 
     // Construct a geometry that's persistent across tests
     SPConstGeo build_geometry() override;
-
-    // Clear the lazy geometry
-    static void reset_geometry();
 
   protected:
     //// LAZY GEOMETRY CONSTRUCTION AND CLEANUP ////

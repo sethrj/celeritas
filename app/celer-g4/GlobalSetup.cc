@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -7,13 +7,29 @@
 //---------------------------------------------------------------------------//
 #include "GlobalSetup.hh"
 
+#include <fstream>
 #include <utility>
 #include <G4GenericMessenger.hh>
+#include <G4UImanager.hh>
 
 #include "corecel/Assert.hh"
+#include "corecel/io/Logger.hh"
+#include "corecel/io/StringUtils.hh"
 #include "corecel/sys/Device.hh"
-#include "accel/AlongStepFactory.hh"
+#include "celeritas/ext/RootFileManager.hh"
+#include "celeritas/field/RZMapFieldInput.hh"
+#include "accel/ExceptionConverter.hh"
+#include "accel/HepMC3PrimaryGenerator.hh"
 #include "accel/SetupOptionsMessenger.hh"
+
+#include "HepMC3PrimaryGeneratorAction.hh"
+#include "RootIO.hh"
+
+#if CELERITAS_USE_JSON
+#    include <nlohmann/json.hpp>
+
+#    include "RunInputIO.json.hh"
+#endif
 
 namespace celeritas
 {
@@ -40,48 +56,46 @@ GlobalSetup* GlobalSetup::Instance()
 GlobalSetup::GlobalSetup()
 {
     options_ = std::make_shared<SetupOptions>();
-    field_ = G4ThreeVector(0, 0, 0);
+
     messenger_ = std::make_unique<G4GenericMessenger>(
         this, "/celerg4/", "Demo geant integration setup");
 
     {
-        auto& cmd = messenger_->DeclareProperty("geometryFile", geometry_file_);
+        auto& cmd = messenger_->DeclareProperty("geometryFile",
+                                                input_.geometry_file);
         cmd.SetGuidance("Filename of the GDML detector geometry");
     }
     {
-        auto& cmd = messenger_->DeclareProperty("eventFile", event_file_);
+        auto& cmd = messenger_->DeclareProperty("eventFile", input_.event_file);
         cmd.SetGuidance("Filename of the event input read by HepMC3");
     }
     {
-        auto& cmd
-            = messenger_->DeclareProperty("rootBufferSize", root_buffer_size_);
-        cmd.SetGuidance("Buffer size of output root file [bytes]");
-        cmd.SetDefaultValue(std::to_string(root_buffer_size_));
-    }
-    {
-        auto& cmd = messenger_->DeclareProperty("writeSDHits", write_sd_hits_);
-        cmd.SetGuidance("Write a ROOT output file with hits from the SDs");
+        auto& cmd = messenger_->DeclareProperty("stepDiagnostic",
+                                                input_.step_diagnostic);
+        cmd.SetGuidance("Collect the distribution of steps per Geant4 track");
         cmd.SetDefaultValue("false");
     }
     {
-        auto& cmd = messenger_->DeclareProperty("stripGDMLPointers",
-                                                strip_gdml_pointers_);
-        cmd.SetGuidance(
-            "Remove pointer suffix from input logical volume names");
-        cmd.SetDefaultValue("true");
+        auto& cmd = messenger_->DeclareProperty("stepDiagnosticBins",
+                                                input_.step_diagnostic_bins);
+        cmd.SetGuidance("Number of bins for the Geant4 step diagnostic");
+        cmd.SetDefaultValue(std::to_string(input_.step_diagnostic_bins));
+    }
+    // Setup options for the magnetic field
+    {
+        auto& cmd = messenger_->DeclareProperty("fieldType", input_.field_type);
+        cmd.SetGuidance("Select the field type [rzmap|uniform]");
+        cmd.SetDefaultValue(input_.field_type);
+    }
+    {
+        auto& cmd = messenger_->DeclareProperty("fieldFile", input_.field_file);
+        cmd.SetGuidance("Filename of the rz-map loaded by RZMapFieldInput");
     }
     {
         messenger_->DeclareMethod("magFieldZ",
                                   &GlobalSetup::SetMagFieldZTesla,
                                   "Set Z-axis magnetic field strength (T)");
     }
-    {
-        // TODO: expose other options here
-    }
-
-    // At setup time, get the field strength (native G4units)
-    options_->make_along_step
-        = UniformAlongStepFactory([this] { return field_; });
 }
 
 //---------------------------------------------------------------------------//
@@ -91,6 +105,109 @@ GlobalSetup::GlobalSetup()
 void GlobalSetup::SetIgnoreProcesses(SetupOptions::VecString ignored)
 {
     options_->ignore_processes = std::move(ignored);
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Read input from macro or JSON.
+ */
+void GlobalSetup::ReadInput(std::string const& filename)
+{
+    bool is_json_file = ends_with(filename, ".json");
+    if (is_json_file || filename == "-")
+    {
+        CELER_LOG(status) << "Reading JSON input from '"
+                          << (is_json_file ? filename : "<stdin>") << "'";
+        std::istream* instream{nullptr};
+        std::ifstream infile;
+        if (is_json_file)
+        {
+            instream = &infile;
+            infile.open(filename);
+            CELER_VALIDATE(infile, << "failed to open '" << filename << "'");
+        }
+        else
+        {
+            instream = &std::cin;
+        }
+        CELER_ASSERT(instream);
+#if CELERITAS_USE_JSON
+        nlohmann::json::parse(*instream).get_to(input_);
+#else
+        CELER_NOT_CONFIGURED("nlohmann_json");
+#endif
+
+        // Output options
+        options_->output_file = input_.output_file;
+        options_->physics_output_file = input_.physics_output_file;
+        options_->offload_output_file = input_.offload_output_file;
+
+        // Apply Celeritas \c SetupOptions commands
+        options_->max_num_tracks = input_.num_track_slots;
+        options_->max_num_events = [this] {
+            CELER_VALIDATE(input_.primary_options || !input_.event_file.empty(),
+                           << "no event input file nor primary options were "
+                              "specified");
+            if (!input_.event_file.empty())
+            {
+                hepmc_gen_ = std::make_shared<HepMC3PrimaryGenerator>(
+                    input_.event_file);
+                return static_cast<size_type>(hepmc_gen_->NumEvents());
+            }
+            else
+            {
+                return input_.primary_options.num_events;
+            }
+        }();
+        options_->max_steps = input_.max_steps;
+        options_->initializer_capacity = input_.initializer_capacity;
+        options_->secondary_stack_factor = input_.secondary_stack_factor;
+        options_->sd.enabled = input_.sd_type != SensitiveDetectorType::none;
+        options_->cuda_stack_size = input_.cuda_stack_size;
+        options_->cuda_heap_size = input_.cuda_heap_size;
+        options_->action_times = input_.action_times;
+        options_->default_stream = input_.default_stream;
+        options_->auto_flush = input_.auto_flush;
+        options_->max_field_substeps = input_.field_options.max_substeps;
+    }
+    else if (ends_with(filename, ".mac"))
+    {
+        input_.macro_file = filename;
+    }
+
+    // Execute macro for Geant4 commands (e.g. to set verbosity)
+    if (!input_.macro_file.empty())
+    {
+        CELER_LOG(status) << "Executing macro commands from '" << filename
+                          << "'";
+        G4UImanager* ui = G4UImanager::GetUIpointer();
+        CELER_ASSERT(ui);
+        ui->ApplyCommand("/control/execute " + input_.macro_file);
+    }
+
+    // Set the filename for JSON output
+    if (CELERITAS_USE_JSON && input_.output_file.empty())
+    {
+        input_.output_file = "celer-g4.out.json";
+        options_->output_file = input_.output_file;
+    }
+
+    if (input_.sd_type == SensitiveDetectorType::event_hit)
+    {
+        root_sd_io_ = RootFileManager::use_root();
+        if (!root_sd_io_)
+        {
+            CELER_LOG(warning) << "Collecting SD hit data that will not be "
+                                  "written because ROOT is disabled";
+        }
+    }
+    else
+    {
+        root_sd_io_ = false;
+    }
+
+    // Start the timer for setup time
+    get_setup_time_ = {};
 }
 
 //---------------------------------------------------------------------------//

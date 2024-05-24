@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -51,10 +51,10 @@ struct RngTally
         {
             m /= num_samples;
         }
-        EXPECT_SOFT_NEAR(0, moments[0], tol);
-        EXPECT_SOFT_NEAR(0, moments[1], tol);
-        EXPECT_SOFT_NEAR(0, moments[2], tol);
-        EXPECT_SOFT_NEAR(0, moments[3], tol);
+        EXPECT_NEAR(0, moments[0], tol);
+        EXPECT_NEAR(0, moments[1], tol);
+        EXPECT_NEAR(0, moments[2], tol);
+        EXPECT_NEAR(0, moments[3], tol);
     }
 };
 

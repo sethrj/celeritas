@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -7,11 +7,13 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
+#include <cmath>
 #include <type_traits>
 
 #include "corecel/Macros.hh"
 #include "corecel/Types.hh"
 #include "corecel/cont/Array.hh"
+#include "corecel/math/Algorithms.hh"
 
 namespace celeritas
 {
@@ -32,7 +34,7 @@ namespace celeritas
  * \endcode
  * with
  * \code
-    corr = make_poly_evaluator(1.41125, -1.86427e-2, 1.84035e-4)(zeff);
+    corr = PolyEvaluator{1.41125, -1.86427e-2, 1.84035e-4}(zeff);
    \endcode
  * or, to use an explicit type without having to cast each coefficient:
  * \code
@@ -40,7 +42,7 @@ namespace celeritas
    corr = PolyQuad{1.41125, -1.86427e-2, 1.84035e-4)(zeff);
  * \endcode
  */
-template<class T, unsigned int N>
+template<class T, size_type N>
 class PolyEvaluator
 {
   public:
@@ -76,15 +78,15 @@ class PolyEvaluator
     }
 
   private:
-    const ArrayT coeffs_;
+    ArrayT const coeffs_;
 
-    template<unsigned int M, std::enable_if_t<(M < N), int> = 0>
+    template<unsigned int M, std::enable_if_t<(M < N), bool> = true>
     CELER_CONSTEXPR_FUNCTION T calc_impl(T arg) const
     {
-        return coeffs_[M] + arg * calc_impl<M + 1>(arg);
+        return fma(arg, calc_impl<M + 1>(arg), coeffs_[M]);
     }
 
-    template<unsigned int M, std::enable_if_t<(M == N), int> = 0>
+    template<unsigned int M, std::enable_if_t<(M == N), bool> = true>
     CELER_CONSTEXPR_FUNCTION T calc_impl(T) const
     {
         return coeffs_[N];
@@ -92,15 +94,16 @@ class PolyEvaluator
 };
 
 //---------------------------------------------------------------------------//
-/*!
- * Create a polynomial evaluator from the given arguments.
- */
-template<typename... Ts>
-constexpr auto make_poly_evaluator(Ts... args)
-{
-    using value_type = std::common_type_t<Ts...>;
-    return PolyEvaluator<value_type, sizeof...(Ts) - 1>{args...};
-}
+// DEDUCTION GUIDES
+//---------------------------------------------------------------------------//
+template<typename T, size_type N>
+CELER_FUNCTION PolyEvaluator(Array<T, N> const&) -> PolyEvaluator<T, N - 1>;
+
+template<typename... Ts,
+         std::enable_if_t<std::is_arithmetic_v<std::common_type_t<Ts...>>, bool>
+         = true>
+CELER_FUNCTION PolyEvaluator(Ts&&...)
+    -> PolyEvaluator<typename std::common_type_t<Ts...>, sizeof...(Ts) - 1>;
 
 //---------------------------------------------------------------------------//
 }  // namespace celeritas

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -14,18 +14,16 @@
 #include "corecel/data/ObserverPtr.hh"
 #include "corecel/data/ParamsDataInterface.hh"
 #include "celeritas/geo/GeoFwd.hh"
-#include "celeritas/global/CoreTrackData.hh"
 #include "celeritas/random/RngParamsFwd.hh"
 
 #include "ActionInterface.hh"
+#include "CoreTrackData.hh"
 
 namespace celeritas
 {
 //---------------------------------------------------------------------------//
 class ActionRegistry;
-class AtomicRelaxationParams;
 class CutoffParams;
-class FluctuationParams;
 class GeoMaterialParams;
 class MaterialParams;
 class OutputRegistry;
@@ -33,6 +31,7 @@ class ParticleParams;
 class PhysicsParams;
 class SimParams;
 class TrackInitParams;
+class WentzelOKVIParams;
 
 //---------------------------------------------------------------------------//
 /*!
@@ -52,6 +51,7 @@ class CoreParams final : public ParamsDataInterface<CoreParamsData>
     using SPConstRng = std::shared_ptr<RngParams const>;
     using SPConstSim = std::shared_ptr<SimParams const>;
     using SPConstTrackInit = std::shared_ptr<TrackInitParams const>;
+    using SPConstWentzelOKVI = std::shared_ptr<WentzelOKVIParams const>;
     using SPActionRegistry = std::shared_ptr<ActionRegistry>;
     using SPOutputRegistry = std::shared_ptr<OutputRegistry>;
 
@@ -72,6 +72,7 @@ class CoreParams final : public ParamsDataInterface<CoreParamsData>
         SPConstRng rng;
         SPConstSim sim;
         SPConstTrackInit init;
+        SPConstWentzelOKVI wentzel;
 
         SPActionRegistry action_reg;
         SPOutputRegistry output_reg;
@@ -106,6 +107,7 @@ class CoreParams final : public ParamsDataInterface<CoreParamsData>
     SPConstRng const& rng() const { return input_.rng; }
     SPConstSim const& sim() const { return input_.sim; }
     SPConstTrackInit const& init() const { return input_.init; }
+    SPConstWentzelOKVI const& wentzel() const { return input_.wentzel; }
     SPActionRegistry const& action_reg() const { return input_.action_reg; }
     SPOutputRegistry const& output_reg() const { return input_.output_reg; }
     //!@}

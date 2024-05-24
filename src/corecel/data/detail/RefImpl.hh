@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -15,11 +15,9 @@ namespace detail
 {
 //---------------------------------------------------------------------------//
 //! Store a value/reference and dispatch function name based on MemSpace.
-template<class T, MemSpace M>
-struct RefGetter;
 
-template<class T>
-struct RefGetter<T, MemSpace::host>
+template<class T, MemSpace M>
+struct RefGetter
 {
     T obj_;
 

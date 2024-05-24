@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -11,6 +11,7 @@
 
 #include "corecel/cont/InitializedValue.hh"
 #include "corecel/cont/Span.hh"
+#include "corecel/sys/ThreadId.hh"
 
 #include "DeviceAllocation.hh"
 #include "ObserverPtr.hh"
@@ -25,6 +26,8 @@ namespace celeritas
  * define and copy over suitable data. For more complex data usage (dynamic
  * size increases and assignment without memory reallocation), use \c
  * thrust::device_vector.
+ * When a \c StreamId is passed as the last constructor argument,
+ * all memory operations are asynchronous and ordered within that stream.
  *
  * \code
     DeviceVector<double> myvec(100);
@@ -57,8 +60,14 @@ class DeviceVector
     // Construct with no elements
     DeviceVector() = default;
 
+    // Construct with no elements
+    explicit DeviceVector(StreamId stream);
+
     // Construct with a number of elements
     explicit DeviceVector(size_type count);
+
+    // Construct with a number of elements
+    DeviceVector(size_type count, StreamId stream);
 
     // Swap with another vector
     inline void swap(DeviceVector& other) noexcept;
@@ -107,8 +116,25 @@ inline void swap(DeviceVector<T>& a, DeviceVector<T>& b) noexcept;
  * Construct with a number of allocated elements.
  */
 template<class T>
+DeviceVector<T>::DeviceVector(StreamId stream) : allocation_{stream}, size_{0}
+{
+}
+
+/*!
+ * Construct with a number of allocated elements.
+ */
+template<class T>
 DeviceVector<T>::DeviceVector(size_type count)
-    : allocation_(count * sizeof(T)), size_(count)
+    : allocation_{count * sizeof(T)}, size_{count}
+{
+}
+
+/*!
+ * Construct with a number of allocated elements.
+ */
+template<class T>
+DeviceVector<T>::DeviceVector(size_type count, StreamId stream)
+    : allocation_{count * sizeof(T), stream}, size_{count}
 {
 }
 
@@ -132,8 +158,8 @@ template<class T>
 void DeviceVector<T>::copy_to_device(SpanConstT data)
 {
     CELER_EXPECT(data.size() == this->size());
-    allocation_.copy_to_device(
-        {reinterpret_cast<Byte const*>(data.data()), data.size() * sizeof(T)});
+    allocation_.copy_to_device({reinterpret_cast<std::byte const*>(data.data()),
+                                data.size() * sizeof(T)});
 }
 
 //---------------------------------------------------------------------------//
@@ -145,7 +171,7 @@ void DeviceVector<T>::copy_to_host(SpanT data) const
 {
     CELER_EXPECT(data.size() == this->size());
     allocation_.copy_to_host(
-        {reinterpret_cast<Byte*>(data.data()), data.size() * sizeof(T)});
+        {reinterpret_cast<std::byte*>(data.data()), data.size() * sizeof(T)});
 }
 
 //---------------------------------------------------------------------------//

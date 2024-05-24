@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -8,6 +8,7 @@
 #pragma once
 
 #include "corecel/Types.hh"
+#include "celeritas/Constants.hh"
 #include "celeritas/Quantities.hh"
 
 namespace celeritas
@@ -28,11 +29,9 @@ enum class BremsModelSelection
 enum class MscModelSelection
 {
     none,
-    urban,
-    urban_extended,  //!< Use 100 TeV as upper bound instead of 100 MeV
-    wentzel_vi,
-    urban_wentzel,  //!< Urban for low-E, Wentzel_VI for high-E
-    goudsmit_saunderson,
+    urban,  //!< Urban for all energies
+    wentzelvi,  //!< Wentzel VI for all energies
+    urban_wentzelvi,  //!< Urban below 100 MeV, Wentzel VI above
     size_
 };
 
@@ -55,6 +54,8 @@ enum class RelaxationSelection
  */
 struct GeantPhysicsOptions
 {
+    using MevEnergy = Quantity<units::Mev, double>;
+
     //!@{
     //! \name Gamma physics
     //! Enable discrete Coulomb
@@ -80,7 +81,7 @@ struct GeantPhysicsOptions
     //! Enable bremsstrahlung and select a model
     BremsModelSelection brems{BremsModelSelection::all};
     //! Enable multiple coulomb scattering and select a model
-    MscModelSelection msc{MscModelSelection::urban_extended};
+    MscModelSelection msc{MscModelSelection::urban};
     //! Enable atomic relaxation and select a model
     RelaxationSelection relaxation{RelaxationSelection::none};
     //!@}
@@ -100,25 +101,35 @@ struct GeantPhysicsOptions
     //!@{
     //! \name Cutoff options
     //! Lowest energy of any EM physics process
-    units::MevEnergy min_energy{0.1 * 1e-3};  // 0.1 keV
+    MevEnergy min_energy{0.1 * 1e-3};  // 0.1 keV
     //! Highest energy of any EM physics process
-    units::MevEnergy max_energy{100 * 1e6};  // 100 TeV
+    MevEnergy max_energy{100 * 1e6};  // 100 TeV
     //! See \c PhysicsParamsOptions::linear_loss_limit
-    real_type linear_loss_limit{0.01};
+    double linear_loss_limit{0.01};
     //! Tracking cutoff kinetic energy for e-/e+
-    units::MevEnergy lowest_electron_energy{0.001};  // 1 keV
+    MevEnergy lowest_electron_energy{0.001};  // 1 keV
     //! Kill secondaries below the production cut
     bool apply_cuts{false};
+    //! Set the default production cut for all particle types [len]
+    double default_cutoff{0.1 * units::centimeter};
     //!@}
 
     //!@{
     //! \name Multiple scattering configuration
     //! E-/e+ range factor for MSC models
-    real_type msc_range_factor{0.04};
+    double msc_range_factor{0.04};
     //! Safety factor for MSC models
-    real_type msc_safety_factor{0.6};
-    //! Lambda limit for MSC models [cm]
-    real_type msc_lambda_limit{0.1};  // 1 mm
+    double msc_safety_factor{0.6};
+    //! Lambda limit for MSC models [len]
+    double msc_lambda_limit{0.1 * units::centimeter};
+    //! Polar angle limii between single and multiple Coulomb scattering
+    double msc_theta_limit{constants::pi};
+    //! Factor for dynamic computation of angular limit between SS and MSC
+    double angle_limit_factor{1};
+    //! Step limit algorithm for MSC models
+    MscStepLimitAlgorithm msc_step_algorithm{MscStepLimitAlgorithm::safety};
+    //! Nuclear form factor model for Coulomm scattering
+    NuclearFormFactorType form_factor{NuclearFormFactorType::exponential};
     //!@}
 
     //! Print detailed Geant4 output
@@ -154,6 +165,10 @@ operator==(GeantPhysicsOptions const& a, GeantPhysicsOptions const& b)
            && a.msc_range_factor == b.msc_range_factor
            && a.msc_safety_factor == b.msc_safety_factor
            && a.msc_lambda_limit == b.msc_lambda_limit
+           && a.msc_theta_limit == b.msc_theta_limit
+           && a.angle_limit_factor == b.angle_limit_factor
+           && a.msc_step_algorithm == b.msc_step_algorithm
+           && a.form_factor == b.form_factor
            && a.verbose == b.verbose;
     // clang-format on
 }

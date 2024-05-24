@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -14,8 +14,9 @@
 #include "corecel/Types.hh"
 #include "corecel/io/Logger.hh"
 #include "corecel/sys/Environment.hh"
-#include "celeritas/io/ImportLivermorePE.hh"
-#include "celeritas/io/ImportPhysicsVector.hh"
+
+#include "ImportLivermorePE.hh"
+#include "ImportPhysicsVector.hh"
 
 namespace celeritas
 {
@@ -73,13 +74,15 @@ LivermorePEReader::operator()(AtomicNumber atomic_number) const
         result.xs_hi.vector_type = ImportPhysicsVectorType::free;
 
         // Read tabulated energies and cross sections
-        real_type energy_min = 0.;
-        real_type energy_max = 0.;
-        size_type size = 0;
+        double energy_min = 0.;
+        double energy_max = 0.;
+        int size = -1;
         infile >> energy_min >> energy_max >> size >> size;
+        CELER_VALIDATE(size >= 0,
+                       << "invalid cross section size in '" << filename << "'");
         result.xs_hi.x.resize(size);
         result.xs_hi.y.resize(size);
-        for (size_type i = 0; i < size; ++i)
+        for (int i = 0; i < size; ++i)
         {
             CELER_ASSERT(infile);
             infile >> result.xs_hi.x[i] >> result.xs_hi.y[i];
@@ -94,24 +97,33 @@ LivermorePEReader::operator()(AtomicNumber atomic_number) const
                        << "failed to open '" << filename
                        << "' (should contain cross section data)");
 
-        // Set the physics vector type and the data type
-        result.xs_lo.vector_type = ImportPhysicsVectorType::free;
-
         // Check that the file is not empty
-        if (!(infile.peek() == std::ifstream::traits_type::eof()))
+        if (infile.peek() != std::ifstream::traits_type::eof())
         {
             // Read tabulated energies and cross sections
-            real_type energy_min = 0.;
-            real_type energy_max = 0.;
-            size_type size = 0;
+            double energy_min = 0;
+            double energy_max = 0;
+            int size = -1;
             infile >> energy_min >> energy_max >> size >> size;
+            CELER_VALIDATE(size >= 0,
+                           << "invalid cross section size in '" << filename
+                           << "'");
             result.xs_lo.x.resize(size);
             result.xs_lo.y.resize(size);
-            for (size_type i = 0; i < size; ++i)
+            result.xs_lo.vector_type = ImportPhysicsVectorType::free;
+            for (int i = 0; i < size; ++i)
             {
                 CELER_ASSERT(infile);
                 infile >> result.xs_lo.x[i] >> result.xs_lo.y[i];
             }
+        }
+        else if (atomic_number > AtomicNumber{2})
+        {
+            // Total cross sections below the K-shell energy aren't present for
+            // elements with only one subshell, but if another element is
+            // missing them we have a problem
+            CELER_LOG(warning) << "No low-energy cross sections found in '"
+                               << filename << "'";
         }
     }
 
@@ -161,7 +173,7 @@ LivermorePEReader::operator()(AtomicNumber atomic_number) const
         for (auto& shell : result.shells)
         {
             CELER_ASSERT(infile);
-            real_type binding_energy;
+            double binding_energy;
             infile >> binding_energy;
             CELER_ASSERT(binding_energy == shell.binding_energy);
             shell.param_hi.resize(num_param);
@@ -183,8 +195,8 @@ LivermorePEReader::operator()(AtomicNumber atomic_number) const
 
         for (auto& shell : result.shells)
         {
-            real_type min_energy = 0.;
-            real_type max_energy = 0.;
+            double min_energy = 0.;
+            double max_energy = 0.;
             size_type size = 0;
             size_type shell_id = 0;
             infile >> min_energy >> max_energy >> size >> shell_id;

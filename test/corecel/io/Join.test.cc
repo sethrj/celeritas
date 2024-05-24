@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -90,7 +90,7 @@ TEST_F(JoinTest, DISABLED_ginormous)
 {
     std::ofstream out(this->make_unique_filename(".txt"));
 
-    auto r = range<std::size_t>(1e7);
+    auto r = range(1000000000ull);
     out << join(r.begin(), r.end(), "\n");
 }
 

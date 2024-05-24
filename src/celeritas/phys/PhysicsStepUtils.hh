@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -17,7 +17,7 @@
 #include "celeritas/grid/EnergyLossCalculator.hh"
 #include "celeritas/grid/InverseRangeCalculator.hh"
 #include "celeritas/grid/RangeCalculator.hh"
-#include "celeritas/grid/ValueGridData.hh"
+#include "celeritas/grid/ValueGridType.hh"
 #include "celeritas/grid/XsCalculator.hh"
 #include "celeritas/mat/MaterialTrackView.hh"
 #include "celeritas/random/Selector.hh"
@@ -45,7 +45,7 @@ calc_physics_step_limit(MaterialTrackView const& material,
     using VGT = ValueGridType;
 
     // TODO: for particles with decay, macro XS calculation will incorporate
-    // decay probability, dividing decay constant by speed to become 1/cm to
+    // decay probability, dividing decay constant by speed to become 1/len to
     // compete with interactions
 
     // Loop over all processes that apply to this track (based on particle

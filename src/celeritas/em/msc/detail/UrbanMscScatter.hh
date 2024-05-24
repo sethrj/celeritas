@@ -1,4 +1,4 @@
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -11,6 +11,7 @@
 #include "corecel/Macros.hh"
 #include "corecel/Types.hh"
 #include "corecel/math/Algorithms.hh"
+#include "corecel/math/ArrayOperators.hh"
 #include "corecel/math/ArrayUtils.hh"
 #include "celeritas/Constants.hh"
 #include "celeritas/Quantities.hh"
@@ -140,7 +141,7 @@ CELER_FUNCTION real_type UrbanMscScatter::calc_displacement(real_type geom_path,
     CELER_EXPECT(true_path >= geom_path);
 
     // true^2 - geo^2
-    real_type rmax2 = (true_path - geom_path) * (true_path + geom_path);
+    real_type rmax2 = diffsq(true_path, geom_path);
 
     // 0.73 is (roughly) the expected value of a distribution of the mean
     // radius given rmax "based on single scattering results"
@@ -257,7 +258,7 @@ UrbanMscScatter::UrbanMscScatter(UrbanMscRef const& shared,
                 CELER_ASSERT(!is_displaced_);
                 limit_min_ = UrbanMscParameters::limit_min();
             }
-            limit_min_ = min(limit_min_, shared_.params.lambda_limit);
+            limit_min_ = min(limit_min_, physics.scalars().lambda_limit);
 
             // TODO: theta0_ calculation could be done externally, eliminating
             // many of the class member data
@@ -342,10 +343,7 @@ CELER_FUNCTION auto UrbanMscScatter::operator()(Engine& rng) -> MscInteraction
         {
             // Displacement distance is large enough to worry about
             result.displacement = this->sample_displacement_dir(rng, phi);
-            for (int i = 0; i < 3; ++i)
-            {
-                result.displacement[i] *= length;
-            }
+            result.displacement *= length;
             result.action = MscInteraction::Action::displaced;
         }
     }

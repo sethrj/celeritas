@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -46,7 +46,7 @@ class ExceptionOutput final : public OutputInterface
     Category category() const final { return Category::result; }
 
     // Key for the entry inside the category.
-    std::string label() const final { return "exception"; }
+    std::string_view label() const final { return "exception"; }
 
     // Write output to the given JSON object
     void output(JsonPimpl*) const final;

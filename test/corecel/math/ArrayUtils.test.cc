@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -10,6 +10,7 @@
 #include "corecel/cont/ArrayIO.hh"
 #include "celeritas/Constants.hh"
 
+#include "TestMacros.hh"
 #include "celeritas_test.hh"
 
 namespace celeritas
@@ -18,7 +19,8 @@ namespace test
 {
 //---------------------------------------------------------------------------//
 
-using Real3 = Array<double, 3>;
+using Real3 = Array<real_type, 3>;
+using Dbl3 = Array<double, 3>;
 
 enum
 {
@@ -69,37 +71,41 @@ TEST(ArrayUtilsTest, distance)
         distance(Array<double, 3>{3, 4, 5}, Array<double, 3>{1, 1, 1}));
 }
 
-TEST(ArrayUtilsTest, normalize_direction)
+TEST(ArrayUtilsTest, make_unit_vector)
 {
-    Real3 direction{1, 2, 3};
-    double norm = 1 / std::sqrt(1 + 4 + 9);
-    normalize_direction(&direction);
-
+    Dbl3 direction = make_unit_vector(Dbl3{1, 2, 3});
+    double const norm = 1 / std::sqrt(1 + 4 + 9);
     static double const expected[] = {1 * norm, 2 * norm, 3 * norm};
     EXPECT_VEC_SOFT_EQ(expected, direction);
 }
 
 TEST(ArrayUtilsTest, is_soft_unit_vector)
 {
-    Real3 dir{1, 2, 3};
-    normalize_direction(&dir);
+    Real3 dir = make_unit_vector(Real3{1, 2, 3});
+    EXPECT_SOFT_EQ(1, dot_product(dir, dir));
     EXPECT_TRUE(is_soft_unit_vector(dir));
-    dir[0] += 1e-12;
+    constexpr real_type eps = SoftEqual<real_type>{}.rel();
+    dir[0] += eps;
     EXPECT_TRUE(is_soft_unit_vector(dir));
+    dir[1] += eps;
+    EXPECT_TRUE(is_soft_unit_vector(dir));
+    dir[2] -= eps;
+    EXPECT_TRUE(is_soft_unit_vector(dir));
+    dir[0] += 10 * eps;
+    EXPECT_FALSE(is_soft_unit_vector(dir));
 }
 
 TEST(ArrayUtilsTest, rotate)
 {
-    Real3 vec = {-1.1, 2.3, 0.9};
-    normalize_direction(&vec);
+    Dbl3 vec = make_unit_vector(Dbl3{-1.1, 2.3, 0.9});
 
     // transform through some directions
     double costheta = std::cos(2.0 / 3.0);
     double sintheta = std::sqrt(1.0 - costheta * costheta);
-    double phi = 2 * constants::pi / 3.0;
+    double phi = 2 * m_pi / 3.0;
 
     double a = 1.0 / sqrt(1.0 - vec[Z] * vec[Z]);
-    Real3 expected
+    Dbl3 expected
         = {vec[X] * costheta + vec[Z] * vec[X] * sintheta * cos(phi) * a
                - vec[Y] * sintheta * sin(phi) * a,
            vec[Y] * costheta + vec[Z] * vec[Y] * sintheta * cos(phi) * a
@@ -117,18 +123,16 @@ TEST(ArrayUtilsTest, rotate)
     EXPECT_VEC_SOFT_EQ(expected, rotate(scatter, {0.0, 0.0, 1.0}));
 
     // Transform almost degenerate vector
-    vec = {3e-8, 4e-8, 1};
-    normalize_direction(&vec);
+    vec = make_unit_vector(Dbl3{3e-8, 4e-8, 1});
     EXPECT_VEC_SOFT_EQ(
-        (Real3{-0.613930085414816, 0.0739664834328671, 0.785887275346237}),
+        (Dbl3{-0.613930085414816, 0.0739664834328671, 0.785887275346237}),
         rotate(scatter, vec));
 
     // Transform a range of more almost-degenerate vectors
     for (auto eps : {1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8})
     {
-        vec = {-eps, 2 * eps, 1 - eps * eps};
-        normalize_direction(&vec);
-        Real3 result = rotate(scatter, vec);
+        vec = make_unit_vector(Dbl3{-eps, 2 * eps, 1 - eps * eps});
+        Dbl3 result = rotate(scatter, vec);
         EXPECT_SOFT_EQ(1.0, dot_product(result, result))
             << "for eps=" << eps << " => vec=" << vec;
     }
@@ -144,9 +148,9 @@ TEST(ArrayUtilsTest, rotate)
         // The expected value below is from using the regular/non-fallback
         // calculation normalized to a unit vector
         EXPECT_VEC_NEAR(
-            (Real3{-0.952973648767149, 0.0195839636531213, -0.302419730049247}),
+            (Dbl3{-0.952973648767149, 0.0195839636531213, -0.302419730049247}),
             result,
-            2e-11);
+            20 * SoftEqual<double>{}.rel());
     }
 
     // Switch scattered z direction

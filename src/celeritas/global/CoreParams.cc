@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -22,11 +22,11 @@
 #include "corecel/sys/KernelRegistry.hh"
 #include "corecel/sys/MemRegistry.hh"
 #include "corecel/sys/ScopedMem.hh"
+#include "geocel/GeoParamsOutput.hh"
+#include "celeritas/em/params/WentzelOKVIParams.hh"
 #include "celeritas/geo/GeoMaterialParams.hh"  // IWYU pragma: keep
 #include "celeritas/geo/GeoParams.hh"  // IWYU pragma: keep
-#include "celeritas/geo/GeoParamsOutput.hh"
 #include "celeritas/geo/detail/BoundaryAction.hh"
-#include "celeritas/global/ActionRegistryOutput.hh"
 #include "celeritas/mat/MaterialParams.hh"  // IWYU pragma: keep
 #include "celeritas/mat/MaterialParamsOutput.hh"
 #include "celeritas/phys/CutoffParams.hh"  // IWYU pragma: keep
@@ -44,6 +44,7 @@
 
 #include "ActionInterface.hh"
 #include "ActionRegistry.hh"  // IWYU pragma: keep
+#include "ActionRegistryOutput.hh"
 #include "alongstep/AlongStepNeutralAction.hh"
 
 #if CELERITAS_USE_JSON
@@ -52,6 +53,14 @@
 #    include "corecel/sys/EnvironmentIO.json.hh"
 #    include "corecel/sys/KernelRegistryIO.json.hh"
 #    include "corecel/sys/MemRegistryIO.json.hh"
+#endif
+
+#if CELERITAS_CORE_GEO == CELERITAS_CORE_GEO_ORANGE
+#    include "orange/OrangeParams.hh"
+#    include "orange/OrangeParamsOutput.hh"
+#elif CELERITAS_CORE_GEO == CELERITAS_CORE_GEO_VECGEOM
+#    include "geocel/vg/VecgeomParams.hh"
+#    include "geocel/vg/VecgeomParamsOutput.hh"
 #endif
 
 namespace celeritas
@@ -80,6 +89,10 @@ build_params_refs(CoreParams::Input const& p, CoreScalars const& scalars)
     ref.rng = get_ref<M>(*p.rng);
     ref.sim = get_ref<M>(*p.sim);
     ref.init = get_ref<M>(*p.init);
+    if (p.wentzel)
+    {
+        ref.wentzel = get_ref<M>(*p.wentzel);
+    }
 
     CELER_ENSURE(ref);
     return ref;
@@ -238,7 +251,7 @@ CoreParams::CoreParams(Input input) : input_(std::move(input))
     CoreScalars scalars = build_actions(input_.action_reg.get());
 
     // Construct optional track-sorting actions
-    auto insert_sort_tracks_action = [this](const TrackOrder track_order) {
+    auto insert_sort_tracks_action = [this](TrackOrder const track_order) {
         input_.action_reg->insert(std::make_shared<SortTracksAction>(
             input_.action_reg->next_id(), track_order));
     };
@@ -247,6 +260,7 @@ CoreParams::CoreParams(Input input) : input_(std::move(input))
         case TrackOrder::partition_status:
         case TrackOrder::sort_step_limit_action:
         case TrackOrder::sort_along_step_action:
+        case TrackOrder::sort_particle_type:
             // Sort with just the given track order
             insert_sort_tracks_action(track_order);
             break;
@@ -255,7 +269,9 @@ CoreParams::CoreParams(Input input) : input_(std::move(input))
             insert_sort_tracks_action(TrackOrder::sort_step_limit_action);
             insert_sort_tracks_action(TrackOrder::sort_along_step_action);
             break;
-        default:
+        case TrackOrder::unsorted:
+        case TrackOrder::shuffled:
+        case TrackOrder::size_:
             break;
     }
 
@@ -299,6 +315,14 @@ CoreParams::CoreParams(Input input) : input_(std::move(input))
         std::make_shared<PhysicsParamsOutput>(input_.physics));
     input_.output_reg->insert(
         std::make_shared<ActionRegistryOutput>(input_.action_reg));
+
+#if CELERITAS_CORE_GEO == CELERITAS_CORE_GEO_ORANGE
+    input_.output_reg->insert(
+        std::make_shared<OrangeParamsOutput>(input_.geometry));
+#elif CELERITAS_CORE_GEO == CELERITAS_CORE_GEO_VECGEOM
+    input_.output_reg->insert(
+        std::make_shared<VecgeomParamsOutput>(input_.geometry));
+#endif
 
     CELER_LOG(status) << "Celeritas core setup complete";
 

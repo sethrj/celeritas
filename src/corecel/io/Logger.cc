@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -16,12 +16,12 @@
 
 #include "corecel/Assert.hh"
 #include "corecel/cont/Range.hh"
-#include "corecel/io/LoggerTypes.hh"
 #include "corecel/sys/Environment.hh"
 #include "corecel/sys/MpiCommunicator.hh"
 #include "corecel/sys/ScopedMpiInit.hh"
 
 #include "ColorUtils.hh"
+#include "LoggerTypes.hh"
 
 namespace celeritas
 {
@@ -31,7 +31,7 @@ namespace
 // HELPER CLASSES
 //---------------------------------------------------------------------------//
 //! Default global logger prints the error message with basic colors
-void default_global_handler(Provenance prov, LogLevel lev, std::string msg)
+void default_global_handler(LogProvenance prov, LogLevel lev, std::string msg)
 {
     static std::mutex log_mutex;
     std::lock_guard<std::mutex> scoped_lock{log_mutex};
@@ -45,22 +45,9 @@ void default_global_handler(Provenance prov, LogLevel lev, std::string msg)
         std::clog << color_code(' ') << ": ";
     }
 
-    // clang-format off
-    char c = ' ';
-    switch (lev)
-    {
-        case LogLevel::debug:      c = 'x'; break;
-        case LogLevel::diagnostic: c = 'x'; break;
-        case LogLevel::status:     c = 'b'; break;
-        case LogLevel::info:       c = 'g'; break;
-        case LogLevel::warning:    c = 'y'; break;
-        case LogLevel::error:      c = 'r'; break;
-        case LogLevel::critical:   c = 'R'; break;
-        case LogLevel::size_: CELER_ASSERT_UNREACHABLE();
-    };
     // clang-format on
-    std::clog << color_code(c) << to_cstring(lev) << ": " << color_code(' ')
-              << msg << std::endl;
+    std::clog << to_color_code(lev) << to_cstring(lev) << ": "
+              << color_code(' ') << msg << std::endl;
 }
 
 //---------------------------------------------------------------------------//
@@ -70,7 +57,7 @@ class LocalHandler
   public:
     explicit LocalHandler(MpiCommunicator const& comm) : rank_(comm.rank()) {}
 
-    void operator()(Provenance prov, LogLevel lev, std::string msg)
+    void operator()(LogProvenance prov, LogLevel lev, std::string msg)
     {
         // Use buffered 'clog'
         std::clog << color_code('x') << prov.file << ':' << prov.line

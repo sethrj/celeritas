@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -16,6 +16,7 @@
 #include "corecel/data/Ref.hh"
 #include "corecel/io/Repr.hh"
 #include "corecel/math/ArrayUtils.hh"
+#include "corecel/sys/Device.hh"
 #include "corecel/sys/Stopwatch.hh"
 #include "orange/OrangeGeoTestBase.hh"
 #include "orange/OrangeParams.hh"
@@ -135,10 +136,9 @@ class FiveVolumesTest : public SimpleUnitTrackerTest
  */
 LocalState SimpleUnitTrackerTest::make_state(Real3 pos, Real3 dir)
 {
-    normalize_direction(&dir);
     LocalState state;
     state.pos = pos;
-    state.dir = dir;
+    state.dir = make_unit_vector(dir);
     state.volume = {};
     state.surface = {};
 
@@ -162,7 +162,8 @@ SimpleUnitTrackerTest::make_state(Real3 pos, Real3 dir, char const* vol)
 {
     LocalState state = this->make_state(pos, dir);
     detail::UniverseIndexer ui(this->host_params().universe_indexer_data);
-    state.volume = ui.local_volume(this->find_volume(vol)).volume;
+    state.volume = vol ? ui.local_volume(this->find_volume(vol)).volume
+                       : LocalVolumeId{};
     return state;
 }
 
@@ -279,7 +280,8 @@ auto SimpleUnitTrackerTest::setup_heuristic_states(size_type num_tracks) const
     IsotropicDistribution<> sample_isotropic;
     for (auto i : range(num_tracks))
     {
-        auto lsa = LevelStateAccessor(&result_ref, TrackSlotId{i}, LevelId{0});
+        auto lsa = detail::LevelStateAccessor(
+            &result_ref, TrackSlotId{i}, LevelId{0});
         lsa.pos() = sample_box(rng);
         lsa.dir() = sample_isotropic(rng);
     }
@@ -310,7 +312,7 @@ auto SimpleUnitTrackerTest::reduce_heuristic_init(StateHostRef const& host,
     {
         auto tid = TrackSlotId{i};
         // TODO Update for multiple universes
-        LevelStateAccessor lsa(&host, tid, LevelId{0});
+        detail::LevelStateAccessor lsa(&host, tid, LevelId{0});
         auto vol = lsa.vol();
 
         if (vol < counts.size())
@@ -357,9 +359,12 @@ void SimpleUnitTrackerTest::HeuristicInitResult::print_expected() const
 
 TEST_F(DetailTest, bumpcalculator)
 {
-    detail::BumpCalculator calc_bump(this->host_params().scalars);
-    EXPECT_SOFT_EQ(1e-8, calc_bump(Real3{0, 0, 0}));
-    EXPECT_SOFT_EQ(1e-8, calc_bump(Real3{1e-14, 0, 0}));
+    detail::BumpCalculator calc_bump(
+        Tolerance<>::from_relative(1e-8, /* length = */ 0.1));
+    EXPECT_SOFT_EQ(1e-9, calc_bump(Real3{0, 0, 0}));
+    EXPECT_SOFT_EQ(1e-9, calc_bump(Real3{1e-14, 0, 0}));
+    EXPECT_SOFT_EQ(2e-8, calc_bump(Real3{0, 1, 2}));
+    EXPECT_SOFT_EQ(1e-6, calc_bump(Real3{-100, 1, 2}));
     EXPECT_SOFT_EQ(1e-2, calc_bump(Real3{0, 0, 1e6}));
     EXPECT_SOFT_EQ(1e1, calc_bump(Real3{0, 1e9, 1e6}));
 }
@@ -407,7 +412,6 @@ TEST_F(OneVolumeTest, safety)
 TEST_F(OneVolumeTest, heuristic_init)
 {
     size_type num_tracks = 1024;
-
     static double const expected_vol_fractions[] = {1.0};
 
     {
@@ -417,7 +421,8 @@ TEST_F(OneVolumeTest, heuristic_init)
         EXPECT_VEC_SOFT_EQ(expected_vol_fractions, result.vol_fractions);
         EXPECT_SOFT_EQ(0, result.failed);
     }
-    if (CELER_USE_DEVICE)
+
+    if (celeritas::device())
     {
         SCOPED_TRACE("Device heuristic");
         auto result = this->run_heuristic_init_device(num_tracks);
@@ -631,7 +636,7 @@ TEST_F(TwoVolumeTest, normal)
     }
 }
 
-TEST_F(TwoVolumeTest, heuristic_init)
+TEST_F(TwoVolumeTest, TEST_IF_CELERITAS_DOUBLE(heuristic_init))
 {
     size_type num_tracks = 1024;
 
@@ -644,7 +649,7 @@ TEST_F(TwoVolumeTest, heuristic_init)
         EXPECT_VEC_SOFT_EQ(expected_vol_fractions, result.vol_fractions);
         EXPECT_SOFT_EQ(0, result.failed);
     }
-    if (CELER_USE_DEVICE)
+    if (celeritas::device())
     {
         SCOPED_TRACE("Device heuristic");
         auto result = this->run_heuristic_init_device(num_tracks);
@@ -668,7 +673,7 @@ TEST_F(FieldLayersTest, initialize)
     }
     {
         auto init = tracker.initialize(this->make_state({0, -3, 0}, {0, 0, 1}));
-        EXPECT_EQ("world", this->id_to_label(init.volume));
+        EXPECT_EQ("world.bg", this->id_to_label(init.volume));
         EXPECT_FALSE(init.surface);
     }
     {
@@ -690,17 +695,25 @@ TEST_F(FieldLayersTest, cross_boundary)
         SCOPED_TRACE(eps);
         {
             // From background to volume
-            auto init = tracker.cross_boundary(this->make_state_crossing(
-                {0, -1.5 + eps, 0}, {0, -1, 0}, "world", "layerbox1.py", '+'));
+            auto init = tracker.cross_boundary(
+                this->make_state_crossing({0, real_type{-1.5} + eps, 0},
+                                          {0, -1, 0},
+                                          "world.bg",
+                                          "layerbox1.py",
+                                          '+'));
             EXPECT_EQ("layer1", this->id_to_label(init.volume));
             EXPECT_EQ("layerbox1.py", this->id_to_label(init.surface.id()));
             EXPECT_EQ(Sense::inside, init.surface.unchecked_sense());
         }
         {
             // From volume to background
-            auto init = tracker.cross_boundary(this->make_state_crossing(
-                {0, -2.5 - eps, 0}, {0, -1, 0}, "layer1", "layerbox1.my", '+'));
-            EXPECT_EQ("world", this->id_to_label(init.volume));
+            auto init = tracker.cross_boundary(
+                this->make_state_crossing({0, real_type{-2.5} - eps, 0},
+                                          {0, -1, 0},
+                                          "layer1",
+                                          "layerbox1.my",
+                                          '+'));
+            EXPECT_EQ("world.bg", this->id_to_label(init.volume));
             EXPECT_EQ("layerbox1.my", this->id_to_label(init.surface.id()));
             EXPECT_EQ(Sense::inside, init.surface.unchecked_sense());
         }
@@ -713,7 +726,7 @@ TEST_F(FieldLayersTest, intersect)
 
     {
         SCOPED_TRACE("straightforward");
-        auto state = this->make_state({0, -1, 0}, {0, 1, 0}, "world");
+        auto state = this->make_state({0, -1, 0}, {0, 1, 0}, "world.bg");
         auto isect = tracker.intersect(state);
         EXPECT_TRUE(isect);
         EXPECT_EQ("layerbox2.my", this->id_to_label(isect.surface.id()));
@@ -722,7 +735,7 @@ TEST_F(FieldLayersTest, intersect)
     }
     {
         SCOPED_TRACE("crossing internal planes");
-        auto state = this->make_state({9.6, 4, 9.7}, {-1, -1, -1}, "world");
+        auto state = this->make_state({9.6, 4, 9.7}, {-1, -1, -1}, "world.bg");
         auto isect = tracker.intersect(state);
         EXPECT_TRUE(isect);
         EXPECT_EQ("layerbox3.py", this->id_to_label(isect.surface.id()));
@@ -731,7 +744,7 @@ TEST_F(FieldLayersTest, intersect)
     }
 }
 
-TEST_F(FieldLayersTest, heuristic_init)
+TEST_F(FieldLayersTest, TEST_IF_CELERITAS_DOUBLE(heuristic_init))
 {
     size_type num_tracks = 8192;
     static double const expected_vol_fractions[] = {0,
@@ -749,7 +762,7 @@ TEST_F(FieldLayersTest, heuristic_init)
         EXPECT_SOFT_EQ(0, result.failed);
     }
 
-    if (CELER_USE_DEVICE)
+    if (celeritas::device())
     {
         SCOPED_TRACE("Device heuristic");
         auto result = this->run_heuristic_init_device(num_tracks);
@@ -932,7 +945,7 @@ TEST_F(FiveVolumesTest, safety)
     EXPECT_SOFT_EQ(0.5, tracker.safety({-5, 20, 0}, d));
 }
 
-TEST_F(FiveVolumesTest, heuristic_init)
+TEST_F(FiveVolumesTest, TEST_IF_CELERITAS_DOUBLE(heuristic_init))
 {
     size_type num_tracks = 10000;
 
@@ -945,7 +958,7 @@ TEST_F(FiveVolumesTest, heuristic_init)
         EXPECT_VEC_SOFT_EQ(expected_vol_fractions, result.vol_fractions);
         EXPECT_SOFT_EQ(0, result.failed);
     }
-    if (CELER_USE_DEVICE)
+    if (celeritas::device())
     {
         SCOPED_TRACE("Device heuristic");
         auto result = this->run_heuristic_init_device(num_tracks);

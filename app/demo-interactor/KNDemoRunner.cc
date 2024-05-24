@@ -1,5 +1,5 @@
 //---------------------------------*-C++-*-----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -29,7 +29,6 @@ KNDemoRunner::KNDemoRunner(constSPParticleParams particles,
 {
     CELER_EXPECT(pparams_);
     CELER_EXPECT(xsparams_);
-    CELER_EXPECT(launch_params_.threads_per_block > 0);
 
     // Set up KN interactor data;
     namespace pdg = pdg;
@@ -63,7 +62,7 @@ auto KNDemoRunner::operator()(KNDemoRunArgs args) -> result_type
     // TODO: refactor these as collections, and simplify
     DeviceVector<Real3> position(args.num_tracks);
     DeviceVector<Real3> direction(args.num_tracks);
-    DeviceVector<double> time(args.num_tracks);
+    DeviceVector<real_type> time(args.num_tracks);
     DeviceVector<bool> alive(args.num_tracks);
 
     ParticleStateData<Ownership::value, MemSpace::device> track_states;
@@ -92,7 +91,7 @@ auto KNDemoRunner::operator()(KNDemoRunArgs args) -> result_type
 
     InitialData initial;
     initial.particle = ParticleTrackInitializer{kn_data_.ids.gamma,
-                                                units::MevEnergy{args.energy}};
+                                                units::MevEnergy(args.energy)};
 
     DeviceRef<StateData> state;
     state.particle = track_states;
@@ -137,8 +136,9 @@ auto KNDemoRunner::operator()(KNDemoRunArgs args) -> result_type
     }
 
     // Copy integrated energy deposition
-    result.edep.resize(detector_params.tally_grid.size);
-    celeritas::app::finalize(params, state, make_span(result.edep));
+    std::vector<real_type> edep(detector_params.tally_grid.size);
+    celeritas::app::finalize(params, state, make_span(edep));
+    result.edep.assign(edep.begin(), edep.end());
 
     // Store total time
     result.total_time = total_time();

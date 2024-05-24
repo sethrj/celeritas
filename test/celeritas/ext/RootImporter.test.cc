@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -136,7 +136,7 @@ TEST_F(RootImporterTest, materials)
 TEST_F(RootImporterTest, processes)
 {
     auto const& processes = this->imported_data().processes;
-    EXPECT_EQ(9, processes.size());
+    EXPECT_EQ(11, processes.size());
 
     auto find_process = [&processes](PDGNumber pdg, ImportProcessClass ipc) {
         return std::find_if(processes.begin(),

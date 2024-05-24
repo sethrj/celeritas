@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -11,11 +11,11 @@
 #include "corecel/Macros.hh"
 #include "corecel/math/Algorithms.hh"
 #include "celeritas/Quantities.hh"
-#include "celeritas/field/FieldDriverOptions.hh"
 #include "celeritas/geo/GeoTrackView.hh"
 #include "celeritas/phys/ParticleTrackView.hh"
 
 #include "FieldDriver.hh"
+#include "FieldDriverOptions.hh"
 #include "FieldPropagator.hh"
 #include "MagFieldEquation.hh"
 

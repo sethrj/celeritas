@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -10,7 +10,8 @@
 #include <utility>
 
 #include "corecel/Assert.hh"
-#include "celeritas/track/TrackInitData.hh"  // IWYU pragma: associated
+
+#include "TrackInitData.hh"  // IWYU pragma: associated
 
 namespace celeritas
 {
@@ -22,6 +23,7 @@ TrackInitParams::TrackInitParams(Input const& inp)
 {
     CELER_EXPECT(inp.capacity > 0);
     CELER_EXPECT(inp.max_events > 0);
+    CELER_EXPECT(inp.track_order < TrackOrder::size_);
 
     HostVal<TrackInitParamsData> host_data;
     host_data.capacity = inp.capacity;

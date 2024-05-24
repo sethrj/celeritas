@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -13,9 +13,9 @@
 #include "corecel/cont/Range.hh"
 #include "corecel/sys/Device.hh"
 #include "celeritas/Types.hh"
-#include "celeritas/em/FluctuationParams.hh"
-#include "celeritas/em/UrbanMscParams.hh"
 #include "celeritas/em/msc/UrbanMsc.hh"  // IWYU pragma: associated
+#include "celeritas/em/params/FluctuationParams.hh"
+#include "celeritas/em/params/UrbanMscParams.hh"
 #include "celeritas/global/ActionLauncher.hh"
 #include "celeritas/global/CoreParams.hh"
 #include "celeritas/global/CoreState.hh"
@@ -91,26 +91,27 @@ void AlongStepGeneralLinearAction::execute(CoreParams const& params,
                 std::forward<decltype(execute_track)>(execute_track)));
     };
 
-    if (msc_)
-    {
-        launch_impl(
-            MscStepLimitApplier{UrbanMsc{msc_->ref<MemSpace::native>()}});
-    }
-    launch_impl(PropagationApplier{LinearPropagatorFactory{}});
-    if (msc_)
-    {
-        launch_impl(MscApplier{UrbanMsc{msc_->ref<MemSpace::native>()}});
-    }
-    launch_impl(detail::TimeUpdater{});
-    if (fluct_)
-    {
-        launch_impl(ElossApplier{FluctELoss{fluct_->ref<MemSpace::native>()}});
-    }
-    else
-    {
-        launch_impl(ElossApplier{MeanELoss{}});
-    }
-    launch_impl(TrackUpdater{});
+    launch_impl([&](CoreTrackView const& track) {
+        if (this->has_msc())
+        {
+            MscStepLimitApplier{UrbanMsc{msc_->ref<MemSpace::native>()}}(track);
+        }
+        PropagationApplier{LinearPropagatorFactory{}}(track);
+        if (this->has_msc())
+        {
+            MscApplier{UrbanMsc{msc_->ref<MemSpace::native>()}}(track);
+        }
+        TimeUpdater{}(track);
+        if (this->has_fluct())
+        {
+            ElossApplier{FluctELoss{fluct_->ref<MemSpace::native>()}}(track);
+        }
+        else
+        {
+            ElossApplier{MeanELoss{}}(track);
+        }
+        TrackUpdater{}(track);
+    });
 }
 
 //---------------------------------------------------------------------------//

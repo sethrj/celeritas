@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -20,14 +20,16 @@ namespace test
 namespace
 {
 //---------------------------------------------------------------------------//
-template<class V, class S>
-std::vector<int> extract_ids(std::vector<OpaqueId<V, S>> const& ids)
+template<class C>
+std::vector<int> extract_ids(C const& ids)
 {
     std::vector<int> result(ids.size());
-    std::transform(
-        ids.begin(), ids.end(), result.begin(), [](OpaqueId<V, S> const& v) {
-            return v ? v.unchecked_get() : -1;
-        });
+    std::transform(ids.begin(),
+                   ids.end(),
+                   result.begin(),
+                   [](typename C::value_type const& v) {
+                       return v ? v.unchecked_get() : -1;
+                   });
     return result;
 }
 

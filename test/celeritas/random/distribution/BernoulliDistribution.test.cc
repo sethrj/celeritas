@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -33,7 +33,16 @@ TEST(BernoulliDistributionTest, single_constructor)
             ++num_true;
         }
     }
-    EXPECT_EQ(254, num_true);
+
+    // NOTE: distribution stores "real_type" under the hood
+    if (CELERITAS_REAL_TYPE == CELERITAS_REAL_TYPE_DOUBLE)
+    {
+        EXPECT_EQ(254, num_true);
+    }
+    else
+    {
+        EXPECT_EQ(250, num_true);
+    }
 }
 
 TEST(BernoulliDistributionTest, normalizing_constructor)

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -7,6 +7,7 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
+#include "celeritas_config.h"
 #include "corecel/Assert.hh"
 #include "corecel/Types.hh"
 #include "corecel/sys/MultiExceptionHandler.hh"
@@ -34,7 +35,7 @@ void launch_action(ExplicitActionInterface const& action,
                    F&& execute_thread)
 {
     MultiExceptionHandler capture_exception;
-#ifdef _OPENMP
+#if defined(_OPENMP) && CELERITAS_OPENMP == CELERITAS_OPENMP_TRACK
 #    pragma omp parallel for
 #endif
     for (size_type i = 0; i < num_threads; ++i)

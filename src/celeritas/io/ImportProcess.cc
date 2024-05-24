@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -63,6 +63,7 @@ char const* to_cstring(ImportProcessClass value)
         "mu_brems",
         "mu_pair_prod",
         "gamma_general",
+        "neutron_elastic",
     };
     return to_cstring_impl(value);
 }
@@ -92,6 +93,7 @@ char const* to_geant_name(ImportProcessClass value)
         "muBrems",  // mu_brems,
         "muPairProd",  // mu_pair_prod,
         "GammaGeneralProc",  // gamma_general,
+        "neutronElasticProc",  // neutron_elastic,
     };
     return to_name_impl(value);
 }

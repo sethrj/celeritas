@@ -1,5 +1,5 @@
 #---------------------------------*-CMake-*----------------------------------#
-# Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+# Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 # See the top-level COPYRIGHT file for details.
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 #----------------------------------------------------------------------------#
@@ -9,13 +9,7 @@
 #----------------------------------------------------------------------------#
 # Celeritas version
 
-# Add an extra 1 up front and strip it to zero-pad
-math(EXPR _temp_version
-  "((256 + ${PROJECT_VERSION_MAJOR}) * 256 + ${PROJECT_VERSION_MINOR}) * 256 + ${PROJECT_VERSION_PATCH}"
-  OUTPUT_FORMAT HEXADECIMAL
-)
-string(SUBSTRING "${_temp_version}" 3 -1 _temp_version)
-set(CELERITAS_VERSION "0x${_temp_version}")
+celeritas_version_to_hex(CELERITAS_VERSION PROJECT_VERSION)
 celeritas_configure_file("celeritas_version.h.in" "celeritas_version.h" @ONLY)
 
 #----------------------------------------------------------------------------#
@@ -31,9 +25,11 @@ set(CELERITAS_USE_VECGEOM ${CELERITAS_USE_VecGeom})
 # Start counter from 1 because undefined config have the implicit value of 0 in
 # the C preprocessor, so any unavailable options (e.g. CELERITAS_USE_CURAND
 # when HIP is in use) will implicitly be zero.
-celeritas_generate_option_config(CELERITAS_CORE_RNG)
-# Same, but with CELERITAS_CORE_GEO_CONFIG
 celeritas_generate_option_config(CELERITAS_CORE_GEO)
+celeritas_generate_option_config(CELERITAS_CORE_RNG)
+celeritas_generate_option_config(CELERITAS_OPENMP)
+celeritas_generate_option_config(CELERITAS_REAL_TYPE)
+celeritas_generate_option_config(CELERITAS_UNITS)
 celeritas_configure_file("celeritas_config.h.in" "celeritas_config.h" @ONLY)
 
 #----------------------------------------------------------------------------#
@@ -52,7 +48,7 @@ endif()
 
 set(CELERITAS_CMAKE_STRINGS)
 set(CELERITAS_BUILD_TYPE ${CMAKE_BUILD_TYPE})
-foreach(_var BUILD_TYPE CORE_GEO CORE_RNG HOSTNAME)
+foreach(_var BUILD_TYPE HOSTNAME REAL_TYPE UNITS OPENMP CORE_GEO CORE_RNG)
   set(_var "CELERITAS_${_var}")
   string(TOLOWER "${_var}" _lower)
   string(APPEND CELERITAS_CMAKE_STRINGS
@@ -62,17 +58,34 @@ endforeach()
 
 foreach(_var CLHEP_VERSION Geant4_VERSION VecGeom_VERSION)
   string(TOLOWER "${_var}" _lower)
+  if(DEFINED ${_var}_STRING)
+    set(_var "${_var}_STRING")
+  endif()
+  set(_value "${${_var}}")
   string(APPEND CELERITAS_CMAKE_STRINGS
-    "static const char celeritas_${_lower}[] = \"${${_var}}\";\n"
+    "static const char celeritas_${_lower}[] = \"${_value}\";\n"
   )
 endforeach()
 celeritas_configure_file("celeritas_cmake_strings.h.in" "celeritas_cmake_strings.h" @ONLY)
+
+# Save dependency versions to sys_config
+set(CELERITAS_DEPENDENCY_VERSIONS)
+foreach(_dep Geant4 VecGeom HepMC3)
+  string(TOUPPER "${_dep}" _upper)
+  celeritas_version_to_hex(_temp_version_hex ${_dep}_VERSION)
+  list(APPEND CELERITAS_DEPENDENCY_VERSIONS
+    "#define CELERITAS_${_upper}_VERSION ${_temp_version_hex}"
+  )
+endforeach()
+string(JOIN "\n" CELERITAS_DEPENDENCY_VERSIONS ${CELERITAS_DEPENDENCY_VERSIONS})
+celeritas_configure_file("celeritas_sys_config.h.in" "celeritas_sys_config.h" @ONLY)
 
 #----------------------------------------------------------------------------#
 # LIBRARIES
 #----------------------------------------------------------------------------#
 
 add_subdirectory(corecel)
+add_subdirectory(geocel)
 add_subdirectory(orange)
 add_subdirectory(celeritas)
 if(CELERITAS_USE_Geant4)

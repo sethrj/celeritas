@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -10,11 +10,12 @@
 #include "corecel/Assert.hh"
 #include "corecel/Macros.hh"
 #include "celeritas/Types.hh"
-#include "celeritas/geo/GeoMaterialView.hh"
-#include "celeritas/geo/GeoTrackView.hh"
 #include "celeritas/global/CoreTrackView.hh"
 #include "celeritas/mat/MaterialTrackView.hh"
 #include "celeritas/track/SimTrackView.hh"
+
+#include "../GeoMaterialView.hh"
+#include "../GeoTrackView.hh"
 
 namespace celeritas
 {
@@ -39,7 +40,7 @@ BoundaryExecutor::operator()(celeritas::CoreTrackView const& track)
 {
     CELER_EXPECT([track] {
         auto sim = track.make_sim_view();
-        return sim.step_limit().action == track.boundary_action()
+        return sim.post_step_action() == track.boundary_action()
                && sim.status() == TrackStatus::alive;
     }());
 

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -15,9 +15,11 @@
 #include "corecel/data/DeviceVector.hh"
 #include "corecel/data/Ref.hh"
 #include "corecel/sys/ThreadId.hh"
-#include "celeritas/global/CoreTrackData.hh"
 #include "celeritas/phys/Primary.hh"
 #include "celeritas/track/CoreStateCounters.hh"
+
+#include "CoreTrackData.hh"
+#include "detail/CoreStateThreadOffsets.hh"
 
 namespace celeritas
 {
@@ -70,7 +72,8 @@ class CoreState final : public CoreStateInterface
     using Ptr = ObserverPtr<Ref, M>;
     using PrimaryCRef = Collection<Primary, Ownership::const_reference, M>;
     template<MemSpace M2>
-    using ActionThreads = Collection<ThreadId, Ownership::value, M2, ActionId>;
+    using ActionThreads =
+        typename detail::CoreStateThreadOffsets<M>::template ActionThreads<M2>;
     //!@}
 
   public:
@@ -84,6 +87,12 @@ class CoreState final : public CoreStateInterface
 
     //! Number of track slots
     size_type size() const final { return states_.size(); }
+
+    //! Whether the state is being transported with no active particles
+    bool warming_up() const
+    {
+        return counters_.num_active == 0 && counters_.num_primaries == 0;
+    }
 
     //! Get a reference to the mutable state data
     Ref& ref() { return states_.ref(); }
@@ -126,25 +135,22 @@ class CoreState final : public CoreStateInterface
 
     // Reference to the host ActionThread collection for holding result of
     // action counting
-    ActionThreads<MemSpace::host>& action_thread_offsets();
+    inline auto& action_thread_offsets();
 
     // Const reference to the host ActionThread collection for holding result
     // of action counting
-    ActionThreads<MemSpace::host> const& action_thread_offsets() const;
+    inline auto const& action_thread_offsets() const;
 
     // Reference to the ActionThread collection matching the state memory
     // space
-    ActionThreads<M>& native_action_thread_offsets();
+    inline auto& native_action_thread_offsets();
 
   private:
     // State data
     CollectionStateStore<CoreStateData, M> states_;
 
     // Indices of first thread assigned to a given action
-    ActionThreads<M> thread_offsets_;
-
-    // Only used if M == device for D2H copy of thread_offsets_
-    ActionThreads<MemSpace::host> host_thread_offsets_;
+    detail::CoreStateThreadOffsets<M> offsets_;
 
     // Primaries to be added
     Collection<Primary, Ownership::value, M> primaries_;
@@ -177,6 +183,38 @@ template<MemSpace M>
 auto CoreState<M>::primary_storage() const -> PrimaryCRef
 {
     return PrimaryCRef{primaries_};
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Reference to the host ActionThread collection for holding result of
+ * action counting
+ */
+template<MemSpace M>
+auto& CoreState<M>::action_thread_offsets()
+{
+    return offsets_.host_action_thread_offsets();
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Const reference to the host ActionThread collection for holding result
+ * of action counting
+ */
+template<MemSpace M>
+auto const& CoreState<M>::action_thread_offsets() const
+{
+    return offsets_.host_action_thread_offsets();
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Reference to the ActionThread collection matching the state memory space
+ */
+template<MemSpace M>
+auto& CoreState<M>::native_action_thread_offsets()
+{
+    return offsets_.native_action_thread_offsets();
 }
 
 //---------------------------------------------------------------------------//

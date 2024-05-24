@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -32,7 +32,7 @@ void to_json(nlohmann::json& j, Device const& d)
             {"max_threads_per_cu", d.max_threads_per_cu()},
             {"threads_per_warp", d.threads_per_warp()},
             {"eu_per_cu", d.eu_per_cu()},
-            {"default_block_size", d.default_block_size()},
+            {"can_map_host_memory", d.can_map_host_memory()},
         };
 
 #if CELERITAS_USE_CUDA

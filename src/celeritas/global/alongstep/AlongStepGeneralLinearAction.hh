@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -33,7 +33,7 @@ class ParticleParams;
  * have (but do not *need* to have) along-step energy loss, optional energy
  * fluctuation, and optional multiple scattering.
  */
-class AlongStepGeneralLinearAction final : public ExplicitActionInterface
+class AlongStepGeneralLinearAction final : public ExplicitCoreActionInterface
 {
   public:
     //!@{
@@ -68,10 +68,13 @@ class AlongStepGeneralLinearAction final : public ExplicitActionInterface
     ActionId action_id() const final { return id_; }
 
     //! Short name for the along-step kernel
-    std::string label() const final { return "along-step-general-linear"; }
+    std::string_view label() const final
+    {
+        return "along-step-general-linear";
+    }
 
     //! Short description of the action
-    std::string description() const final
+    std::string_view description() const final
     {
         return "apply along-step for particles with no field";
     }

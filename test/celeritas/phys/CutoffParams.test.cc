@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -8,6 +8,7 @@
 #include "celeritas/phys/CutoffParams.hh"
 
 #include "corecel/cont/Range.hh"
+#include "geocel/UnitUtils.hh"
 #include "celeritas/Quantities.hh"
 #include "celeritas/RootTestBase.hh"
 #include "celeritas/Types.hh"
@@ -35,6 +36,7 @@ class CutoffParamsTest : public Test
 
     void SetUp() override
     {
+        using namespace constants;
         using namespace units;
 
         // Set up MaterialParams
@@ -47,7 +49,7 @@ class CutoffParamsTest : public Test
         };
         m_input.materials = {
             // Sodium iodide
-            {2.948915064677e+22,
+            {native_value_from(InvCcDensity{2.948915064677e+22}),
              293.0,
              MatterState::solid,
              {{ElementId{2}, 0.5}, {ElementId{3}, 0.5}},
@@ -55,7 +57,7 @@ class CutoffParamsTest : public Test
             // Void
             {0, 0, MatterState::unspecified, {}, "hard vacuum"},
             // Diatomic hydrogen
-            {1.0739484359044669e+20,
+            {native_value_from(InvCcDensity{1.0739484359044669e+20}),
              100.0,
              MatterState::gas,
              {{ElementId{0}, 1.0}},
@@ -66,24 +68,24 @@ class CutoffParamsTest : public Test
         // Set up ParticleParams
         ParticleParams::Input p_input;
         constexpr auto zero = zero_quantity();
-        constexpr auto stable = ParticleRecord::stable_decay_constant();
 
         p_input.push_back({"electron",
                            pdg::electron(),
                            MevMass{0.5109989461},
                            ElementaryCharge{-1},
-                           stable});
-        p_input.push_back({"gamma", pdg::gamma(), zero, zero, stable});
+                           stable_decay_constant});
+        p_input.push_back(
+            {"gamma", pdg::gamma(), zero, zero, stable_decay_constant});
         p_input.push_back({"positron",
                            pdg::positron(),
                            MevMass{0.5109989461},
                            ElementaryCharge{1},
-                           stable});
+                           stable_decay_constant});
         p_input.push_back({"proton",
                            pdg::proton(),
                            MevMass{938.27208816},
                            ElementaryCharge{1},
-                           stable});
+                           stable_decay_constant});
         particles = std::make_shared<ParticleParams>(std::move(p_input));
     }
 
@@ -100,7 +102,7 @@ TEST_F(CutoffParamsTest, empty_cutoffs)
     // input.cutoffs left empty
     CutoffParams cutoff(input);
 
-    std::vector<double> energies, ranges;
+    std::vector<real_type> energies, ranges;
     for (auto const pid : range(ParticleId{particles->size()}))
     {
         for (auto const mid : range(MaterialId{materials->size()}))
@@ -120,8 +122,8 @@ TEST_F(CutoffParamsTest, empty_cutoffs)
         }
     }
 
-    double const expected_energies[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-    double const expected_ranges[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+    real_type const expected_energies[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+    real_type const expected_ranges[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
     EXPECT_VEC_SOFT_EQ(expected_energies, energies);
     EXPECT_VEC_SOFT_EQ(expected_ranges, ranges);
 }
@@ -139,7 +141,7 @@ TEST_F(CutoffParamsTest, electron_cutoffs)
 
     CutoffParams cutoff(input);
 
-    std::vector<double> energies, ranges;
+    std::vector<real_type> energies, ranges;
     for (auto const pid : range(ParticleId{particles->size()}))
     {
         for (auto const mid : range(MaterialId{materials->size()}))
@@ -159,8 +161,8 @@ TEST_F(CutoffParamsTest, electron_cutoffs)
         }
     }
 
-    double const expected_energies[] = {0.2, 0, 0.4, 0, 0, 0, 0, 0, 0};
-    double const expected_ranges[] = {0.1, 0, 0.3, 0, 0, 0, 0, 0, 0};
+    real_type const expected_energies[] = {0.2, 0, 0.4, 0, 0, 0, 0, 0, 0};
+    real_type const expected_ranges[] = {0.1, 0, 0.3, 0, 0, 0, 0, 0, 0};
     EXPECT_VEC_SOFT_EQ(expected_energies, energies);
     EXPECT_VEC_SOFT_EQ(expected_ranges, ranges);
 }
@@ -215,7 +217,7 @@ class CutoffParamsImportTest : public RootTestBase
 
 TEST_F(CutoffParamsImportTest, import_cutoffs)
 {
-    std::vector<double> energies, ranges;
+    std::vector<real_type> energies, ranges;
     for (auto const pid : {this->particle()->find(pdg::electron()),
                            this->particle()->find(pdg::gamma()),
                            this->particle()->find(pdg::positron())})
@@ -224,18 +226,18 @@ TEST_F(CutoffParamsImportTest, import_cutoffs)
         {
             CutoffView cutoffs(this->cutoff()->host_ref(), mid);
             energies.push_back(cutoffs.energy(pid).value());
-            ranges.push_back(cutoffs.range(pid));
+            ranges.push_back(to_cm(cutoffs.range(pid)));
             EXPECT_FALSE(cutoffs.apply_post_interaction());
         }
     }
 
-    static double const expected_energies[] = {0.00099,
-                                               1.3082781553076,
-                                               0.00099,
-                                               0.020822442086622,
-                                               0.00099,
-                                               1.2358930791935};
-    static double const expected_ranges[] = {0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
+    static real_type const expected_energies[] = {0.00099,
+                                                  1.3082781553076,
+                                                  0.00099,
+                                                  0.020822442086622,
+                                                  0.00099,
+                                                  1.2358930791935};
+    static real_type const expected_ranges[] = {0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
     EXPECT_VEC_SOFT_EQ(expected_energies, energies);
     EXPECT_VEC_SOFT_EQ(expected_ranges, ranges);
 }

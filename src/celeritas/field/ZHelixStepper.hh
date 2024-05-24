@@ -1,11 +1,13 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
 //! \file celeritas/field/ZHelixStepper.hh
 //---------------------------------------------------------------------------//
 #pragma once
+
+#include <type_traits>
 
 #include "corecel/Types.hh"
 #include "corecel/math/Algorithms.hh"
@@ -72,14 +74,20 @@ class ZHelixStepper
 
     //// COMMON PROPERTIES ////
 
-    static CELER_CONSTEXPR_FUNCTION real_type tolerance() { return 1e-10; }
+    static CELER_CONSTEXPR_FUNCTION real_type tolerance()
+    {
+        if constexpr (std::is_same_v<real_type, double>)
+            return 1e-10;
+        else if constexpr (std::is_same_v<real_type, float>)
+            return 1e-5f;
+    }
 };
 
 //---------------------------------------------------------------------------//
 // DEDUCTION GUIDES
 //---------------------------------------------------------------------------//
 template<class EquationT>
-CELER_FUNCTION ZHelixStepper(EquationT&&)->ZHelixStepper<EquationT>;
+CELER_FUNCTION ZHelixStepper(EquationT&&) -> ZHelixStepper<EquationT>;
 
 //---------------------------------------------------------------------------//
 // INLINE DEFINITIONS
@@ -121,11 +129,8 @@ ZHelixStepper<E>::operator()(real_type step, OdeState const& beg_state) const
     result.end_state = this->move(step, radius, helicity, beg_state, rhs);
 
     // Solution are exact, but assign a tolerance for numerical treatments
-    for (int i = 0; i < 3; ++i)
-    {
-        result.err_state.pos[i] = ZHelixStepper::tolerance();
-        result.err_state.mom[i] = ZHelixStepper::tolerance();
-    }
+    result.err_state.pos.fill(ZHelixStepper::tolerance());
+    result.err_state.mom.fill(ZHelixStepper::tolerance());
 
     return result;
 }

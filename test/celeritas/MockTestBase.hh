@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -14,6 +14,7 @@
 #include "celeritas/Types.hh"
 
 #include "GlobalGeoTestBase.hh"
+#include "OnlyCoreTestBase.hh"
 
 namespace celeritas
 {
@@ -43,7 +44,7 @@ namespace test
  *
  * Cutoff values are all zero.
  */
-class MockTestBase : virtual public GlobalGeoTestBase
+class MockTestBase : virtual public GlobalGeoTestBase, public OnlyCoreTestBase
 {
   public:
     //!@{
@@ -55,8 +56,8 @@ class MockTestBase : virtual public GlobalGeoTestBase
 
   public:
     Applicability make_applicability(char const* name,
-                                     double lo_energy,
-                                     double hi_energy) const;
+                                     real_type lo_energy,
+                                     real_type hi_energy) const;
 
     ModelCallback make_model_callback() const;
 
@@ -79,6 +80,7 @@ class MockTestBase : virtual public GlobalGeoTestBase
     SPConstAction build_along_step() override;
     SPConstSim build_sim() override;
     SPConstTrackInit build_init() override;
+    SPConstWentzelOKVI build_wentzel() override { return nullptr; }
 
     virtual PhysicsOptions build_physics_options() const;
 

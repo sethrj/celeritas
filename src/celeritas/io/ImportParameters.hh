@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -8,6 +8,12 @@
 #pragma once
 
 #include <unordered_map>
+
+#include "celeritas/Constants.hh"
+#include "celeritas/Types.hh"
+#include "celeritas/Units.hh"
+
+#include "ImportUnits.hh"
 
 namespace celeritas
 {
@@ -23,6 +29,10 @@ namespace celeritas
  */
 struct ImportEmParameters
 {
+#ifndef SWIG
+    static constexpr auto energy_units{ImportUnits::mev};
+#endif
+
     //! Energy loss fluctuation
     bool energy_loss_fluct{false};
     //! LPM effect for bremsstrahlung and pair production
@@ -35,24 +45,35 @@ struct ImportEmParameters
     double lowest_electron_energy{0.001};
     //! Whether auger emission should be enabled (valid only for relaxation)
     bool auger{false};
+    //! MSC step limit algorithm
+    MscStepLimitAlgorithm msc_step_algorithm{MscStepLimitAlgorithm::safety};
     //! MSC range factor for e-/e+
     double msc_range_factor{0.04};
     //! MSC safety factor
     double msc_safety_factor{0.6};
-    //! MSC lambda limit [cm]
-    double msc_lambda_limit{0.1};
+    //! MSC lambda limit [length]
+    double msc_lambda_limit{1 * units::millimeter};
+    //! Polar angle limii between single and multiple Coulomb scattering
+    double msc_theta_limit{constants::pi};
     //! Kill secondaries below production cut
     bool apply_cuts{false};
     //! Nuclear screening factor for single/multiple Coulomb scattering
     double screening_factor{1};
+    //! Factor for dynamic computation of angular limit between SS and MSC
+    double angle_limit_factor{1};
+    //! Nuclear form factor model for Coulomm scattering
+    NuclearFormFactorType form_factor{NuclearFormFactorType::exponential};
 
     //! Whether parameters are assigned and valid
     explicit operator bool() const
     {
         return linear_loss_limit > 0 && lowest_electron_energy > 0
+               && msc_step_algorithm != MscStepLimitAlgorithm::size_
                && msc_range_factor > 0 && msc_range_factor < 1
                && msc_safety_factor >= 0.1 && msc_lambda_limit > 0
-               && screening_factor > 0;
+               && msc_theta_limit >= 0 && msc_theta_limit <= constants::pi
+               && screening_factor > 0 && angle_limit_factor > 0
+               && form_factor != NuclearFormFactorType::size_;
     }
 };
 
@@ -62,6 +83,10 @@ struct ImportEmParameters
  */
 struct ImportLoopingThreshold
 {
+#ifndef SWIG
+    static constexpr auto energy_units{ImportUnits::mev};
+#endif
+
     //! Number of steps a higher-energy looping track takes before it's killed
     int threshold_trials{10};
     //! Energy below which looping tracks are immediately killed [MeV]
@@ -99,6 +124,16 @@ struct ImportTransParameters
     {
         return max_substeps >= 0 && !looping.empty();
     }
+};
+
+//---------------------------------------------------------------------------//
+/*!
+ * TODO: Placeholder for optical parameter data.
+ * See \c G4OpticalParameters .
+ */
+struct ImportOpticalParameters
+{
+    bool scintillation_by_particle{false};
 };
 
 //---------------------------------------------------------------------------//

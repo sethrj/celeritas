@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -57,6 +57,8 @@ namespace celeritas
      y_{n+1/2}   = y_n + (h/2) \Sigma_{n=1}^{7} c^{*}_i k_i
    \f]
  * with the coefficients \f$c^{*}\f$ taken from L. F. Shampine (1986).
+ *
+ * \todo Rename DormandPrinceIntegrator
  */
 template<class EquationT>
 class DormandPrinceStepper
@@ -87,13 +89,14 @@ class DormandPrinceStepper
 // DEDUCTION GUIDES
 //---------------------------------------------------------------------------//
 template<class EquationT>
-CELER_FUNCTION DormandPrinceStepper(EquationT&&)->DormandPrinceStepper<EquationT>;
+CELER_FUNCTION DormandPrinceStepper(EquationT&&)
+    -> DormandPrinceStepper<EquationT>;
 
 //---------------------------------------------------------------------------//
 // INLINE DEFINITIONS
 //---------------------------------------------------------------------------//
 /*!
- * Adaptive step size control for the DormandPrince RK5(4)7M method.
+ * Numerically integrate using the DormandPrince RK5(4)7M method.
  */
 template<class E>
 CELER_FUNCTION auto
@@ -139,12 +142,12 @@ DormandPrinceStepper<E>::operator()(real_type step,
     constexpr R d77 = -1 / R(40);
 
     // Coefficients for the mid point calculation by Shampine
-    constexpr R c71 = 6025192743 / R(30085553152);
-    constexpr R c73 = 51252292925 / R(65400821598);
-    constexpr R c74 = -2691868925 / R(45128329728);
-    constexpr R c75 = 187940372067 / R(1594534317056);
-    constexpr R c76 = -1776094331 / R(19743644256);
-    constexpr R c77 = 11237099 / R(235043384);
+    constexpr R c71 = R(6025192743.) / R(30085553152.);
+    constexpr R c73 = R(51252292925.) / R(65400821598.);
+    constexpr R c74 = R(-2691868925.) / R(45128329728.);
+    constexpr R c75 = R(187940372067.) / R(1594534317056.);
+    constexpr R c76 = R(-1776094331.) / R(19743644256.);
+    constexpr R c77 = R(11237099.) / R(235043384.);
 
     result_type result;
 

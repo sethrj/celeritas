@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -111,26 +111,27 @@ struct InvalidValueTraits<T, typename std::enable_if<std::is_trivial<T>::value>:
 /*!
  * Fill a collection with an invalid value (host only).
  */
+
 template<MemSpace M>
 struct InvalidFiller
 {
-    template<class T>
-    void operator()(T*)
-    {
-    }
-};
-
-template<>
-struct InvalidFiller<MemSpace::host>
-{
     template<class T, Ownership W, class I>
-    void operator()(Collection<T, W, MemSpace::host, I>* c)
+    void operator()(Collection<T, W, M, I>* c)
     {
         CELER_EXPECT(c);
 
         T val = InvalidValueTraits<T>::value();
         auto items = (*c)[AllItems<T>{}];
         std::fill(items.begin(), items.end(), val);
+    }
+};
+
+template<>
+struct InvalidFiller<MemSpace::device>
+{
+    template<class T>
+    void operator()(T*)
+    {
     }
 };
 

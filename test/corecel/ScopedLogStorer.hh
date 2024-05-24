@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include "corecel/Macros.hh"
 #include "corecel/io/LoggerTypes.hh"
 
 namespace celeritas
@@ -30,7 +31,7 @@ namespace test
     ScopedLogStorer scoped_log_{&celeritas::world_logger()};
     CELER_LOG(info) << "captured";
     scoped_log_.print_expected();
-    CELER_EXPECT(scoped_log_.empty()) << scoped_log_;
+    EXPECT_TRUE(scoped_log_.empty()) << scoped_log_;
    \endcode
  */
 class ScopedLogStorer
@@ -48,19 +49,11 @@ class ScopedLogStorer
     // Construct reference with default level
     explicit ScopedLogStorer(Logger* orig);
 
-    //!@{
-    //! Disallow move/copy
-    ScopedLogStorer(ScopedLogStorer const&) = delete;
-    ScopedLogStorer(ScopedLogStorer&&) = delete;
-    ScopedLogStorer& operator=(ScopedLogStorer const&) = delete;
-    ScopedLogStorer& operator=(ScopedLogStorer&&) = delete;
-    //!@}
-
     // Restore original logger on destruction
     ~ScopedLogStorer();
 
     // Save a log message
-    void operator()(Provenance, LogLevel lev, std::string msg);
+    void operator()(LogProvenance, LogLevel lev, std::string msg);
 
     //! Whether no messages were stored
     bool empty() const { return messages_.empty(); }
@@ -86,6 +79,9 @@ class ScopedLogStorer
     std::unique_ptr<Logger> saved_logger_;
     VecString messages_;
     VecString levels_;
+
+    //! Prevent copying and moving
+    CELER_DELETE_COPY_MOVE(ScopedLogStorer);
 };
 
 // Print expected results

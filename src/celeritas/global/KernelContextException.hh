@@ -1,11 +1,13 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
 //! \file celeritas/global/KernelContextException.hh
 //---------------------------------------------------------------------------//
 #pragma once
+
+#include <string_view>
 
 #include "corecel/Assert.hh"
 #include "celeritas/Quantities.hh"
@@ -15,7 +17,10 @@
 
 namespace celeritas
 {
+//---------------------------------------------------------------------------//
 class CoreTrackView;
+struct JsonPimpl;
+
 //---------------------------------------------------------------------------//
 /*!
  * Provide contextual information about failed errors on CPU.
@@ -47,7 +52,7 @@ class KernelContextException : public RichContextException
     KernelContextException(HostCRef<CoreParamsData> const& params,
                            HostRef<CoreStateData> const& states,
                            ThreadId tid,
-                           std::string&& label);
+                           std::string_view label);
 
     // This class type
     char const* type() const final;

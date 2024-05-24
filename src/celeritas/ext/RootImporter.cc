@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -18,12 +18,7 @@
 #include "corecel/sys/ScopedMem.hh"
 #include "celeritas/io/ImportData.hh"
 
-// This "public API" function is defined in CeleritasRootInterface.cxx to
-// initialize ROOT. It's not necessary for shared libraries (due to static
-// initialization shenanigans) but is needed for static libs. The name is a
-// function of the name passed to the MODULE argument of
-// the cmake root_generate_dictionary command.
-void TriggerDictionaryInitialization_libceleritas();
+#include "RootFileManager.hh"
 
 namespace celeritas
 {
@@ -33,9 +28,11 @@ namespace celeritas
  */
 RootImporter::RootImporter(char const* filename)
 {
-    TriggerDictionaryInitialization_libceleritas();
-
     CELER_LOG(info) << "Opening ROOT file at " << filename;
+    CELER_VALIDATE(RootFileManager::use_root(),
+                   << "cannot interface with ROOT (disabled by user "
+                      "environment)");
+
     ScopedMem record_mem("RootImporter.open");
     ScopedTimeLog scoped_time;
     root_input_.reset(TFile::Open(filename, "read"));
@@ -54,8 +51,12 @@ ImportData RootImporter::operator()()
     ScopedMem record_mem("RootImporter.read");
     ScopedTimeLog scoped_time;
 
-    std::unique_ptr<TTree> tree_data(root_input_->Get<TTree>(tree_name()));
-    CELER_ASSERT(tree_data);
+    std::unique_ptr<TTree> tree_data(
+        root_input_->Get<TTree>(this->tree_name()));
+    CELER_VALIDATE(tree_data,
+                   << "Cannot find TTree '" << this->tree_name()
+                   << "' in ROOT file '" << root_input_->GetName()
+                   << "'. Verify input file");
     CELER_ASSERT(tree_data->GetEntries() == 1);
 
     ImportData import_data;
@@ -63,6 +64,9 @@ ImportData RootImporter::operator()()
     int err_code = tree_data->SetBranchAddress(branch_name(), &import_data_ptr);
     CELER_ASSERT(err_code >= 0);
     tree_data->GetEntry(0);
+
+    // Convert (if necessary) the resulting data to the native unit system
+    convert_to_native(&import_data);
 
     return import_data;
 }

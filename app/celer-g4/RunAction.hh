@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -10,14 +10,19 @@
 #include <memory>
 #include <G4UserRunAction.hh>
 
+#include "corecel/sys/Stopwatch.hh"
 #include "accel/LocalTransporter.hh"
 #include "accel/SetupOptions.hh"
 #include "accel/SharedParams.hh"
+
+class G4VExceptionHandler;
 
 namespace celeritas
 {
 namespace app
 {
+class ExceptionHandler;
+class GeantDiagnostics;
 //---------------------------------------------------------------------------//
 /*!
  * Set up and tear down Celeritas.
@@ -37,13 +42,15 @@ class RunAction final : public G4UserRunAction
     using SPConstOptions = std::shared_ptr<SetupOptions const>;
     using SPParams = std::shared_ptr<SharedParams>;
     using SPTransporter = std::shared_ptr<LocalTransporter>;
+    using SPDiagnostics = std::shared_ptr<GeantDiagnostics>;
     //!@}
 
   public:
     RunAction(SPConstOptions options,
               SPParams params,
               SPTransporter transport,
-              bool init_celeritas);
+              SPDiagnostics diagnostics,
+              bool init_shared);
 
     void BeginOfRunAction(G4Run const* run) final;
     void EndOfRunAction(G4Run const* run) final;
@@ -52,7 +59,11 @@ class RunAction final : public G4UserRunAction
     SPConstOptions options_;
     SPParams params_;
     SPTransporter transport_;
-    bool init_celeritas_;
+    SPDiagnostics diagnostics_;
+    std::shared_ptr<ExceptionHandler> exception_handler_;
+    bool init_shared_;
+    Stopwatch get_transport_time_;
+    G4VExceptionHandler* orig_eh_{nullptr};
 };
 
 //---------------------------------------------------------------------------//

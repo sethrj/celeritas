@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -20,9 +20,9 @@
 #include "corecel/Assert.hh"
 #include "corecel/cont/EnumArray.hh"
 #include "corecel/cont/Range.hh"
+#include "corecel/grid/VectorUtils.hh"
 #include "corecel/io/Logger.hh"
 #include "corecel/sys/TypeDemangler.hh"
-#include "celeritas/grid/VectorUtils.hh"
 
 #include "GeantMicroXsCalculator.hh"
 

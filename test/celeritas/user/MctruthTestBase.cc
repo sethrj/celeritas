@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -11,6 +11,7 @@
 
 #include "corecel/cont/Span.hh"
 #include "corecel/io/LogContextException.hh"
+#include "geocel/UnitUtils.hh"
 #include "celeritas/global/Stepper.hh"
 #include "celeritas/user/StepCollector.hh"
 
@@ -46,27 +47,27 @@ void MctruthTestBase::SetUp()
 void MctruthTestBase::RunResult::print_expected() const
 {
     cout << "/*** ADD THE FOLLOWING UNIT TEST CODE ***/\n"
-            "static const int expected_event[] = "
+            "static int const expected_event[] = "
          << repr(this->event)
          << ";\n"
             "EXPECT_VEC_EQ(expected_event, result.event);\n"
-            "static const int expected_track[] = "
+            "static int const expected_track[] = "
          << repr(this->track)
          << ";\n"
             "EXPECT_VEC_EQ(expected_track, result.track);\n"
-            "static const int expected_step[] = "
+            "static int const expected_step[] = "
          << repr(this->step)
          << ";\n"
             "EXPECT_VEC_EQ(expected_step, result.step);\n"
-            "static const int expected_volume[] = "
+            "static int const expected_volume[] = "
          << repr(this->volume)
          << ";\n"
             "EXPECT_VEC_EQ(expected_volume, result.volume);\n"
-            "static const double expected_pos[] = "
+            "static double const expected_pos[] = "
          << repr(this->pos)
          << ";\n"
             "EXPECT_VEC_SOFT_EQ(expected_pos, result.pos);\n"
-            "static const double expected_dir[] = "
+            "static double const expected_dir[] = "
          << repr(this->dir)
          << ";\n"
             "EXPECT_VEC_SOFT_EQ(expected_dir, result.dir);\n"
@@ -89,9 +90,12 @@ auto MctruthTestBase::run(size_type num_tracks, size_type num_steps)
     {
         result.event.push_back(s.event);
         result.track.push_back(s.track);
-        result.step.push_back(s.step);
+        result.step.push_back(s.step);  // Step *counter* not *length*
         result.volume.push_back(s.volume);
-        result.pos.insert(result.pos.end(), std::begin(s.pos), std::end(s.pos));
+        for (auto pos_v : s.pos)
+        {
+            result.pos.push_back(to_cm(pos_v));
+        }
         result.dir.insert(result.dir.end(), std::begin(s.dir), std::end(s.dir));
     }
     return result;

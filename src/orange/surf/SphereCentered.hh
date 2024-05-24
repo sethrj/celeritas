@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -25,9 +25,9 @@ class SphereCentered
 {
   public:
     //@{
-    //! Type aliases
+    //! \name Type aliases
     using Intersections = Array<real_type, 2>;
-    using Storage = Span<const real_type, 1>;
+    using StorageSpan = Span<real_type const, 1>;
     //@}
 
     //// CLASS ATTRIBUTES ////
@@ -44,11 +44,15 @@ class SphereCentered
   public:
     //// CONSTRUCTORS ////
 
+    // Construct with square of radius for simplification
+    static inline SphereCentered from_radius_sq(real_type rsq);
+
     // Construct with origin and radius
     explicit inline CELER_FUNCTION SphereCentered(real_type radius);
 
     // Construct from raw data
-    explicit inline CELER_FUNCTION SphereCentered(Storage);
+    template<class R>
+    explicit inline CELER_FUNCTION SphereCentered(Span<R, StorageSpan::extent>);
 
     //// ACCESSORS ////
 
@@ -56,7 +60,7 @@ class SphereCentered
     CELER_FUNCTION real_type radius_sq() const { return radius_sq_; }
 
     //! Get a view to the data for type-deleted storage
-    CELER_FUNCTION Storage data() const { return {&radius_sq_, 1}; }
+    CELER_FUNCTION StorageSpan data() const { return {&radius_sq_, 1}; }
 
     //// CALCULATION ////
 
@@ -73,10 +77,27 @@ class SphereCentered
   private:
     // Square of the radius
     real_type radius_sq_;
+
+    //! Private default constructor for manual construction
+    SphereCentered() = default;
 };
 
 //---------------------------------------------------------------------------//
 // INLINE DEFINITIONS
+//---------------------------------------------------------------------------//
+/*!
+ * Construct from the square of the radius.
+ *
+ * This is used for surface simplification.
+ */
+SphereCentered SphereCentered::from_radius_sq(real_type rsq)
+{
+    CELER_EXPECT(rsq > 0);
+    SphereCentered result;
+    result.radius_sq_ = rsq;
+    return result;
+}
+
 //---------------------------------------------------------------------------//
 /*!
  * Construct with sphere radius.
@@ -91,7 +112,8 @@ CELER_FUNCTION SphereCentered::SphereCentered(real_type radius)
 /*!
  * Construct from raw data.
  */
-CELER_FUNCTION SphereCentered::SphereCentered(Storage data)
+template<class R>
+CELER_FUNCTION SphereCentered::SphereCentered(Span<R, StorageSpan::extent> data)
     : radius_sq_{data[0]}
 {
 }
@@ -132,9 +154,7 @@ SphereCentered::calc_intersections(Real3 const& pos,
  */
 CELER_FUNCTION Real3 SphereCentered::calc_normal(Real3 const& pos) const
 {
-    Real3 result{pos};
-    normalize_direction(&result);
-    return result;
+    return make_unit_vector(pos);
 }
 
 //---------------------------------------------------------------------------//

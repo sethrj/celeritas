@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -10,8 +10,11 @@
 #include <memory>
 #include <G4UserEventAction.hh>
 
+#include "corecel/sys/Stopwatch.hh"
 #include "accel/LocalTransporter.hh"
 #include "accel/SharedParams.hh"
+
+#include "GeantDiagnostics.hh"
 
 namespace celeritas
 {
@@ -31,10 +34,13 @@ class EventAction final : public G4UserEventAction
     //! \name Type aliases
     using SPConstParams = std::shared_ptr<SharedParams const>;
     using SPTransporter = std::shared_ptr<LocalTransporter>;
+    using SPDiagnostics = std::shared_ptr<GeantDiagnostics>;
     //!@}
 
   public:
-    EventAction(SPConstParams params, SPTransporter transport);
+    EventAction(SPConstParams params,
+                SPTransporter transport,
+                SPDiagnostics diagnostics);
 
     void BeginOfEventAction(G4Event const* event) final;
     void EndOfEventAction(G4Event const* event) final;
@@ -42,6 +48,8 @@ class EventAction final : public G4UserEventAction
   private:
     SPConstParams params_;
     SPTransporter transport_;
+    SPDiagnostics diagnostics_;
+    Stopwatch get_event_time_;
 };
 
 //---------------------------------------------------------------------------//

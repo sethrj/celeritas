@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -9,6 +9,7 @@
 
 #include <string>
 
+#include "corecel/io/JsonUtils.json.hh"
 #include "corecel/io/StringEnumMapper.hh"
 #include "corecel/math/QuantityIO.json.hh"
 
@@ -56,19 +57,42 @@ void to_json(nlohmann::json& j, RelaxationSelection const& value)
     j = std::string{to_cstring(value)};
 }
 
+void from_json(nlohmann::json const& j, MscStepLimitAlgorithm& value)
+{
+    static auto const from_string
+        = StringEnumMapper<MscStepLimitAlgorithm>::from_cstring_func(
+            to_cstring, "msc step algorithm");
+    value = from_string(j.get<std::string>());
+}
+
+void to_json(nlohmann::json& j, MscStepLimitAlgorithm const& value)
+{
+    j = std::string{to_cstring(value)};
+}
+
+void from_json(nlohmann::json const& j, NuclearFormFactorType& value)
+{
+    static auto const from_string
+        = StringEnumMapper<NuclearFormFactorType>::from_cstring_func(
+            to_cstring, "form factor");
+    value = from_string(j.get<std::string>());
+}
+
+void to_json(nlohmann::json& j, NuclearFormFactorType const& value)
+{
+    j = std::string{to_cstring(value)};
+}
+
 //---------------------------------------------------------------------------//
 /*!
  * Read options from JSON.
  */
 void from_json(nlohmann::json const& j, GeantPhysicsOptions& options)
 {
+#define GPO_LOAD_OPTION(NAME) CELER_JSON_LOAD_OPTION(j, options, NAME)
+
     options = {};
-#define GPO_LOAD_OPTION(NAME)                 \
-    do                                        \
-    {                                         \
-        if (j.contains(#NAME))                \
-            j.at(#NAME).get_to(options.NAME); \
-    } while (0)
+
     GPO_LOAD_OPTION(coulomb_scattering);
     GPO_LOAD_OPTION(compton_scattering);
     GPO_LOAD_OPTION(photoelectric);
@@ -92,10 +116,15 @@ void from_json(nlohmann::json const& j, GeantPhysicsOptions& options)
     GPO_LOAD_OPTION(linear_loss_limit);
     GPO_LOAD_OPTION(lowest_electron_energy);
     GPO_LOAD_OPTION(apply_cuts);
+    GPO_LOAD_OPTION(default_cutoff);
 
     GPO_LOAD_OPTION(msc_range_factor);
     GPO_LOAD_OPTION(msc_safety_factor);
     GPO_LOAD_OPTION(msc_lambda_limit);
+    GPO_LOAD_OPTION(msc_theta_limit);
+    GPO_LOAD_OPTION(angle_limit_factor);
+    GPO_LOAD_OPTION(msc_step_algorithm);
+    GPO_LOAD_OPTION(form_factor);
 
     GPO_LOAD_OPTION(verbose);
 #undef GPO_LOAD_OPTION
@@ -107,8 +136,10 @@ void from_json(nlohmann::json const& j, GeantPhysicsOptions& options)
  */
 void to_json(nlohmann::json& j, GeantPhysicsOptions const& options)
 {
+#define GPO_SAVE_OPTION(NAME) CELER_JSON_SAVE(j, options, NAME)
+
     j = nlohmann::json::object();
-#define GPO_SAVE_OPTION(NAME) j[#NAME] = options.NAME
+
     GPO_SAVE_OPTION(coulomb_scattering);
     GPO_SAVE_OPTION(compton_scattering);
     GPO_SAVE_OPTION(photoelectric);
@@ -132,10 +163,15 @@ void to_json(nlohmann::json& j, GeantPhysicsOptions const& options)
     GPO_SAVE_OPTION(linear_loss_limit);
     GPO_SAVE_OPTION(lowest_electron_energy);
     GPO_SAVE_OPTION(apply_cuts);
+    GPO_SAVE_OPTION(default_cutoff);
 
     GPO_SAVE_OPTION(msc_range_factor);
     GPO_SAVE_OPTION(msc_safety_factor);
     GPO_SAVE_OPTION(msc_lambda_limit);
+    GPO_SAVE_OPTION(msc_theta_limit);
+    GPO_SAVE_OPTION(angle_limit_factor);
+    GPO_SAVE_OPTION(msc_step_algorithm);
+    GPO_SAVE_OPTION(form_factor);
 
     GPO_SAVE_OPTION(verbose);
 #undef GPO_SAVE_OPTION

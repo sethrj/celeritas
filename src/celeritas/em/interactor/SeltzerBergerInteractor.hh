@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -73,19 +73,19 @@ class SeltzerBergerInteractor
     // Device (host CPU or GPU device) references
     SeltzerBergerRef const& shared_;
     // Incident particle energy
-    const Energy inc_energy_;
+    Energy const inc_energy_;
     // Incident particle direction
-    const Momentum inc_momentum_;
+    Momentum const inc_momentum_;
     // Incident particle direction
     Real3 const& inc_direction_;
     // Incident particle flag for selecting XS correction factor
     bool const inc_particle_is_electron_;
     // Production cutoff for gammas
-    const Energy gamma_cutoff_;
+    Energy const gamma_cutoff_;
     // Allocate space for a secondary particle
     StackAllocator<Secondary>& allocate_;
     // Element in which interaction occurs
-    const ElementComponentId elcomp_id_;
+    ElementComponentId const elcomp_id_;
 
     //// HELPER CLASSES ////
     // A helper to sample the bremsstrahlung photon energy
@@ -128,6 +128,8 @@ CELER_FUNCTION SeltzerBergerInteractor::SeltzerBergerInteractor(
     CELER_EXPECT(particle.particle_id() == shared_.ids.electron
                  || particle.particle_id() == shared_.ids.positron);
     CELER_EXPECT(gamma_cutoff_ > zero_quantity());
+    CELER_EXPECT(inc_energy_ > gamma_cutoff_
+                 && inc_energy_ < detail::seltzer_berger_limit());
 }
 
 //---------------------------------------------------------------------------//
@@ -139,18 +141,8 @@ CELER_FUNCTION SeltzerBergerInteractor::SeltzerBergerInteractor(
 template<class Engine>
 CELER_FUNCTION Interaction SeltzerBergerInteractor::operator()(Engine& rng)
 {
-    // Check if secondary can be produced. If not, this interaction cannot
-    // happen and the incident particle must undergo an energy loss process
-    // instead.
-    // TODO: reject this interaction before executing the kernel by using
-    // correct material-dependent lower bounds for the interaction
-    if (gamma_cutoff_ > inc_energy_)
-    {
-        return Interaction::from_unchanged(inc_energy_, inc_direction_);
-    }
-
     // Allocate space for the brems photon
-    Secondary* secondaries = this->allocate_(1);
+    Secondary* secondaries = allocate_(1);
     if (secondaries == nullptr)
     {
         // Failed to allocate space for the secondary

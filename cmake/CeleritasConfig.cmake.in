@@ -1,5 +1,5 @@
 #---------------------------------*-CMake-*----------------------------------#
-# Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+# Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 # See the top-level COPYRIGHT file for details.
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 #----------------------------------------------------------------------------#
@@ -13,6 +13,26 @@ if(CMAKE_VERSION VERSION_LESS 3.18)
   list(APPEND CMAKE_MODULE_PATH
     "${CELERITAS_CMAKE_DIR}/backport/3.18"
   )
+endif()
+
+#-----------------------------------------------------------------------------#
+# Version compatibility
+#
+# To avoid unnecessary strictness (with non-obvious error messages) we do not
+# use the `SameMajorVersion`/`SameMinorVersion` argument to
+# \c write_basic_package_version_file . Instead we check for any requested
+# package version here and warn deliberately if it doesn't match.
+#-----------------------------------------------------------------------------#
+# TODO for version 1.0.0: update logic to major version
+if(((@PROJECT_NAME@_FIND_VERSION_MAJOR EQUAL 0
+     AND @PROJECT_NAME@_FIND_VERSION_MINOR LESS @PROJECT_NAME@_VERSION_MINOR)
+    OR @PROJECT_NAME@_FIND_VERSION_MAJOR GREATER 0)
+   AND NOT @PROJECT_NAME@_FIND_VERSION_MAX VERSION_GREATER_EQUAL @PROJECT_NAME@_VERSION)
+   message(AUTHOR_WARNING "@PROJECT_NAME@ version ${@PROJECT_NAME@_VERSION} "
+     "may not be compatible with requested version "
+     "${@PROJECT_NAME@_FIND_VERSION}: please update your find_package "
+     "version range"
+   )
 endif()
 
 #-----------------------------------------------------------------------------#
@@ -35,6 +55,9 @@ elseif(CELERITAS_USE_HIP)
 endif()
 
 if(CELERITAS_USE_Geant4)
+  # FIXME: needed for Geant4 11.1+ to avoid causing errors in VecGeom's
+  # FindXercesC
+  find_dependency(XercesC)
   # Geant4 calls `include_directories` for CLHEP :( which is not what we want!
   # Save and restore include directories around the call -- even though as a
   # standalone project Celeritas will never have directory-level includes
@@ -84,9 +107,6 @@ if(CELERITAS_USE_VecGeom)
       "and Celeritas (CELERITAS_USE_CUDA=${CELERITAS_USE_CUDA})"
     )
   endif()
-  if(NOT VecGeom_GDML_FOUND)
-    message(SEND_ERROR "VecGeom GDML capability is required for Celeritas")
-  endif()
 endif()
 
 if(CELERITAS_BUILD_TESTS)
@@ -111,8 +131,12 @@ endif()
 
 #-----------------------------------------------------------------------------#
 
-foreach(_dep CUDA ROOT Geant4 VecGeom MPI OpenMP)
-  set(Celeritas_${_dep}_FOUND ${CELERITAS_USE_${_dep}})
+foreach(_dep
+    CUDA HIP # Languages
+    Geant4 HepMC3 JSON MPI OpenMP ROOT VecGeom SWIG # Packages
+  )
+  set(@PROJECT_NAME@_${_dep}_FOUND ${CELERITAS_USE_${_dep}})
 endforeach()
+unset(_dep)
 
 #-----------------------------------------------------------------------------#

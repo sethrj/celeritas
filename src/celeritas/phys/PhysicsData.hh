@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -16,8 +16,9 @@
 #include "celeritas/em/data/AtomicRelaxationData.hh"
 #include "celeritas/em/data/EPlusGGData.hh"
 #include "celeritas/em/data/LivermorePEData.hh"
-#include "celeritas/grid/ValueGridData.hh"
+#include "celeritas/grid/ValueGridType.hh"
 #include "celeritas/grid/XsGridData.hh"
+#include "celeritas/neutron/data/NeutronElasticData.hh"
 
 #include "Interaction.hh"
 #include "Secondary.hh"
@@ -173,6 +174,11 @@ struct HardwiredModels
     ModelId eplusgg;
     EPlusGGData eplusgg_data;
 
+    // Neutron elastic
+    ProcessId neutron_elastic;
+    ModelId chips;
+    NeutronElasticData<W, M> chips_data;
+
     //// MEMBER FUNCTIONS ////
 
     //! Assign from another set of hardwired models
@@ -193,6 +199,14 @@ struct HardwiredModels
         eplusgg = other.eplusgg;
         eplusgg_data = other.eplusgg_data;
 
+        neutron_elastic = other.neutron_elastic;
+        if (neutron_elastic)
+        {
+            // Only assign neutron_elastic data if that process is present
+            chips = other.chips;
+            chips_data = other.chips_data;
+        }
+
         return *this;
     }
 };
@@ -201,7 +215,8 @@ struct HardwiredModels
 /*!
  * Scalar (no template needed) quantities used by physics.
  *
- * The user-configurable constants are described in \c PhysicsParams .
+ * The user-configurable constants and multiple scattering options are
+ * described in \c PhysicsParams .
  *
  * The \c model_to_action value corresponds to the \c ActionId for the first \c
  * ModelId . Additionally it implies (by construction in physics_params) the
@@ -219,12 +234,18 @@ struct PhysicsParamsScalars
     ModelId::size_type num_models{};
 
     // User-configurable constants
-    real_type min_range{};  //!< rho [cm]
+    real_type min_range{};  //!< rho [len]
     real_type max_step_over_range{};  //!< alpha [unitless]
     real_type min_eprime_over_e{};  //!< xi [unitless]
     Energy lowest_electron_energy{};  //!< Lowest e-/e+ kinetic energy
     real_type linear_loss_limit{};  //!< For scaled range calculation
-    real_type fixed_step_limiter{};  //!< Global charged step size limit [cm]
+    real_type fixed_step_limiter{};  //!< Global charged step size limit [len]
+
+    // User-configurable multiple scattering options
+    real_type lambda_limit{};  //!< lambda limit
+    real_type range_factor{};  //!< range factor for e-/e+ (0.2 for muon/h)
+    real_type safety_factor{};  //!< safety factor
+    MscStepLimitAlgorithm step_limit_algorithm{MscStepLimitAlgorithm::size_};
 
     real_type secondary_stack_factor = 3;  //!< Secondary storage per state
                                            //!< size
@@ -241,7 +262,10 @@ struct PhysicsParamsScalars
                && lowest_electron_energy > zero_quantity()
                && linear_loss_limit > 0 && secondary_stack_factor > 0
                && ((fixed_step_limiter > 0)
-                   == static_cast<bool>(fixed_step_action));
+                   == static_cast<bool>(fixed_step_action))
+               && lambda_limit > 0 && range_factor > 0 && range_factor < 1
+               && safety_factor >= 0.1
+               && step_limit_algorithm != MscStepLimitAlgorithm::size_;
     }
 
     //! Stop early due to MSC limitation
@@ -383,7 +407,7 @@ struct PhysicsTrackState
     // TEMPORARY STATE
     real_type macro_xs;  //!< Total cross section for discrete interactions
     real_type energy_deposition;  //!< Local energy deposition in a step [MeV]
-    real_type dedx_range;  //!< Local energy loss range [cm]
+    real_type dedx_range;  //!< Local energy loss range [len]
     MscRange msc_range;  //!< Range properties for multiple scattering
     Span<Secondary> secondaries;  //!< Emitted secondaries
     ElementComponentId element;  //!< Element sampled for interaction
@@ -473,7 +497,9 @@ inline void resize(PhysicsStateData<Ownership::value, M>* state,
     resize(&state->per_process_xs,
            size * params.scalars.max_particle_processes);
     resize(&state->relaxation, params.hardwired.relaxation_data, size);
-    resize(&state->secondaries, size * params.scalars.secondary_stack_factor);
+    resize(
+        &state->secondaries,
+        static_cast<size_type>(size * params.scalars.secondary_stack_factor));
 }
 
 //---------------------------------------------------------------------------//

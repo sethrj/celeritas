@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -21,7 +21,7 @@ namespace celeritas
  * filled by any track initializers remaining from previous steps using the
  * position.
  */
-class InitializeTracksAction final : public ExplicitActionInterface
+class InitializeTracksAction final : public ExplicitCoreActionInterface
 {
   public:
     //! Construct with explicit Id
@@ -37,10 +37,13 @@ class InitializeTracksAction final : public ExplicitActionInterface
     ActionId action_id() const final { return id_; }
 
     //! Short name for the action
-    std::string label() const final { return "initialize-tracks"; }
+    std::string_view label() const final { return "initialize-tracks"; }
 
     //! Description of the action for user interaction
-    std::string description() const final { return "initialize track states"; }
+    std::string_view description() const final
+    {
+        return "initialize track states";
+    }
 
     //! Dependency ordering of the action
     ActionOrder order() const final { return ActionOrder::start; }

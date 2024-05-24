@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -18,8 +18,8 @@
 #include "celeritas/Types.hh"
 #include "celeritas/grid/ValueGridBuilder.hh"
 #include "celeritas/io/ImportModel.hh"
-#include "celeritas/phys/Applicability.hh"
 
+#include "Applicability.hh"
 #include "PDGNumber.hh"
 #include "ParticleParams.hh"
 

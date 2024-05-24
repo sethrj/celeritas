@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -89,6 +89,7 @@ class CelerCommand : public G4UIcommand
     using G4UIcommand::G4UIcommand;
 
     virtual void apply(G4String const& newValue) const = 0;
+    virtual G4String get() const = 0;
 };
 
 template<class T>
@@ -124,6 +125,8 @@ class CelerParamCommand final : public CelerCommand
         // TODO: validation for non-matching types, i.e. int to unsigned
         *this->dest_ = static_cast<T>(converted);
     }
+
+    G4String get() const final { return CmdTraits::to_string(*this->dest_); }
 
   private:
     T* dest_;
@@ -169,6 +172,9 @@ SetupOptionsMessenger::SetupOptionsMessenger(SetupOptions* options)
     add_cmd(&options->physics_output_file,
             "physicsOutputFile",
             "Filename for ROOT dump of physics data");
+    add_cmd(&options->offload_output_file,
+            "offloadOutputFile",
+            "Filename for copy of offloaded tracks as events");
     add_cmd(&options->max_num_tracks,
             "maxNumTracks",
             "Number of track \"slots\" to be transported simultaneously");
@@ -184,6 +190,18 @@ SetupOptionsMessenger::SetupOptionsMessenger(SetupOptions* options)
     add_cmd(&options->secondary_stack_factor,
             "secondaryStackFactor",
             "At least the average number of secondaries per track slot");
+    add_cmd(&options->auto_flush,
+            "autoFlush",
+            "Number of tracks to buffer before offloading");
+    add_cmd(&options->max_field_substeps,
+            "maxFieldSubsteps",
+            "Limit on substeps in the field propagator");
+
+    directories_.emplace_back(new CelerDirectory(
+        "/celer/detector/", "Celeritas sensitive detector setup options"));
+    add_cmd(&options->sd.enabled,
+            "enabled",
+            "Call back to Geant4 sensitive detectors");
 
     if (Device::num_devices() > 0)
     {
@@ -195,8 +213,9 @@ SetupOptionsMessenger::SetupOptionsMessenger(SetupOptions* options)
         add_cmd(&options->cuda_heap_size,
                 "heapSize",
                 "Set the CUDA per-thread heap size for VecGeom");
-        add_cmd(
-            &options->sync, "sync", "Sync the GPU at every kernel for timing");
+        add_cmd(&options->action_times,
+                "actionTimes",
+                "Add timers around every action (may reduce performance)");
         add_cmd(&options->default_stream,
                 "defaultStream",
                 "Launch all kernels on the default stream");
@@ -215,6 +234,14 @@ void SetupOptionsMessenger::SetNewValue(G4UIcommand* cmd, G4String val)
     CELER_EXPECT(celer_cmd);
 
     celer_cmd->apply(val);
+}
+
+//---------------------------------------------------------------------------//
+//! Get the value of the given command
+G4String SetupOptionsMessenger::GetCurrentValue(G4UIcommand* cmd)
+{
+    auto* celer_cmd = dynamic_cast<CelerCommand*>(cmd);
+    return celer_cmd->get();
 }
 
 //---------------------------------------------------------------------------//

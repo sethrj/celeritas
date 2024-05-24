@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -23,10 +23,10 @@
 #include "celeritas/ext/GeantSetup.hh"
 #include "celeritas/geo/GeoParams.hh"  // IWYU pragma: keep
 #include "celeritas/phys/ParticleParams.hh"  // IWYU pragma: keep
-#include "accel/SetupOptions.hh"
 
 #include "HitProcessor.hh"
 #include "SensDetInserter.hh"
+#include "../SetupOptions.hh"
 
 namespace celeritas
 {

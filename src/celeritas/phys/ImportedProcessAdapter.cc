@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -17,38 +17,16 @@
 #include "corecel/cont/Range.hh"
 #include "celeritas/Types.hh"
 #include "celeritas/grid/ValueGridBuilder.hh"
-#include "celeritas/grid/ValueGridData.hh"
+#include "celeritas/grid/ValueGridType.hh"
 #include "celeritas/io/ImportData.hh"
 #include "celeritas/io/ImportPhysicsTable.hh"
-#include "celeritas/phys/Applicability.hh"
 
+#include "Applicability.hh"
 #include "PDGNumber.hh"
 #include "ParticleParams.hh"  // IWYU pragma: keep
 
 namespace celeritas
 {
-namespace
-{
-//---------------------------------------------------------------------------//
-//! Rough helper class to hopefully help a little with debugging errors
-class IPAContextException : public RichContextException
-{
-  public:
-    IPAContextException(ParticleId id, ImportProcessClass ipc, MaterialId mid);
-
-    //! This class type
-    char const* type() const final { return "ImportProcessAdapterContext"; }
-
-    // Save context to a JSON object
-    void output(JsonPimpl*) const final {}
-
-    //! Get an explanatory message
-    char const* what() const noexcept final { return what_.c_str(); }
-
-  private:
-    std::string what_;
-};
-
 //---------------------------------------------------------------------------//
 IPAContextException::IPAContextException(ParticleId id,
                                          ImportProcessClass ipc,
@@ -59,9 +37,6 @@ IPAContextException::IPAContextException(ParticleId id,
        << to_cstring(ipc) << ", material ID=" << mid.unchecked_get();
     what_ = os.str();
 }
-
-//---------------------------------------------------------------------------//
-}  // namespace
 
 //---------------------------------------------------------------------------//
 /*!

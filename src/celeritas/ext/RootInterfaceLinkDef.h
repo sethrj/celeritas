@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -9,6 +9,7 @@
 #ifdef __ROOTCLING__
 
 // clang-format off
+// Import data
 #pragma link C++ class celeritas::ImportParticle+;
 #pragma link C++ class celeritas::ImportProcess+;
 #pragma link C++ class celeritas::ImportModelMaterial+;
@@ -17,6 +18,16 @@
 #pragma link C++ class celeritas::ImportPhysicsTable+;
 #pragma link C++ class celeritas::ImportPhysicsVector+;
 #pragma link C++ class celeritas::ImportMaterial+;
+#pragma link C++ class celeritas::ImportScintComponent+;
+#pragma link C++ class celeritas::ImportMaterialScintSpectrum+;
+#pragma link C++ class celeritas::ImportParticleScintSpectrum+;
+#pragma link C++ class celeritas::ImportScintData+;
+#pragma link C++ class celeritas::ImportOpticalRayleigh+;
+#pragma link C++ class celeritas::ImportOpticalAbsorption+;
+#pragma link C++ class celeritas::ImportOpticalParameters+;
+#pragma link C++ class celeritas::ImportWavelengthShift+;
+#pragma link C++ class celeritas::ImportOpticalProperty+;
+#pragma link C++ class celeritas::ImportOpticalMaterial+;
 #pragma link C++ class celeritas::ImportProductionCut+;
 #pragma link C++ class celeritas::ImportMatElemComponent+;
 #pragma link C++ class celeritas::ImportElement+;
@@ -35,6 +46,10 @@
 #pragma link C++ class celeritas::ImportData::ImportLivermorePEMap+;
 #pragma link C++ class celeritas::ImportData::ImportAtomicRelaxationMap+;
 #pragma link C++ class celeritas::ImportData+;
+
+// Event data used by Geant4/Celeritas offloading applications
+#pragma link C++ class celeritas::EventHitData+;
+#pragma link C++ class celeritas::EventData+;
 // clang-format on
 
 #endif

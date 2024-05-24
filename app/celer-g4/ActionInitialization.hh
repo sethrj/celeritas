@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -11,6 +11,8 @@
 #include <G4VUserActionInitialization.hh>
 
 #include "accel/SharedParams.hh"
+
+#include "GeantDiagnostics.hh"
 
 namespace celeritas
 {
@@ -26,16 +28,22 @@ class ActionInitialization final : public G4VUserActionInitialization
     //!@{
     //! \name Type aliases
     using SPParams = std::shared_ptr<SharedParams>;
+    using SPDiagnostics = std::shared_ptr<GeantDiagnostics>;
     //!@}
 
   public:
-    ActionInitialization();
+    explicit ActionInitialization(SPParams params);
     void BuildForMaster() const final;
     void Build() const final;
 
+    //! Get the number of events to be transported
+    int num_events() const { return num_events_; }
+
   private:
     SPParams params_;
-    mutable bool init_celeritas_;
+    SPDiagnostics diagnostics_;
+    int num_events_{0};
+    mutable bool init_shared_;
 };
 
 //---------------------------------------------------------------------------//

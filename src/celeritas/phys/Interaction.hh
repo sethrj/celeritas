@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -87,9 +87,9 @@ struct MscStep
     static CELER_CONSTEXPR_FUNCTION real_type small_step_alpha() { return 0; }
 
     bool is_displaced{true};  //!< Flag for the lateral displacement
-    real_type true_path{};  //!< True path length due to the msc [cm]
-    real_type geom_path{};  //!< Geometrical path length [cm]
-    real_type alpha = small_step_alpha();  //!< Scaled MFP slope [cm^-1]
+    real_type true_path{};  //!< True path length due to the msc [len]
+    real_type geom_path{};  //!< Geometrical path length [len]
+    real_type alpha = small_step_alpha();  //!< Scaled MFP slope [1/len]
 };
 
 //---------------------------------------------------------------------------//
@@ -101,13 +101,13 @@ struct MscStep
  */
 struct MscRange
 {
-    real_type range_init{};  //!< Initial msc range
-    real_type range_fact{};  //!< Scale factor for the msc range
-    real_type limit_min{};  //!< Minimum of the true path limit
+    real_type range_init{};  //!< Initial msc range [len]
+    real_type range_factor{};  //!< Scale factor for the msc range
+    real_type limit_min{};  //!< Minimum of the true path limit [len]
 
     explicit CELER_FUNCTION operator bool() const
     {
-        return range_init > 0 && range_fact > 0 && limit_min > 0;
+        return range_init > 0 && range_factor > 0 && limit_min > 0;
     }
 };
 

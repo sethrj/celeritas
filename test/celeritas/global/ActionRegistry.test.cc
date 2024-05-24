@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -17,17 +17,27 @@ namespace test
 {
 //---------------------------------------------------------------------------//
 
-class MyExplicitAction final : public ExplicitActionInterface,
+class MyExplicitAction final : public ExplicitCoreActionInterface,
                                public BeginRunActionInterface
 {
+  public:
+    //@{
+    //! \name Type aliases
+    using ExplicitCoreActionInterface::CoreStateDevice;
+    using ExplicitCoreActionInterface::CoreStateHost;
+    //@}
+
   public:
     MyExplicitAction(ActionId ai, ActionOrder ao) : action_id_(ai), order_{ao}
     {
     }
 
     ActionId action_id() const final { return action_id_; }
-    std::string label() const final { return "explicit"; }
-    std::string description() const final { return "explicit action test"; }
+    std::string_view label() const final { return "explicit"; }
+    std::string_view description() const final
+    {
+        return "explicit action test";
+    }
 
     void begin_run(CoreParams const&, CoreStateHost&) final
     {
@@ -130,11 +140,9 @@ TEST_F(ActionRegistryTest, output)
 
     if (CELERITAS_USE_JSON)
     {
-        EXPECT_EQ(
-            R"json({"description":["","explicit action test","the second implicit action"],"label":["impl1","explicit","impl2"]})json",
-            to_string(out))
-            << "\n/*** REPLACE ***/\nR\"json(" << to_string(out)
-            << ")json\"\n/******/";
+        EXPECT_JSON_EQ(
+            R"json({"_category":"internal","_label":"actions","description":["","explicit action test","the second implicit action"],"label":["impl1","explicit","impl2"]})json",
+            to_string(out));
     }
 }
 

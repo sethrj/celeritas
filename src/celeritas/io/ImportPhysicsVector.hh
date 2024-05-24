@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -23,6 +23,7 @@ enum class ImportPhysicsVectorType
     linear,  //!< Uniform and linear in x
     log,  //!< Uniform and logarithmic in x
     free,  //!< Nonuniform in x
+    size_
 };
 
 //---------------------------------------------------------------------------//
@@ -38,6 +39,11 @@ struct ImportPhysicsVector
     ImportPhysicsVectorType vector_type;
     std::vector<double> x;  //!< Geant4 binVector
     std::vector<double> y;  //!< Geant4 dataVector
+
+    explicit operator bool() const
+    {
+        return !x.empty() && x.size() == y.size();
+    }
 };
 
 //---------------------------------------------------------------------------//

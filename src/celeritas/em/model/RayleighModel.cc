@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -119,7 +119,7 @@ ActionId RayleighModel::action_id() const
 void RayleighModel::build_data(HostValue* data, MaterialParams const& materials)
 {
     // Number of elements
-    unsigned int num_elements = materials.num_elements();
+    auto num_elements = materials.num_elements();
 
     // Build data for available elements
     auto params = make_builder(&data->params);
@@ -153,11 +153,14 @@ void RayleighModel::build_data(HostValue* data, MaterialParams const& materials)
  * Parameters for Z = 0 are dropped as they are zeros and not used.
  * Reshaped as [el][param][3] with params.T.reshape((100, 3, 3)),
  * then updated 'n' with params[:,2,:] -= 1
+ *
+ * The fit data embeds centimeters as a unit system: this is accounted for in
+ * the interactor.
  */
 auto RayleighModel::get_el_parameters(AtomicNumber z) -> ElScatParams const&
 {
     CELER_EXPECT(z);
-    static const ElScatParams el_params[]
+    static ElScatParams const el_params[]
         = {{{0.00000e+00, 1.00000e+00, 0.00000e+00},
             {1.53728e-16, 1.10561e-15, 6.89413e-17},
             {5.57834e+00, 2.99983e+00, 3.00000e+00}},

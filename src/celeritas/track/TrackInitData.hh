@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -13,7 +13,7 @@
 #include "corecel/data/CollectionBuilder.hh"
 #include "corecel/sys/Device.hh"
 #include "corecel/sys/ThreadId.hh"
-#include "orange/Types.hh"
+#include "geocel/Types.hh"
 #include "celeritas/Types.hh"
 #include "celeritas/phys/ParticleData.hh"
 #include "celeritas/phys/Primary.hh"

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "ImportPhysicsTable.hh"
+#include "ImportUnits.hh"
 
 namespace celeritas
 {
@@ -57,7 +58,7 @@ enum class ImportModelClass
  * Imported data for one material in a particular model.
  *
  * Microscopic cross-section data are stored in the element-selector physics
- * vector is in cm^2. They will not be present for all model types, as some
+ * vector is in length^2. They will not be present for all model types, as some
  * models only do on-the-fly calculation (e.g., photoelectric effect) or don't
  * depend on elemental interactions (e.g., compton scattering). The \c
  * needs_micro_xs function indicates which models should store the cross
@@ -75,7 +76,7 @@ struct ImportModelMaterial
 
 #ifndef SWIG
     static constexpr auto energy_units{ImportUnits::mev};
-    static constexpr auto xs_units{ImportUnits::cm_2};
+    static constexpr auto xs_units{ImportUnits::len_sq};
 #endif
 
     std::vector<double> energy;  //!< Energy grid for the material
@@ -131,6 +132,7 @@ char const* to_cstring(ImportModelClass value);
 
 // Get the default Geant4 process name
 char const* to_geant_name(ImportModelClass value);
+
 // Convert a Geant4 process name to an IMC (throw RuntimeError if unsupported)
 ImportModelClass geant_name_to_import_model_class(std::string_view s);
 

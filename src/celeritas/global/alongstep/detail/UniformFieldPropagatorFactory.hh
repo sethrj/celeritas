@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -7,6 +7,7 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
+#include "corecel/Macros.hh"
 #include "celeritas/field/DormandPrinceStepper.hh"  // IWYU pragma: associated
 #include "celeritas/field/MakeMagFieldPropagator.hh"  // IWYU pragma: associated
 #include "celeritas/field/UniformField.hh"  // IWYU pragma: associated
@@ -22,6 +23,10 @@ namespace detail
  */
 struct UniformFieldPropagatorFactory
 {
+#if CELER_USE_DEVICE
+    inline static constexpr int max_block_size = 256;
+#endif
+
     CELER_FUNCTION decltype(auto) operator()(CoreTrackView const& track) const
     {
         return make_mag_field_propagator<DormandPrinceStepper>(

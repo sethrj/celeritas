@@ -1,5 +1,5 @@
 #!/bin/sh -ex
-# Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+# Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 # See the top-level COPYRIGHT file for details.
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
@@ -47,10 +47,12 @@ case $CONFIG in
     VECGEOM=
     ;;
   jammy-cuda11)
-    # ***IMPORTANT***: update cuda external version in dev/jammy-cuda11!
+    # ***IMPORTANT***: update the following after modification
+    # - cuda external version in dev/jammy-cuda11
+    # - CI versions listed in README.md
     DOCKERFILE_DISTRO=ubuntu
     BASE_TAG=nvidia/cuda:11.8.0-devel-ubuntu22.04
-    VECGEOM=v1.2.3
+    VECGEOM=v1.2.5
     ;;
   centos7-rocm5)
     # ***IMPORTANT***: update hip external version in dev/centos7-rocm5!

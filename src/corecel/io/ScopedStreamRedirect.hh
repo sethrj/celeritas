@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -46,7 +46,7 @@ class ScopedStreamRedirect
 
     //!@{
     //! Prevent copying and moving for RAII class
-    CELER_DELETE_COPY_MOVE(ScopedStreamRedirect)
+    CELER_DELETE_COPY_MOVE(ScopedStreamRedirect);
     //!@}
 
     // Get redirected output, with trailing whitespaces removed

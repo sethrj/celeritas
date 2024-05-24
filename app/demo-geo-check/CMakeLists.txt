@@ -1,5 +1,5 @@
 #----------------------------------*-CMake-*----------------------------------#
-# Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+# Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 # See the top-level COPYRIGHT file for details.
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 #-----------------------------------------------------------------------------#
@@ -36,7 +36,7 @@ celeritas_target_link_libraries(demo-geo-check ${LIBRARIES})
 # TESTS
 #-----------------------------------------------------------------------------#
 
-if(NOT CELERITAS_BUILD_TESTS)
+if(NOT BUILD_TESTING)
   return()
 endif()
 

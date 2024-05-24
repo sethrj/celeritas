@@ -1,5 +1,5 @@
 //---------------------------------*-CUDA-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -102,7 +102,7 @@ class TrackInitTestBase : public SimpleTestBase
         {
             Primary p;
             p.particle_id = ParticleId{0};
-            p.energy = units::MevEnergy{1. + i};
+            p.energy = units::MevEnergy(1 + i);
             p.position = {0, 0, 0};
             p.direction = {0, 0, 1};
             p.time = 0;
@@ -147,11 +147,11 @@ class TrackInitTest : public TrackInitTestBase
         ExtendFromPrimariesAction(ActionId{1}).execute(*this->core(), *state_);
     }
 
-    std::shared_ptr<ExplicitActionInterface const> pre_step_action() const
+    std::shared_ptr<ExplicitCoreActionInterface const> pre_step_action() const
     {
         auto aid = this->action_reg()->find_action("pre-step");
         CELER_ASSERT(aid);
-        return std::dynamic_pointer_cast<ExplicitActionInterface const>(
+        return std::dynamic_pointer_cast<ExplicitCoreActionInterface const>(
             this->action_reg()->action(aid));
     }
     void init_tracks()
@@ -194,8 +194,8 @@ TYPED_TEST_SUITE(TrackInitTest, MemspaceTypes, MemspaceTypeString);
 
 TYPED_TEST(TrackInitTest, run)
 {
-    const size_type num_primaries = 12;
-    const size_type num_tracks = 10;
+    size_type const num_primaries = 12;
+    size_type const num_tracks = 10;
 
     this->build_states(num_tracks);
 
@@ -300,16 +300,16 @@ TYPED_TEST(TrackInitTest, run)
 
 TYPED_TEST(TrackInitTest, primaries)
 {
-    const size_type num_sets = 4;
-    const size_type num_primaries = 16;
-    const size_type num_tracks = 16;
+    size_type num_sets = 4;
+    size_type num_primaries = 16;
+    size_type num_tracks = 16;
 
     this->build_states(num_tracks);
 
     this->init_tracks();
 
     // Kill half the tracks in each interaction and don't produce secondaries
-    auto interact = [] {
+    auto interact = [&] {
         std::vector<size_type> alloc(num_tracks, 0);
         std::vector<bool> alive(num_tracks);
         for (size_type i = 0; i < num_tracks; ++i)
@@ -360,8 +360,8 @@ TYPED_TEST(TrackInitTest, primaries)
 TYPED_TEST(TrackInitTest, extend_from_secondaries)
 {
     // Basic setup
-    const size_type num_primaries = 8;
-    const size_type num_tracks = 8;
+    size_type num_primaries = 8;
+    size_type num_tracks = 8;
 
     std::vector<bool> const alive
         = {true, false, false, true, true, false, false, true};
@@ -369,7 +369,7 @@ TYPED_TEST(TrackInitTest, extend_from_secondaries)
     this->build_states(num_tracks);
 
     // Create actions
-    std::vector<std::shared_ptr<ExplicitActionInterface const>> actions = {
+    std::vector<std::shared_ptr<ExplicitCoreActionInterface const>> actions = {
         std::make_shared<InitializeTracksAction>(ActionId{0}),
         this->pre_step_action(),
         std::make_shared<MockInteractAction>(
@@ -388,7 +388,7 @@ TYPED_TEST(TrackInitTest, extend_from_secondaries)
         }
     };
 
-    const size_type num_iter = 4;
+    size_type const num_iter = 4;
     for ([[maybe_unused]] size_type i : range(num_iter))
     {
         CELER_TRY_HANDLE(apply_actions(),
@@ -417,7 +417,7 @@ TYPED_TEST(TrackInitTest, extend_from_secondaries)
         EXPECT_TRUE(std::all_of(
             std::begin(result.track_ids),
             std::end(result.track_ids),
-            [i](unsigned int id) { return id < num_tracks + (i + 1) * 4; }));
+            [&](unsigned int id) { return id < num_tracks + (i + 1) * 4; }));
 
         // Parent ids may not be deterministic, but all non-killed tracks are
         // guaranteed to be primaries at every iteration. At end of first

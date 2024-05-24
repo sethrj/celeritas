@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -14,7 +14,6 @@
 #include "celeritas/Quantities.hh"
 #include "celeritas/em/data/SeltzerBergerData.hh"
 #include "celeritas/io/ImportSBTable.hh"
-#include "celeritas/mat/ElementView.hh"
 #include "celeritas/phys/AtomicNumber.hh"
 #include "celeritas/phys/ImportedModelAdapter.hh"
 #include "celeritas/phys/ImportedProcessAdapter.hh"
@@ -82,19 +81,19 @@ class SeltzerBergerModel final : public Model
     ActionId action_id() const final;
 
     //! Short name for the interaction kernel
-    std::string label() const final { return "brems-sb"; }
+    std::string_view label() const final { return "brems-sb"; }
 
     //! Short description of the post-step action
-    std::string description() const final
+    std::string_view description() const final
     {
         return "interact by Seltzer-Berger bremsstrahlung";
     }
 
     //! Access SB data on the host
-    HostRef const& host_ref() const { return data_.host(); }
+    HostRef const& host_ref() const { return data_.host_ref(); }
 
     //! Access SB data on the device
-    DeviceRef const& device_ref() const { return data_.device(); }
+    DeviceRef const& device_ref() const { return data_.device_ref(); }
 
   private:
     // Host/device storage and reference
@@ -103,10 +102,7 @@ class SeltzerBergerModel final : public Model
     ImportedModelAdapter imported_;
 
     using HostXsTables = HostVal<SeltzerBergerTableData>;
-    void append_table(ElementView const& element,
-                      ImportSBTable const& table,
-                      HostXsTables* tables,
-                      Mass electron_mass) const;
+    void append_table(ImportSBTable const& table, HostXsTables* tables) const;
 };
 
 //---------------------------------------------------------------------------//

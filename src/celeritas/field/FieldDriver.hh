@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -12,6 +12,7 @@
 #include "corecel/Macros.hh"
 #include "corecel/Types.hh"
 #include "corecel/math/Algorithms.hh"
+#include "corecel/math/NumericLimits.hh"
 #include "corecel/math/SoftEqual.hh"
 
 #include "FieldDriverOptions.hh"
@@ -31,6 +32,26 @@ namespace celeritas
  * a targeted relative error `epsilon_rel_max` based on the position and
  * momentum update.
  *
+ * This iteratively reduces the given step length until the sagitta is no more
+ * than \c delta_chord . The sagitta is calculated as the projection of the
+ * mid-step point onto the line between the start and end-step points.
+ *
+ * Each iteration reduces the step length by a factor of no more than \c
+ * min_chord_shrink , but is based on an approximate "exact" correction factor
+ * if the chord length is very small and the curve is circular.
+ * The sagitta \em h is related to the chord length \em s and radius of
+ * curvature \em r with the trig expression: \f[
+   r - h = r \cos \frac{s}{2r}
+  \f]
+ * For small chord lengths or a large radius, we expand
+ * \f$ \cos \theta \sim 1 \frac{\theta^2}{2} \f$, giving a radius of curvature
+ * \f[ r = \frac{s^2}{8h} \; . \f]
+ * Given a trial step (chord length) \em s and resulting sagitta of \em h,
+ * the exact step needed to give a chord length of \f$ \epsilon = {} \f$ \c
+ * delta_chord is \f[
+   s' = s \sqrt{\frac{\epsilon}{h}} \,.
+ * \f]
+ *
  * \note This class is based on G4ChordFinder and G4MagIntegratorDriver.
  */
 template<class StepperT>
@@ -43,7 +64,7 @@ class FieldDriver
 
     // For a given trial step, advance by a sub_step within a tolerance error
     inline CELER_FUNCTION DriverResult advance(real_type step,
-                                               OdeState const& state) const;
+                                               OdeState const& state);
 
     // An adaptive step size control from G4MagIntegratorDriver
     // Move this to private after all tests with non-uniform field are done
@@ -51,6 +72,11 @@ class FieldDriver
         real_type step, OdeState const& state, real_type hinitial) const;
 
     //// ACCESSORS ////
+
+    CELER_FUNCTION short int max_substeps() const
+    {
+        return options_.max_substeps;
+    }
 
     CELER_FUNCTION real_type minimum_step() const
     {
@@ -71,6 +97,9 @@ class FieldDriver
 
     // Stepper for this field driver
     StepperT apply_step_;
+
+    // Maximum chord length based on a previous estimate
+    real_type max_chord_{numeric_limits<real_type>::infinity()};
 
     //// TYPES ////
 
@@ -114,7 +143,7 @@ class FieldDriver
 //---------------------------------------------------------------------------//
 template<class StepperT>
 CELER_FUNCTION FieldDriver(FieldDriverOptions const&, StepperT&&)
-    ->FieldDriver<StepperT>;
+    -> FieldDriver<StepperT>;
 
 //---------------------------------------------------------------------------//
 // INLINE DEFINITIONS
@@ -149,7 +178,7 @@ FieldDriver<StepperT>::FieldDriver(FieldDriverOptions const& options,
  */
 template<class StepperT>
 CELER_FUNCTION DriverResult
-FieldDriver<StepperT>::advance(real_type step, OdeState const& state) const
+FieldDriver<StepperT>::advance(real_type step, OdeState const& state)
 {
     if (step <= options_.minimum_step)
     {
@@ -160,14 +189,22 @@ FieldDriver<StepperT>::advance(real_type step, OdeState const& state) const
         return result;
     }
 
-    // Output with a step control error
-    ChordSearch output = this->find_next_chord(step, state);
+    // Calculate the next chord length (and get an end state "for free") based
+    // on delta_chord, reusing previous estimates
+    ChordSearch output
+        = this->find_next_chord(celeritas::min(step, max_chord_), state);
     CELER_ASSERT(output.end.step <= step);
+    if (output.end.step < step)
+    {
+        // Chord length was reduced due to constraints: save the estimate for
+        // the next potential field advance inside the propagation loop
+        max_chord_ = output.end.step * (1 / options_.min_chord_shrink);
+    }
 
     if (output.err_sq > 1)
     {
         // Discard the original end state and advance more accurately with the
-        // newly proposed step
+        // newly proposed (reduced) step
         real_type next_step = step * this->new_step_scale(output.err_sq);
         output.end = this->accurate_advance(output.end.step, state, next_step);
     }
@@ -179,26 +216,6 @@ FieldDriver<StepperT>::advance(real_type step, OdeState const& state) const
 //---------------------------------------------------------------------------//
 /*!
  * Find the maximum step length that satisfies a maximum "miss distance".
- *
- * This iteratively reduces the given step length until the sagitta is no more
- * than \c delta_chord . The sagitta is calculated as the projection of the
- * mid-step point onto the line between the start and end-step points.
- *
- * Each iteration reduces the step length by a factor of no more than \c
- * min_chord_shrink , but is based on an approximate "exact" correction factor
- * if the chord length is very small and the curve is circular.
- * The sagitta \em h is related to the chord length \em s and radius of
- * curvature \em r with the trig expression: \f[
-   r - h = r \cos \frac{s}{2r}
-  \f]
- * For small chord lengths or a large radius, we expand
- * \f$ \cos \theta \sim 1 \frac{\theta^2}{2} \f$, giving a radius of curvature
- * \f[ r = \frac{s^2}{8h} \; . \f]
- * Given a trial step (chord length) \em s and resulting sagitta of \em h,
- * the exact step needed to give a chord length of \f$ \epsilon = {} \f$ \c
- * delta_chord is \f[
-   s' = s \sqrt{\frac{\epsilon}{h}} \,.
- * \f]
  */
 template<class StepperT>
 CELER_FUNCTION auto
@@ -221,7 +238,7 @@ FieldDriver<StepperT>::find_next_chord(real_type step,
         // Check whether the distance to the chord is smaller than the
         // reference
         real_type dchord = detail::distance_chord(
-            state, result.mid_state, result.end_state);
+            state.pos, result.mid_state.pos, result.end_state.pos);
 
         if (dchord > options_.delta_chord + options_.dchord_tol)
         {

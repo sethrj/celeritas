@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -32,7 +32,7 @@ struct RZMapFieldInput;
 /*!
  * Along-step kernel with MSC, energy loss fluctuations, and a RZMapField.
  */
-class AlongStepRZMapFieldMscAction final : public ExplicitActionInterface
+class AlongStepRZMapFieldMscAction final : public ExplicitCoreActionInterface
 {
   public:
     //!@{
@@ -48,7 +48,8 @@ class AlongStepRZMapFieldMscAction final : public ExplicitActionInterface
                 MaterialParams const& materials,
                 ParticleParams const& particles,
                 RZMapFieldInput const& field_input,
-                SPConstMsc const& msc);
+                SPConstMsc const& msc,
+                bool eloss_fluctuation);
 
     // Construct with next action ID and physics properties
     AlongStepRZMapFieldMscAction(ActionId id,
@@ -66,10 +67,10 @@ class AlongStepRZMapFieldMscAction final : public ExplicitActionInterface
     ActionId action_id() const final { return id_; }
 
     //! Short name for the interaction kernel
-    std::string label() const final { return "along-step-rzmap-msc"; }
+    std::string_view label() const final { return "along-step-rzmap-msc"; }
 
     //! Short description of the action
-    std::string description() const final
+    std::string_view description() const final
     {
         return "apply along-step in a R-Z map field with Urban MSC";
     }
@@ -78,6 +79,12 @@ class AlongStepRZMapFieldMscAction final : public ExplicitActionInterface
     ActionOrder order() const final { return ActionOrder::along; }
 
     //// ACCESSORS ////
+
+    //! Whether energy flucutation is in use
+    bool has_fluct() const { return static_cast<bool>(fluct_); }
+
+    //! Whether MSC is in use
+    bool has_msc() const { return static_cast<bool>(msc_); }
 
     //! Field map data
     SPConstFieldParams const& field() const { return field_; }

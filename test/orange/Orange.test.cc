@@ -1,16 +1,22 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
 //! \file orange/Orange.test.cc
 //---------------------------------------------------------------------------//
+#include <string>
+
+#include "celeritas_config.h"
+#include "corecel/Constants.hh"
+#include "corecel/io/Label.hh"
 #include "orange/OrangeParams.hh"
 #include "orange/OrangeTrackView.hh"
-#include "orange/construct/OrangeInput.hh"
-#include "celeritas/Constants.hh"
+#include "orange/OrangeTypes.hh"
+#include "celeritas/Types.hh"
 
 #include "OrangeGeoTestBase.hh"
+#include "TestMacros.hh"
 #include "celeritas_test.hh"
 
 using celeritas::constants::sqrt_two;
@@ -24,26 +30,10 @@ namespace test
 class OrangeTest : public OrangeGeoTestBase
 {
   protected:
-    using Initializer_t = GeoTrackInitializer;
-
-    //! Create a host track view
-    OrangeTrackView make_track_view()
-    {
-        if (!host_state_)
-        {
-            host_state_ = HostStateStore(this->host_params(), 1);
-        }
-
-        return OrangeTrackView(
-            this->host_params(), host_state_.ref(), TrackSlotId{0});
-    }
-
-  private:
-    using HostStateStore
-        = CollectionStateStore<OrangeStateData, MemSpace::host>;
-    HostStateStore host_state_;
+    real_type unit_length() const override { return 1; }
 };
 
+//---------------------------------------------------------------------------//
 class OneVolumeTest : public OrangeTest
 {
     void SetUp() override
@@ -53,49 +43,17 @@ class OneVolumeTest : public OrangeTest
     }
 };
 
-class TwoVolumeTest : public OrangeTest
-{
-    void SetUp() override
-    {
-        TwoVolInput geo_inp;
-        geo_inp.radius = 1.5;
-        this->build_geometry(geo_inp);
-    }
-};
-
-#define FiveVolumesTest TEST_IF_CELERITAS_JSON(FiveVolumesTest)
-class FiveVolumesTest : public OrangeTest
-{
-    void SetUp() override { this->build_geometry("five-volumes.org.json"); }
-};
-
-#define UniversesTest TEST_IF_CELERITAS_JSON(UniversesTest)
-class UniversesTest : public OrangeTest
-{
-    void SetUp() override { this->build_geometry("universes.org.json"); }
-};
-
-#define RectArrayTest TEST_IF_CELERITAS_JSON(RectArrayTest)
-class RectArrayTest : public OrangeTest
-{
-    void SetUp() override { this->build_geometry("rect_array.org.json"); }
-};
-
-#define Geant4Testem15Test TEST_IF_CELERITAS_JSON(Geant4Testem15Test)
-class Geant4Testem15Test : public OrangeTest
-{
-    void SetUp() override { this->build_geometry("geant4-testem15.org.json"); }
-};
-
-//---------------------------------------------------------------------------//
-
 TEST_F(OneVolumeTest, params)
 {
     OrangeParams const& geo = this->params();
 
+    EXPECT_EQ(1, geo.num_universes());
     EXPECT_EQ(1, geo.num_volumes());
     EXPECT_EQ(0, geo.num_surfaces());
     EXPECT_TRUE(geo.supports_safety());
+
+    EXPECT_EQ("one volume", geo.id_to_label(UniverseId{0}).name);
+    EXPECT_EQ(UniverseId{0}, geo.find_universe("one volume"));
 
     EXPECT_EQ("infinite", geo.id_to_label(VolumeId{0}).name);
     EXPECT_EQ(VolumeId{0}, geo.find_volume("infinite"));
@@ -103,7 +61,7 @@ TEST_F(OneVolumeTest, params)
 
 TEST_F(OneVolumeTest, track_view)
 {
-    OrangeTrackView geo = this->make_track_view();
+    OrangeTrackView geo = this->make_geo_track_view();
 
     // Initialize
     geo = Initializer_t{{3, 4, 5}, {0, 1, 0}};
@@ -145,6 +103,15 @@ TEST_F(OneVolumeTest, track_view)
 }
 
 //---------------------------------------------------------------------------//
+class TwoVolumeTest : public OrangeTest
+{
+    void SetUp() override
+    {
+        TwoVolInput geo_inp;
+        geo_inp.radius = 1.5;
+        this->build_geometry(geo_inp);
+    }
+};
 
 TEST_F(TwoVolumeTest, params)
 {
@@ -164,7 +131,7 @@ TEST_F(TwoVolumeTest, params)
 
 TEST_F(TwoVolumeTest, simple_track)
 {
-    auto geo = this->make_track_view();
+    auto geo = this->make_geo_track_view();
 
     // Initialize
     geo = Initializer_t{{0.5, 0, 0}, {0, 0, 1}};
@@ -234,7 +201,7 @@ TEST_F(TwoVolumeTest, simple_track)
 // on boundary so it ends up heading back in
 TEST_F(TwoVolumeTest, reentrant_boundary_setdir)
 {
-    auto geo = this->make_track_view();
+    auto geo = this->make_geo_track_view();
     geo = Initializer_t{{1.49, 0, 0}, {0, 1, 0}};
     EXPECT_EQ(VolumeId{1}, geo.volume_id());
     EXPECT_EQ(SurfaceId{}, geo.surface_id());
@@ -274,7 +241,7 @@ TEST_F(TwoVolumeTest, reentrant_boundary_setdir)
 
 TEST_F(TwoVolumeTest, nonreentrant_boundary_setdir)
 {
-    auto geo = this->make_track_view();
+    auto geo = this->make_geo_track_view();
     geo = Initializer_t{{1.49, 0, 0}, {0, 1, 0}};
     EXPECT_EQ(VolumeId{1}, geo.volume_id());
     EXPECT_EQ(SurfaceId{}, geo.surface_id());
@@ -311,7 +278,7 @@ TEST_F(TwoVolumeTest, nonreentrant_boundary_setdir)
 // again
 TEST_F(TwoVolumeTest, doubly_reentrant_boundary_setdir)
 {
-    auto geo = this->make_track_view();
+    auto geo = this->make_geo_track_view();
     geo = Initializer_t{{1.49, 0, 0}, {0, 1, 0}};
     EXPECT_EQ(VolumeId{1}, geo.volume_id());
     EXPECT_EQ(SurfaceId{}, geo.surface_id());
@@ -353,7 +320,7 @@ TEST_F(TwoVolumeTest, doubly_reentrant_boundary_setdir)
 // as part of the field propagation algorithm.
 TEST_F(TwoVolumeTest, reentrant_boundary_setdir_post)
 {
-    auto geo = this->make_track_view();
+    auto geo = this->make_geo_track_view();
     geo = Initializer_t{{1.49, 0, 0}, {0, 1, 0}};
     EXPECT_EQ(VolumeId{1}, geo.volume_id());
     EXPECT_EQ(SurfaceId{}, geo.surface_id());
@@ -405,13 +372,13 @@ TEST_F(TwoVolumeTest, reentrant_boundary_setdir_post)
 TEST_F(TwoVolumeTest, persistence)
 {
     {
-        auto geo = this->make_track_view();
+        auto geo = this->make_geo_track_view();
         geo = Initializer_t{{2.5, 0, 0}, {-1, 0, 0}};
         geo.find_next_step();
         geo.move_to_boundary();
     }
     {
-        auto geo = this->make_track_view();
+        auto geo = this->make_geo_track_view();
         EXPECT_EQ(VolumeId{0}, geo.volume_id());
         EXPECT_EQ(SurfaceId{0}, geo.surface_id());
         EXPECT_VEC_SOFT_EQ(Real3({1.5, 0, 0}), geo.pos());
@@ -419,7 +386,7 @@ TEST_F(TwoVolumeTest, persistence)
         geo.cross_boundary();
     }
     {
-        auto geo = this->make_track_view();
+        auto geo = this->make_geo_track_view();
         EXPECT_EQ(VolumeId{1}, geo.volume_id());
         EXPECT_EQ(SurfaceId{0}, geo.surface_id());
         EXPECT_VEC_SOFT_EQ(Real3({1.5, 0, 0}), geo.pos());
@@ -434,7 +401,7 @@ TEST_F(TwoVolumeTest, persistence)
         EXPECT_VEC_SOFT_EQ(Real3({-1.5, 0, 0}), geo.pos());
     }
     {
-        auto geo = this->make_track_view();
+        auto geo = this->make_geo_track_view();
         EXPECT_EQ(VolumeId{0}, geo.volume_id());
         EXPECT_EQ(SurfaceId{0}, geo.surface_id());
         EXPECT_VEC_SOFT_EQ(Real3({-1.5, 0, 0}), geo.pos());
@@ -442,12 +409,12 @@ TEST_F(TwoVolumeTest, persistence)
         EXPECT_EQ(SurfaceId{}, geo.surface_id());
     }
     {
-        auto geo = this->make_track_view();
+        auto geo = this->make_geo_track_view();
         EXPECT_VEC_SOFT_EQ(Real3({-1.5, .5, .5}), geo.pos());
         geo.set_dir({1, 0, 0});
     }
     {
-        auto geo = this->make_track_view();
+        auto geo = this->make_geo_track_view();
         EXPECT_VEC_SOFT_EQ(Real3({1, 0, 0}), geo.dir());
         auto next = geo.find_next_step();
         EXPECT_SOFT_EQ(0.17712434446770464, next.distance);
@@ -456,7 +423,7 @@ TEST_F(TwoVolumeTest, persistence)
         EXPECT_EQ(SurfaceId{}, geo.surface_id());
     }
     {
-        auto geo = this->make_track_view();
+        auto geo = this->make_geo_track_view();
         EXPECT_VEC_SOFT_EQ(Real3({-1.4, .5, .5}), geo.pos());
         EXPECT_EQ(SurfaceId{}, geo.surface_id());
         auto next = geo.find_next_step();
@@ -467,7 +434,7 @@ TEST_F(TwoVolumeTest, persistence)
 
 TEST_F(TwoVolumeTest, intersect_limited)
 {
-    auto geo = this->make_track_view();
+    auto geo = this->make_geo_track_view();
 
     // Initialize
     geo = Initializer_t{{0.0, 0, 0}, {1, 0, 0}};
@@ -514,326 +481,6 @@ TEST_F(TwoVolumeTest, intersect_limited)
     next = geo.find_next_step(12345.0);
     EXPECT_SOFT_EQ(12345.0, next.distance);
     EXPECT_FALSE(next.boundary);
-}
-
-TEST_F(FiveVolumesTest, params)
-{
-    OrangeParams const& geo = this->params();
-
-    EXPECT_EQ(6, geo.num_volumes());
-    EXPECT_EQ(12, geo.num_surfaces());
-    EXPECT_FALSE(geo.supports_safety());
-}
-
-TEST_F(UniversesTest, params)
-{
-    OrangeParams const& geo = this->params();
-    EXPECT_EQ(12, geo.num_volumes());
-    EXPECT_EQ(25, geo.num_surfaces());
-    EXPECT_FALSE(geo.supports_safety());
-
-    EXPECT_VEC_SOFT_EQ(Real3({-2, -6, -1}), geo.bbox().lower());
-    EXPECT_VEC_SOFT_EQ(Real3({8, 4, 2}), geo.bbox().upper());
-
-    std::vector<std::string> expected = {"[EXTERIOR]",
-                                         "inner_a",
-                                         "inner_b",
-                                         "bobby",
-                                         "johnny",
-                                         "[EXTERIOR]",
-                                         "inner_c",
-                                         "a",
-                                         "b",
-                                         "c",
-                                         "[EXTERIOR]",
-                                         "patty"};
-    std::vector<std::string> actual;
-    for (auto const id : range(VolumeId{geo.num_volumes()}))
-    {
-        actual.push_back(geo.id_to_label(id).name);
-    }
-
-    EXPECT_VEC_EQ(expected, actual);
-}
-
-TEST_F(UniversesTest, initialize_with_multiple_universes)
-{
-    auto geo = this->make_track_view();
-
-    // Initialize in outermost universe
-    geo = Initializer_t{{-1, -2, 1}, {1, 0, 0}};
-    EXPECT_VEC_SOFT_EQ(Real3({-1, -2, 1}), geo.pos());
-    EXPECT_VEC_SOFT_EQ(Real3({1, 0, 0}), geo.dir());
-    EXPECT_EQ("johnny", this->params().id_to_label(geo.volume_id()).name);
-    EXPECT_FALSE(geo.is_outside());
-    EXPECT_FALSE(geo.is_on_boundary());
-
-    // Initialize in daughter universe
-    geo = Initializer_t{{0.5, -2, 1}, {1, 0, 0}};
-    EXPECT_VEC_SOFT_EQ(Real3({0.5, -2, 1}), geo.pos());
-    EXPECT_VEC_SOFT_EQ(Real3({1, 0, 0}), geo.dir());
-    EXPECT_EQ("c", this->params().id_to_label(geo.volume_id()).name);
-    EXPECT_FALSE(geo.is_outside());
-    EXPECT_FALSE(geo.is_on_boundary());
-
-    // Initialize in daughter universe using DetailedInitializer
-    geo = OrangeTrackView::DetailedInitializer{geo, {0, 1, 0}};
-    EXPECT_VEC_SOFT_EQ(Real3({0.5, -2, 1}), geo.pos());
-    EXPECT_VEC_SOFT_EQ(Real3({0, 1, 0}), geo.dir());
-    EXPECT_EQ("c", this->params().id_to_label(geo.volume_id()).name);
-    EXPECT_FALSE(geo.is_outside());
-    EXPECT_FALSE(geo.is_on_boundary());
-}
-
-TEST_F(UniversesTest, move_internal_multiple_universes)
-{
-    auto geo = this->make_track_view();
-
-    // Initialize in daughter universe
-    geo = Initializer_t{{0.5, -2, 1}, {0, 1, 0}};
-
-    // Move internally, then check that the distance to boundary is correct
-    geo.move_internal({0.5, -1, 1});
-    auto next = geo.find_next_step();
-    EXPECT_SOFT_EQ(1, next.distance);
-
-    // Move again, using other move_internal method
-    geo.move_internal(0.1);
-    next = geo.find_next_step();
-    EXPECT_SOFT_EQ(0.9, next.distance);
-}
-
-// Cross into daughter universe for the case where the hole cell does not share
-// a boundary with another with a parent cell
-TEST_F(UniversesTest, cross_into_daughter_non_coincident)
-{
-    auto geo = this->make_track_view();
-    geo = Initializer_t{{2, -5, 1}, {0, 1, 0}};
-
-    auto next = geo.find_next_step();
-    EXPECT_SOFT_EQ(1, next.distance);
-
-    geo.move_to_boundary();
-    EXPECT_EQ("inner_a.my", this->params().id_to_label(geo.surface_id()).name);
-    EXPECT_EQ("johnny", this->params().id_to_label(geo.volume_id()).name);
-    EXPECT_VEC_SOFT_EQ(Real3({2, -4, 1}), geo.pos());
-
-    // Cross universe boundary
-    geo.cross_boundary();
-    EXPECT_EQ("inner_a.my", this->params().id_to_label(geo.surface_id()).name);
-    EXPECT_EQ("c", this->params().id_to_label(geo.volume_id()).name);
-    EXPECT_VEC_SOFT_EQ(Real3({2, -4, 1}), geo.pos());
-
-    // Make sure we can take another step after crossing
-    next = geo.find_next_step();
-    EXPECT_SOFT_EQ(1, next.distance);
-
-    geo.move_to_boundary();
-    EXPECT_EQ("alpha.my", this->params().id_to_label(geo.surface_id()).name);
-}
-
-// Cross into parent universe for the case where the hole cell does not share a
-// boundary with another with a parent cell
-TEST_F(UniversesTest, cross_into_parent_non_coincident)
-{
-    auto geo = this->make_track_view();
-    geo = Initializer_t{{2, -3.5, 1}, {0, -1, 0}};
-
-    auto next = geo.find_next_step();
-    EXPECT_SOFT_EQ(0.5, next.distance);
-    geo.move_to_boundary();
-    EXPECT_EQ("inner_a.my", this->params().id_to_label(geo.surface_id()).name);
-    EXPECT_EQ("c", this->params().id_to_label(geo.volume_id()).name);
-    EXPECT_VEC_SOFT_EQ(Real3({2, -4, 1}), geo.pos());
-
-    // Cross universe boundary
-    geo.cross_boundary();
-    EXPECT_EQ("inner_a.my", this->params().id_to_label(geo.surface_id()).name);
-    EXPECT_EQ("johnny", this->params().id_to_label(geo.volume_id()).name);
-    EXPECT_VEC_SOFT_EQ(Real3({2, -4, 1}), geo.pos());
-
-    // Make sure we can take another step after crossing
-    next = geo.find_next_step();
-    EXPECT_SOFT_EQ(2, next.distance);
-
-    geo.move_to_boundary();
-    EXPECT_EQ("john.my", this->params().id_to_label(geo.surface_id()).name);
-}
-
-// Cross into daughter universe for the case where the hole cell shares a
-// boundary with another with a parent cell
-TEST_F(UniversesTest, cross_into_daughter_coincident)
-{
-    auto geo = this->make_track_view();
-    geo = Initializer_t{{2, 1, 1}, {0, -1, 0}};
-
-    auto next = geo.find_next_step();
-    EXPECT_SOFT_EQ(1, next.distance);
-
-    geo.move_to_boundary();
-    EXPECT_EQ("bob.my", this->params().id_to_label(geo.surface_id()).name);
-    EXPECT_EQ("bobby", this->params().id_to_label(geo.volume_id()).name);
-    EXPECT_VEC_SOFT_EQ(Real3({2, 0, 1}), geo.pos());
-
-    // Cross universe boundary
-    geo.cross_boundary();
-    EXPECT_EQ("bob.my", this->params().id_to_label(geo.surface_id()).name);
-    EXPECT_EQ("c", this->params().id_to_label(geo.volume_id()).name);
-    EXPECT_VEC_SOFT_EQ(Real3({2, 0, 1}), geo.pos());
-
-    // Make sure we can take another step after crossing
-    next = geo.find_next_step();
-    EXPECT_SOFT_EQ(1, next.distance);
-
-    geo.move_to_boundary();
-    EXPECT_EQ("alpha.py", this->params().id_to_label(geo.surface_id()).name);
-}
-
-// Cross into parent universe for the case where the hole cell shares a
-// boundary with another with a parent cell
-TEST_F(UniversesTest, cross_into_parent_coincident)
-{
-    auto geo = this->make_track_view();
-    geo = Initializer_t{{2, -0.5, 1}, {0, 1, 0}};
-
-    auto next = geo.find_next_step();
-    EXPECT_SOFT_EQ(0.5, next.distance);
-
-    geo.move_to_boundary();
-    EXPECT_EQ("bob.my", this->params().id_to_label(geo.surface_id()).name);
-    EXPECT_EQ("c", this->params().id_to_label(geo.volume_id()).name);
-    EXPECT_VEC_SOFT_EQ(Real3({2, 0, 1}), geo.pos());
-
-    // Cross universe boundary
-    geo.cross_boundary();
-    EXPECT_EQ("bob.my", this->params().id_to_label(geo.surface_id()).name);
-    EXPECT_EQ("bobby", this->params().id_to_label(geo.volume_id()).name);
-    EXPECT_VEC_SOFT_EQ(Real3({2, 0, 1}), geo.pos());
-
-    // Make sure we can take another step after crossing
-    next = geo.find_next_step();
-    EXPECT_SOFT_EQ(2, next.distance);
-
-    geo.move_to_boundary();
-    EXPECT_EQ("bob.py", this->params().id_to_label(geo.surface_id()).name);
-}
-
-// Cross into daughter universe that is two levels down
-TEST_F(UniversesTest, cross_into_daughter_doubly_coincident)
-{
-    auto geo = this->make_track_view();
-    geo = Initializer_t{{0.25, -4.5, 1}, {0, 1, 0}};
-
-    auto next = geo.find_next_step();
-    EXPECT_SOFT_EQ(0.5, next.distance);
-
-    geo.move_to_boundary();
-    EXPECT_EQ("inner_a.my", this->params().id_to_label(geo.surface_id()).name);
-    EXPECT_EQ("johnny", this->params().id_to_label(geo.volume_id()).name);
-    EXPECT_VEC_SOFT_EQ(Real3({0.25, -4, 1}), geo.pos());
-
-    // Cross universe boundary
-    geo.cross_boundary();
-    EXPECT_EQ("inner_a.my", this->params().id_to_label(geo.surface_id()).name);
-    EXPECT_EQ("patty", this->params().id_to_label(geo.volume_id()).name);
-    EXPECT_VEC_SOFT_EQ(Real3({0.25, -4, 1}), geo.pos());
-
-    // Make sure we can take another step after crossing
-    next = geo.find_next_step();
-    EXPECT_SOFT_EQ(0.5, next.distance);
-
-    geo.move_to_boundary();
-    EXPECT_EQ("inner_c.py", this->params().id_to_label(geo.surface_id()).name);
-}
-
-// Cross into parent universe that is two levels down
-TEST_F(UniversesTest, cross_into_parent_doubly_coincident)
-{
-    auto geo = this->make_track_view();
-    geo = Initializer_t{{0.25, -3.75, 1}, {0, -1, 0}};
-
-    auto next = geo.find_next_step();
-    EXPECT_SOFT_EQ(0.25, next.distance);
-
-    geo.move_to_boundary();
-    EXPECT_EQ("inner_a.my", this->params().id_to_label(geo.surface_id()).name);
-    EXPECT_EQ("patty", this->params().id_to_label(geo.volume_id()).name);
-    EXPECT_VEC_SOFT_EQ(Real3({0.25, -4, 1}), geo.pos());
-
-    // Cross universe boundary
-    geo.cross_boundary();
-    EXPECT_EQ("inner_a.my", this->params().id_to_label(geo.surface_id()).name);
-    EXPECT_EQ("johnny", this->params().id_to_label(geo.volume_id()).name);
-    EXPECT_VEC_SOFT_EQ(Real3({0.25, -4, 1}), geo.pos());
-
-    // Make sure we can take another step after crossing
-    next = geo.find_next_step();
-    EXPECT_SOFT_EQ(2, next.distance);
-
-    geo.move_to_boundary();
-    EXPECT_EQ("john.my", this->params().id_to_label(geo.surface_id()).name);
-}
-
-// Cross between two daughter universes that share a boundary
-TEST_F(UniversesTest, cross_between_daughters)
-{
-    auto geo = this->make_track_view();
-
-    // Initialize in outermost universe
-    geo = Initializer_t{{2, -2, 0.7}, {0, 0, -1}};
-
-    auto next = geo.find_next_step();
-    EXPECT_SOFT_EQ(0.2, next.distance);
-
-    geo.move_to_boundary();
-    EXPECT_EQ("inner_a.pz", this->params().id_to_label(geo.surface_id()).name);
-    EXPECT_EQ("a", this->params().id_to_label(geo.volume_id()).name);
-    EXPECT_VEC_SOFT_EQ(Real3({2, -2, 0.5}), geo.pos());
-
-    // Cross universe boundary
-    geo.cross_boundary();
-    EXPECT_EQ("inner_a.pz", this->params().id_to_label(geo.surface_id()).name);
-    EXPECT_EQ("a", this->params().id_to_label(geo.volume_id()).name);
-    EXPECT_VEC_SOFT_EQ(Real3({2, -2, 0.5}), geo.pos());
-
-    // Make sure we can take another step after crossing
-    next = geo.find_next_step();
-    EXPECT_SOFT_EQ(1, next.distance);
-
-    geo.move_to_boundary();
-    EXPECT_EQ("bob.mz", this->params().id_to_label(geo.surface_id()).name);
-}
-
-TEST_F(Geant4Testem15Test, safety)
-{
-    OrangeTrackView geo = this->make_track_view();
-
-    geo = Initializer_t{{0, 0, 0}, {1, 0, 0}};
-    EXPECT_VEC_SOFT_EQ(Real3({0, 0, 0}), geo.pos());
-    EXPECT_VEC_SOFT_EQ(Real3({1, 0, 0}), geo.dir());
-    EXPECT_EQ(VolumeId{1}, geo.volume_id());
-    EXPECT_EQ(SurfaceId{}, geo.surface_id());
-    EXPECT_FALSE(geo.is_outside());
-
-    // Safety at middle should be to the box boundary
-    EXPECT_SOFT_EQ(5000.0, geo.find_safety());
-
-    // Check safety near face
-    auto next = geo.find_next_step(4995.0);
-    EXPECT_SOFT_EQ(4995.0, next.distance);
-    EXPECT_FALSE(next.boundary);
-    geo.move_internal(4995.0);
-    EXPECT_SOFT_EQ(5.0, geo.find_safety());
-
-    // Check safety near edge
-    geo.set_dir({0, 1, 0});
-    next = geo.find_next_step();
-    geo.move_internal(4990.0);
-    EXPECT_SOFT_EQ(5.0, geo.find_safety());
-    geo.set_dir({-1, 0, 0});
-    next = geo.find_next_step();
-    geo.move_internal(6.0);
-    EXPECT_SOFT_EQ(10.0, geo.find_safety());
 }
 
 //---------------------------------------------------------------------------//

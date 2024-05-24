@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -12,8 +12,7 @@
 #include "celeritas_cmake_strings.h"
 #include "corecel/io/Join.hh"
 #include "corecel/io/Logger.hh"
-
-#include "detail/GeantVolumeVisitor.hh"
+#include "geocel/GeantGeoUtils.hh"
 
 namespace celeritas
 {
@@ -38,8 +37,7 @@ VolumeId GeantVolumeMapper::operator()(G4LogicalVolume const& lv) const
     {
         // Label doesn't have a pointer address attached: we probably need
         // to regenerate to match the exported GDML file
-        label
-            = Label::from_geant(detail::GeantVolumeVisitor::generate_name(lv));
+        label = Label::from_geant(make_gdml_name(lv));
     }
 
     if (auto id = geo.find_volume(label))
@@ -63,7 +61,7 @@ VolumeId GeantVolumeMapper::operator()(G4LogicalVolume const& lv) const
     // Try regenerating the name even if we *did* have a pointer
     // address attached (in case an original GDML volume name already
     // had a pointer suffix and LoadGdml added another)
-    label = Label::from_geant(detail::GeantVolumeVisitor::generate_name(lv));
+    label = Label::from_geant(make_gdml_name(lv));
     all_ids = geo.find_volumes(label.name);
     if (all_ids.size() > 1)
     {

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -9,6 +9,8 @@
 
 #include <string>
 #include <nlohmann/json.hpp>
+
+#include "corecel/io/JsonUtils.json.hh"
 
 #include "FieldDriverOptions.hh"
 
@@ -20,7 +22,12 @@ namespace celeritas
  */
 void from_json(nlohmann::json const& j, FieldDriverOptions& opts)
 {
-#define FDO_INPUT(FIELD) j.at(#FIELD).get_to(opts.FIELD)
+#define FDO_INPUT(NAME)                    \
+    do                                     \
+    {                                      \
+        if (j.contains(#NAME))             \
+            j.at(#NAME).get_to(opts.NAME); \
+    } while (0)
 
     FDO_INPUT(minimum_step);
     FDO_INPUT(delta_chord);
@@ -34,6 +41,7 @@ void from_json(nlohmann::json const& j, FieldDriverOptions& opts)
     FDO_INPUT(max_stepping_increase);
     FDO_INPUT(max_stepping_decrease);
     FDO_INPUT(max_nsteps);
+    FDO_INPUT(max_substeps);
 
 #undef FDO_INPUT
 }
@@ -44,22 +52,21 @@ void from_json(nlohmann::json const& j, FieldDriverOptions& opts)
  */
 void to_json(nlohmann::json& j, FieldDriverOptions const& opts)
 {
-#define FDO_PAIR(FIELD) {#FIELD, opts.FIELD}
     j = nlohmann::json{
-        FDO_PAIR(minimum_step),
-        FDO_PAIR(delta_chord),
-        FDO_PAIR(delta_intersection),
-        FDO_PAIR(epsilon_step),
-        FDO_PAIR(epsilon_rel_max),
-        FDO_PAIR(errcon),
-        FDO_PAIR(pgrow),
-        FDO_PAIR(pshrink),
-        FDO_PAIR(safety),
-        FDO_PAIR(max_stepping_increase),
-        FDO_PAIR(max_stepping_decrease),
-        FDO_PAIR(max_nsteps),
+        CELER_JSON_PAIR(opts, minimum_step),
+        CELER_JSON_PAIR(opts, delta_chord),
+        CELER_JSON_PAIR(opts, delta_intersection),
+        CELER_JSON_PAIR(opts, epsilon_step),
+        CELER_JSON_PAIR(opts, epsilon_rel_max),
+        CELER_JSON_PAIR(opts, errcon),
+        CELER_JSON_PAIR(opts, pgrow),
+        CELER_JSON_PAIR(opts, pshrink),
+        CELER_JSON_PAIR(opts, safety),
+        CELER_JSON_PAIR(opts, max_stepping_increase),
+        CELER_JSON_PAIR(opts, max_stepping_decrease),
+        CELER_JSON_PAIR(opts, max_nsteps),
+        CELER_JSON_PAIR(opts, max_substeps),
     };
-#undef FDO_PAIR
 }
 
 //---------------------------------------------------------------------------//

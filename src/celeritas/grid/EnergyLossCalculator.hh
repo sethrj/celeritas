@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -12,7 +12,11 @@
 namespace celeritas
 {
 //---------------------------------------------------------------------------//
-//! For now, energy loss calculation has the same behavior as cross sections
+/*!
+ * For now, energy loss calculation has the same behavior as cross sections.
+ *
+ * The return value is [MeV / len] but isn't wrapped with a Quantity.
+ */
 using EnergyLossCalculator = XsCalculator;
 
 //---------------------------------------------------------------------------//

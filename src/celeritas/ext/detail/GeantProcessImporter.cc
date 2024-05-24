@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -32,13 +32,11 @@
 #include "corecel/Assert.hh"
 #include "corecel/cont/Range.hh"
 #include "corecel/io/Logger.hh"
+#include "celeritas/UnitTypes.hh"
+#include "celeritas/io/ImportUnits.hh"
 #include "celeritas/phys/PDGNumber.hh"
 
 #include "GeantModelImporter.hh"
-
-using CLHEP::cm;
-using CLHEP::cm2;
-using CLHEP::MeV;
 
 namespace celeritas
 {
@@ -144,36 +142,6 @@ int get_secondary_pdg(T const& process)
 
 //---------------------------------------------------------------------------//
 /*!
- * Get a multiplicative geant4-natural-units constant to convert the units.
- */
-double units_to_scaling(ImportUnits units)
-{
-    switch (units)
-    {
-        case ImportUnits::none:
-            return 1;
-        case ImportUnits::mev:
-            return 1 / MeV;
-        case ImportUnits::mev_per_cm:
-            return cm / MeV;
-        case ImportUnits::cm:
-            return 1 / cm;
-        case ImportUnits::cm_inv:
-            return cm;
-        case ImportUnits::cm_mev_inv:
-            return cm * MeV;
-        case ImportUnits::mev_2_per_cm:
-            return cm / (MeV * MeV);
-        case ImportUnits::cm_2:
-            return 1 / (cm * cm);
-        case ImportUnits::size_:
-            CELER_ASSERT_UNREACHABLE();
-    }
-    CELER_ASSERT_UNREACHABLE();
-}
-
-//---------------------------------------------------------------------------//
-/*!
  * Convert physics vector type from Geant4 to Celeritas IO.
  *
  * Geant4 v11 has a different set of G4PhysicsVectorType enums.
@@ -224,43 +192,32 @@ void append_table(G4PhysicsTable const* g4table,
     switch (table_type)
     {
         case ImportTableType::dedx:
-        case ImportTableType::dedx_process:
-        case ImportTableType::dedx_subsec:
-        case ImportTableType::dedx_unrestricted:
-        case ImportTableType::ionization_subsec:
             table.x_units = ImportUnits::mev;
-            table.y_units = ImportUnits::mev_per_cm;
+            table.y_units = ImportUnits::mev_per_len;
             break;
-        case ImportTableType::csda_range:
         case ImportTableType::range:
-        case ImportTableType::secondary_range:
             table.x_units = ImportUnits::mev;
-            table.y_units = ImportUnits::cm;
-            break;
-        case ImportTableType::inverse_range:
-            table.x_units = ImportUnits::cm;
-            table.y_units = ImportUnits::mev;
+            table.y_units = ImportUnits::len;
             break;
         case ImportTableType::lambda:
-        case ImportTableType::sublambda:
             table.x_units = ImportUnits::mev;
-            table.y_units = ImportUnits::cm_inv;
+            table.y_units = ImportUnits::len_inv;
             break;
         case ImportTableType::lambda_prim:
             table.x_units = ImportUnits::mev;
-            table.y_units = ImportUnits::cm_mev_inv;
+            table.y_units = ImportUnits::len_mev_inv;
             break;
         case ImportTableType::msc_xs:
             table.x_units = ImportUnits::mev;
-            table.y_units = ImportUnits::mev_2_per_cm;
+            table.y_units = ImportUnits::mev_sq_per_len;
             break;
         default:
             CELER_ASSERT_UNREACHABLE();
     };
 
     // Convert units
-    double x_scaling = units_to_scaling(table.x_units);
-    double y_scaling = units_to_scaling(table.y_units);
+    double const x_scaling = native_value_from_clhep(table.x_units);
+    double const y_scaling = native_value_from_clhep(table.y_units);
 
     // Save physics vectors
     for (auto const* g4vector : *g4table)
@@ -300,10 +257,10 @@ bool all_are_assigned(std::vector<T> const& arr)
  * Construct with a selected list of tables.
  */
 GeantProcessImporter::GeantProcessImporter(
-    TableSelection which_tables,
+    TableSelection,
     std::vector<ImportMaterial> const& materials,
     std::vector<ImportElement> const& elements)
-    : materials_(materials), elements_(elements), which_tables_(which_tables)
+    : materials_(materials), elements_(elements)
 {
     CELER_ENSURE(!materials_.empty());
     CELER_ENSURE(!elements_.empty());
@@ -389,55 +346,6 @@ GeantProcessImporter::operator()(G4ParticleDefinition const& particle,
     append_table(
         process.LambdaTable(), ImportTableType::lambda, &result.tables);
 
-    if (which_tables_ > TableSelection::minimal)
-    {
-        // Inverse range is redundant with range
-        append_table(process.InverseRangeTable(),
-                     ImportTableType::inverse_range,
-                     &result.tables);
-
-        // None of these tables appear to be used in Geant4
-        if (process.IsIonisationProcess())
-        {
-            // The "ionization table" is just the per-process de/dx table for
-            // ionization
-            append_table(process.IonisationTable(),
-                         ImportTableType::dedx_process,
-                         &result.tables);
-        }
-
-        else
-        {
-            append_table(process.DEDXTable(),
-                         ImportTableType::dedx_process,
-                         &result.tables);
-        }
-
-#if G4VERSION_NUMBER < 1100
-        // DEPRECATED: remove in v0.4
-        append_table(process.DEDXTableForSubsec(),
-                     ImportTableType::dedx_subsec,
-                     &result.tables);
-        append_table(process.IonisationTableForSubsec(),
-                     ImportTableType::ionization_subsec,
-                     &result.tables);
-        append_table(process.SubLambdaTable(),
-                     ImportTableType::sublambda,
-                     &result.tables);
-        // Secondary range is removed in 11.1
-        append_table(process.SecondaryRangeTable(),
-                     ImportTableType::secondary_range,
-                     &result.tables);
-#endif
-
-        append_table(process.DEDXunRestrictedTable(),
-                     ImportTableType::dedx_unrestricted,
-                     &result.tables);
-        append_table(process.CSDARangeTable(),
-                     ImportTableType::csda_range,
-                     &result.tables);
-    }
-
     CELER_ENSURE(result && all_are_assigned(result.models));
     return result;
 }
@@ -474,6 +382,10 @@ GeantProcessImporter::operator()(G4ParticleDefinition const& particle,
     {
         if (G4VEmModel* model = process.GetModelByIndex(i))
         {
+            CELER_LOG(debug) << "Saving MSC model '" << model->GetName()
+                             << "' for particle " << particle.GetParticleName()
+                             << " (" << particle.GetPDGEncoding() << ")";
+
             ImportMscModel imm;
             imm.particle_pdg = primary_pdg;
             try
@@ -483,7 +395,7 @@ GeantProcessImporter::operator()(G4ParticleDefinition const& particle,
             }
             catch (celeritas::RuntimeError const&)
             {
-                CELER_LOG(warning) << "Encountered unknown process '"
+                CELER_LOG(warning) << "Encountered unknown MSC model '"
                                    << model->GetName() << "'";
                 imm.model_class = ImportModelClass::other;
             }

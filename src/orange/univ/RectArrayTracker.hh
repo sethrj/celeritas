@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -12,8 +12,8 @@
 #include "corecel/grid/NonuniformGrid.hh"
 #include "corecel/math/Algorithms.hh"
 #include "orange/OrangeData.hh"
-#include "orange/univ/detail/RaggedRightIndexer.hh"
 
+#include "detail/RaggedRightIndexer.hh"
 #include "detail/Types.hh"
 #include "detail/Utils.hh"
 
@@ -80,7 +80,7 @@ class RectArrayTracker
     inline CELER_FUNCTION Intersection intersect(LocalState const& state,
                                                  real_type max_dist) const;
 
-    // Find the new volume by crossing a surface
+    // Find the local volume given a post-crossing state
     inline CELER_FUNCTION Initialization
     cross_boundary(LocalState const& state) const;
 
@@ -167,7 +167,7 @@ CELER_FUNCTION auto RectArrayTracker::initialize(LocalState const& state) const
 
 //---------------------------------------------------------------------------//
 /*!
- * Find the local volume on the opposite side of a surface.
+ * Find the local volume given a post-crossing state.
  */
 CELER_FUNCTION auto
 RectArrayTracker::cross_boundary(LocalState const& state) const
@@ -181,23 +181,19 @@ RectArrayTracker::cross_boundary(LocalState const& state) const
     auto coords = to_coords(state.volume.unchecked_get());
     auto ax_idx = this->find_surface_axis_idx(state.surface.id());
 
+    // Due to surface deduplication, crossing out of rect arrays is not
+    // possible
+    CELER_ASSERT(
+        !(coords[ax_idx] == 0 && state.surface.sense() == Sense::inside)
+        && !(coords[ax_idx] == record_.dims[ax_idx] - 1
+             && state.surface.sense() == Sense::outside));
+
     // Value for incrementing the axial coordinate upon crossing
-    int inc = (state.surface.sense() == Sense::outside) ? -1 : 1;
+    // NOTE: that surface sense is currently the POST crossing value
+    int inc = (state.surface.sense() == Sense::outside) ? 1 : -1;
 
-    detail::OnLocalSurface new_surface(state.surface.id(),
-                                       flip_sense(state.surface.sense()));
-
-    if ((coords[ax_idx] == 0 && inc == -1)
-        || (coords[ax_idx] == record_.dims[ax_idx] - 1 && inc == 1))
-    {
-        // Crossimg out
-        return {{}, new_surface};
-    }
-    else
-    {
-        coords[ax_idx] += inc;
-        return {LocalVolumeId(to_index(coords)), new_surface};
-    }
+    coords[ax_idx] += inc;
+    return {LocalVolumeId(to_index(coords)), state.surface};
 }
 
 //---------------------------------------------------------------------------//

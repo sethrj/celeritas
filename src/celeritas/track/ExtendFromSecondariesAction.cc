@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -19,6 +19,15 @@
 
 namespace celeritas
 {
+//---------------------------------------------------------------------------//
+/*!
+ * Get a long description of the action.
+ */
+std::string_view ExtendFromSecondariesAction::description() const
+{
+    return "create track initializers from secondaries";
+}
+
 //---------------------------------------------------------------------------//
 /*!
  * Execute the action with host data.
@@ -97,15 +106,6 @@ void ExtendFromSecondariesAction::locate_alive(CoreParams const& core_params,
 }
 
 //---------------------------------------------------------------------------//
-#if !CELER_USE_DEVICE
-void ExtendFromSecondariesAction::locate_alive(CoreParams const&,
-                                               CoreStateDevice&) const
-{
-    CELER_NOT_CONFIGURED("CUDA OR HIP");
-}
-#endif
-
-//---------------------------------------------------------------------------//
 /*!
  * Launch a (host) kernel to create track initializers from secondary
  * particles.
@@ -121,12 +121,26 @@ void ExtendFromSecondariesAction::process_secondaries(
 }
 
 //---------------------------------------------------------------------------//
+// DEVICE-DISABLED IMPLEMENTATION
+//---------------------------------------------------------------------------//
 #if !CELER_USE_DEVICE
+void ExtendFromSecondariesAction::begin_run(CoreParams const&, CoreStateDevice&)
+{
+    CELER_NOT_CONFIGURED("CUDA OR HIP");
+}
+
+void ExtendFromSecondariesAction::locate_alive(CoreParams const&,
+                                               CoreStateDevice&) const
+{
+    CELER_NOT_CONFIGURED("CUDA OR HIP");
+}
+
 void ExtendFromSecondariesAction::process_secondaries(CoreParams const&,
                                                       CoreStateDevice&) const
 {
     CELER_NOT_CONFIGURED("CUDA OR HIP");
 }
+
 #endif
 
 //---------------------------------------------------------------------------//

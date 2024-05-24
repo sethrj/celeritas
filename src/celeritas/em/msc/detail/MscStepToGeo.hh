@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -77,8 +77,8 @@ class MscStepToGeo
 
     struct result_type
     {
-        real_type step{};  //!< Geometrical step length
-        real_type alpha{0};  //!< Scaled MFP slope
+        real_type step{};  //!< Geometrical step length [len]
+        real_type alpha{0};  //!< Scaled MFP slope [1/len]
     };
 
   public:

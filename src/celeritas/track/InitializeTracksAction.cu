@@ -1,5 +1,5 @@
 //---------------------------------*-CUDA-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -28,7 +28,10 @@ void InitializeTracksAction::execute_impl(CoreParams const& params,
                                               num_new_tracks,
                                               state.counters()};
     static ActionLauncher<decltype(execute_thread)> const launch_kernel(*this);
-    launch_kernel(num_new_tracks, state.stream_id(), execute_thread);
+    if (num_new_tracks > 0)
+    {
+        launch_kernel(num_new_tracks, state.stream_id(), execute_thread);
+    }
 }
 
 //---------------------------------------------------------------------------//

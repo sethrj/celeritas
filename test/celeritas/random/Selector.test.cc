@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -95,7 +95,7 @@ TEST(SelectorTest, make_selector)
 
 TEST(SelectorTest, selector_element)
 {
-    using ElementId = OpaqueId<struct Element>;
+    using ElementId = OpaqueId<struct Element_>;
     static double const macro_xs[] = {1.0, 2.0, 4.0};
     std::vector<int> evaluated;
     auto get_xs = [&evaluated](ElementId el) {

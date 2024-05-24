@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -9,12 +9,16 @@
 
 #include <fstream>
 #include <memory>
+#include <mutex>
 #include <type_traits>
 #include <utility>
 #include <vector>
 #include <CLHEP/Random/Random.h>
+#include <G4Electron.hh>
+#include <G4Gamma.hh>
 #include <G4ParticleDefinition.hh>
 #include <G4ParticleTable.hh>
+#include <G4Positron.hh>
 #include <G4RunManager.hh>
 #include <G4Threading.hh>
 
@@ -23,19 +27,25 @@
 #include "corecel/io/Logger.hh"
 #include "corecel/io/OutputRegistry.hh"
 #include "corecel/io/ScopedTimeLog.hh"
+#include "corecel/io/StringUtils.hh"
 #include "corecel/sys/Device.hh"
 #include "corecel/sys/Environment.hh"
 #include "corecel/sys/KernelRegistry.hh"
 #include "corecel/sys/ScopedMem.hh"
+#include "corecel/sys/ScopedProfiling.hh"
+#include "geocel/GeantUtils.hh"
+#include "geocel/g4/GeantGeoParams.hh"
 #include "celeritas/Types.hh"
+#include "celeritas/em/params/WentzelOKVIParams.hh"
 #include "celeritas/ext/GeantImporter.hh"
-#include "celeritas/ext/GeantSetup.hh"
 #include "celeritas/ext/RootExporter.hh"
 #include "celeritas/geo/GeoMaterialParams.hh"
 #include "celeritas/geo/GeoParams.hh"
 #include "celeritas/global/ActionRegistry.hh"
 #include "celeritas/global/CoreParams.hh"
+#include "celeritas/io/EventWriter.hh"
 #include "celeritas/io/ImportData.hh"
+#include "celeritas/io/RootEventWriter.hh"
 #include "celeritas/mat/MaterialParams.hh"
 #include "celeritas/phys/CutoffParams.hh"
 #include "celeritas/phys/ParticleParams.hh"
@@ -49,7 +59,9 @@
 
 #include "AlongStepFactory.hh"
 #include "SetupOptions.hh"
+
 #include "detail/HitManager.hh"
+#include "detail/OffloadWriter.hh"
 
 namespace celeritas
 {
@@ -137,7 +149,152 @@ build_g4_particles(std::shared_ptr<ParticleParams const> const& particles,
 }
 
 //---------------------------------------------------------------------------//
+/*!
+ * Shared static mutex for once-only updated parameters.
+ */
+std::mutex& updating_mutex()
+{
+    static std::mutex result;
+    return result;
+}
+
+//---------------------------------------------------------------------------//
 }  // namespace
+
+bool SharedParams::CeleritasDisabled()
+{
+    static bool const result = [] {
+        if (celeritas::getenv("CELER_DISABLE").empty())
+            return false;
+
+        CELER_LOG(info)
+            << "Disabling Celeritas offloading since the 'CELER_DISABLE' "
+               "environment variable is present and non-empty";
+        return true;
+    }();
+    return result;
+}
+
+bool SharedParams::KillOffloadTracks()
+{
+    static bool const result = [] {
+        if (celeritas::getenv("CELER_KILL_OFFLOAD").empty())
+            return false;
+
+        if (CeleritasDisabled())
+        {
+            CELER_LOG(info) << "Killing Geant4 tracks supported by Celeritas "
+                               "offloading since the 'CELER_KILL_OFFLOAD' "
+                               "environment variable is present and non-empty";
+        }
+        return true;
+    }();
+    return result;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Set up Celeritas using Geant4 data and existing output registery.
+ *
+ * A design oversight in the \c GeantSimpleCalo means that the action registry
+ * *must* be created before \c SharedParams is initialized, and in the case
+ * where Celeritas is not disabled, initialization clears the existing
+ * registry. This prevents the calorimeter from writing output.
+ */
+SharedParams::SharedParams(SetupOptions const& options, SPOutputRegistry oreg)
+{
+    CELER_EXPECT(!*this);
+    output_reg_ = std::move(oreg);
+
+    CELER_VALIDATE(!CeleritasDisabled(),
+                   << "Celeritas shared params cannot be initialized when "
+                      "Celeritas offloading is disabled via "
+                      "\"CELER_DISABLE\"");
+
+    CELER_LOG_LOCAL(status) << "Initializing Celeritas shared data";
+    ScopedProfiling profile_this{"construct-params"};
+    ScopedMem record_mem("SharedParams.construct");
+    ScopedTimeLog scoped_time;
+
+    // Initialize CUDA (CUDA environment variables control the preferred
+    // device)
+    celeritas::activate_device();
+
+    if (celeritas::device() && CELERITAS_CORE_GEO == CELERITAS_CORE_GEO_VECGEOM)
+    {
+        // Heap size must be set before creating VecGeom device instance; and
+        // let's just set the stack size as well
+        if (options.cuda_stack_size > 0)
+        {
+            celeritas::set_cuda_stack_size(options.cuda_stack_size);
+        }
+        if (options.cuda_heap_size > 0)
+        {
+            celeritas::set_cuda_heap_size(options.cuda_heap_size);
+        }
+    }
+
+    // Construct core data
+    this->initialize_core(options);
+
+    if (output_filename_ != "-")
+    {
+        // Write output after params are constructed before anything can go
+        // wrong
+        this->try_output();
+    }
+    else
+    {
+        CELER_LOG(debug) << "Skipping 'startup' JSON output since writing to "
+                            "stdout";
+    }
+
+    if (!options.offload_output_file.empty())
+    {
+        std::unique_ptr<EventWriterInterface> writer;
+        if (ends_with(options.offload_output_file, ".root"))
+        {
+            writer.reset(
+                new RootEventWriter(std::make_shared<RootFileManager>(
+                                        options.offload_output_file.c_str()),
+                                    params_->particle()));
+        }
+        else
+        {
+            writer.reset(new EventWriter(options.offload_output_file,
+                                         params_->particle()));
+        }
+        offload_writer_
+            = std::make_shared<detail::OffloadWriter>(std::move(writer));
+    }
+
+    CELER_ENSURE(*this);
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Initialize shared data with existing output registry.
+ *
+ * TODO: this is a hack to be deleted in v0.5.
+ */
+void SharedParams::Initialize(SetupOptions const& options, SPOutputRegistry reg)
+{
+    CELER_EXPECT(reg);
+    *this = SharedParams(options, std::move(reg));
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Save a diagnostic output filename from a Geant4 app when Celeritas is off.
+ *
+ * This will be overwritten when calling Initialized with setup options.
+ *
+ * TODO: this hack should be deleted in v0.5.
+ */
+void SharedParams::set_output_filename(std::string const& filename)
+{
+    output_filename_ = filename;
+}
 
 //---------------------------------------------------------------------------//
 /*!
@@ -150,20 +307,8 @@ build_g4_particles(std::shared_ptr<ParticleParams const> const& particles,
  * data.
  */
 SharedParams::SharedParams(SetupOptions const& options)
+    : SharedParams(options, nullptr)
 {
-    CELER_EXPECT(!*this);
-
-    CELER_LOG_LOCAL(status) << "Initializing Celeritas shared data";
-    ScopedMem record_mem("SharedParams.construct");
-    ScopedTimeLog scoped_time;
-
-    // Initialize device and other "global" data
-    SharedParams::initialize_device(options);
-
-    // Construct core data
-    this->initialize_core(options);
-
-    CELER_ENSURE(*this);
 }
 
 //---------------------------------------------------------------------------//
@@ -174,23 +319,27 @@ SharedParams::SharedParams(SetupOptions const& options)
  * properties) in single-thread mode has "thread" storage in a multithreaded
  * application. It must be initialized on all threads.
  */
-void SharedParams::InitializeWorker(SetupOptions const& options)
+void SharedParams::InitializeWorker(SetupOptions const&)
 {
-    CELER_LOG_LOCAL(status) << "Initializing worker thread";
-    ScopedTimeLog scoped_time;
-    return SharedParams::initialize_device(options);
+    CELER_VALIDATE(!CeleritasDisabled(),
+                   << "Celeritas shared params cannot be initialized when "
+                      "Celeritas offloading is disabled via "
+                      "\"CELER_DISABLE\"");
+
+    celeritas::activate_device_local();
 }
 
 //---------------------------------------------------------------------------//
 /*!
  * Clear shared data after writing out diagnostics.
  *
- * This must be executed exactly *once* across all threads and at the end of
+ * This should be executed exactly *once* across all threads and at the end of
  * the run.
  */
 void SharedParams::Finalize()
 {
-    CELER_EXPECT(*this);
+    static std::mutex finalize_mutex;
+    std::lock_guard scoped_lock{finalize_mutex};
 
     // Output at end of run
     this->try_output();
@@ -199,37 +348,107 @@ void SharedParams::Finalize()
     CELER_LOG_LOCAL(debug) << "Resetting shared parameters";
     *this = {};
 
+    if (auto& d = celeritas::device())
+    {
+        // Reset streams before the static destructor does
+        d.create_streams(0);
+    }
+
     CELER_ENSURE(!*this);
 }
 
 //---------------------------------------------------------------------------//
 /*!
- * Initialize GPU device on each thread.
- *
- * This is thread safe and must be called from every worker thread.
+ * Get a vector of particles supported by Celeritas offloading.
  */
-void SharedParams::initialize_device(SetupOptions const& options)
+auto SharedParams::OffloadParticles() const -> VecG4ParticleDef const&
 {
-    if (Device::num_devices() == 0)
+    if (!CeleritasDisabled())
     {
-        // No GPU is enabled so no global initialization is needed
-        return;
+        // Get the supported particles from Celeritas
+        CELER_ASSERT(*this);
+        return particles_;
     }
 
-    // Initialize CUDA (you'll need to use CUDA environment variables to
-    // control the preferred device)
-    celeritas::activate_device(Device{0});
+    // In a Geant4-only simulation, use a hardcoded list of supported particles
+    static VecG4ParticleDef const particles = {
+        G4Gamma::Gamma(),
+        G4Electron::Electron(),
+        G4Positron::Positron(),
+    };
+    return particles;
+}
 
-    // Heap size must be set before creating VecGeom device instance; and
-    // let's just set the stack size as well
-    if (options.cuda_stack_size > 0)
+//---------------------------------------------------------------------------//
+/*!
+ * Lazily obtained number of streams.
+ */
+int SharedParams::num_streams() const
+{
+    if (CELER_UNLIKELY(!num_streams_))
     {
-        celeritas::set_cuda_stack_size(options.cuda_stack_size);
+        // Initial lock-free check failed; now lock and create if needed
+        std::lock_guard scoped_lock{updating_mutex()};
+        if (!num_streams_)
+        {
+            // Default to setting the maximum number of streams based on Geant4
+            // run manager.
+            const_cast<SharedParams*>(this)->num_streams_
+                = celeritas::get_geant_num_threads();
+
+            CELER_LOG_LOCAL(debug)
+                << "Set number of streams to " << num_streams_;
+        }
     }
-    if (options.cuda_heap_size > 0)
+
+    CELER_ENSURE(num_streams_ > 0);
+    return num_streams_;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Lazily created output registry.
+ */
+auto SharedParams::output_reg() const -> SPOutputRegistry const&
+{
+    if (CELER_UNLIKELY(!output_reg_))
     {
-        celeritas::set_cuda_heap_size(options.cuda_heap_size);
+        // Initial lock-free check failed; now lock and create if needed
+        std::lock_guard scoped_lock{updating_mutex()};
+        if (!output_reg_)
+        {
+            CELER_LOG_LOCAL(debug) << "Constructing output registry";
+
+            auto output_reg = std::make_shared<OutputRegistry>();
+            const_cast<SharedParams*>(this)->output_reg_
+                = std::move(output_reg);
+            CELER_ENSURE(output_reg_);
+        }
     }
+    return output_reg_;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Lazily created Geant geometry parameters.
+ */
+auto SharedParams::geant_geo_params() const -> SPConstGeantGeoParams const&
+{
+    if (CELER_UNLIKELY(!geant_geo_))
+    {
+        // Initial lock-free check failed; now lock and create if needed
+        std::lock_guard scoped_lock{updating_mutex()};
+        if (!geant_geo_)
+        {
+            CELER_LOG_LOCAL(debug) << "Constructing GeantGeoParams wrapper";
+
+            auto geo_params = std::make_shared<GeantGeoParams>(
+                GeantImporter::get_world_volume());
+            const_cast<SharedParams*>(this)->geant_geo_ = std::move(geo_params);
+            CELER_ENSURE(geant_geo_);
+        }
+    }
+    return geant_geo_;
 }
 
 //---------------------------------------------------------------------------//
@@ -270,7 +489,7 @@ void SharedParams::initialize_core(SetupOptions const& options)
 
     // Create registries
     params.action_reg = std::make_shared<ActionRegistry>();
-    params.output_reg = std::make_shared<OutputRegistry>();
+    params.output_reg = this->output_reg();
 
     // Load geometry
     params.geometry = [&options] {
@@ -279,6 +498,13 @@ void SharedParams::initialize_core(SetupOptions const& options)
             // Read directly from GDML input
             return std::make_shared<GeoParams>(options.geometry_file);
         }
+#if CELERITAS_CORE_GEO == CELERITAS_CORE_GEO_GEANT
+        else if (geant_geo_)
+        {
+            // Lazily created geo was requested first
+            return geant_geo_;
+        }
+#endif
         else
         {
             // Import from Geant4
@@ -286,6 +512,11 @@ void SharedParams::initialize_core(SetupOptions const& options)
                 GeantImporter::get_world_volume());
         }
     }();
+
+#if CELERITAS_CORE_GEO == CELERITAS_CORE_GEO_GEANT
+    // Save the Geant4 geometry since we've already made it
+    geant_geo_ = params.geometry;
+#endif
 
     // Load materials
     params.material = MaterialParams::from_import(*imported);
@@ -301,6 +532,9 @@ void SharedParams::initialize_core(SetupOptions const& options)
     params.cutoff = CutoffParams::from_import(
         *imported, params.particle, params.material);
 
+    // Construct shared data for Coulomb scattering
+    params.wentzel = WentzelOKVIParams::from_import(*imported, params.material);
+
     // Load physics: create individual processes with make_shared
     params.physics = [&params, &options, &imported] {
         PhysicsParams::Input input;
@@ -312,8 +546,8 @@ void SharedParams::initialize_core(SetupOptions const& options)
         input.action_registry = params.action_reg.get();
 
         input.options.linear_loss_limit = imported->em_params.linear_loss_limit;
-        input.options.lowest_electron_energy = PhysicsParamsOptions::Energy{
-            imported->em_params.lowest_electron_energy};
+        input.options.lowest_electron_energy = PhysicsParamsOptions::Energy(
+            imported->em_params.lowest_electron_energy);
         input.options.secondary_stack_factor = options.secondary_stack_factor;
 
         return std::make_shared<PhysicsParams>(std::move(input));
@@ -323,7 +557,8 @@ void SharedParams::initialize_core(SetupOptions const& options)
     params.rng = std::make_shared<RngParams>(CLHEP::HepRandom::getTheSeed());
 
     // Construct simulation params
-    params.sim = SimParams::from_import(*imported, params.particle);
+    params.sim = SimParams::from_import(
+        *imported, params.particle, options.max_field_substeps);
 
     // Construct track initialization params
     params.init = [&options] {
@@ -341,20 +576,24 @@ void SharedParams::initialize_core(SetupOptions const& options)
                        << "nonpositive number of streams (" << num_streams
                        << ") returned by SetupOptions.get_num_streams");
         params.max_streams = num_streams;
+        // Save number of streams... no other thread should be updating this
+        // simultaneously but we just make sure of it
+        std::lock_guard scoped_lock{updating_mutex()};
+        if (num_streams_ != 0 && num_streams_ != num_streams)
+        {
+            // This could happen if someone queries the number of streams
+            // before initializing celeritas
+            CELER_LOG(warning)
+                << "Changing number of streams from " << num_streams_
+                << " to user-specified " << num_streams;
+        }
+        num_streams_ = num_streams;
     }
     else
     {
         // Default to setting the maximum number of streams based on Geant4
         // multithreading.
-        // Hit processors *must* be allocated on the thread they're used
-        // because of geant4 thread-local SDs. There must be one per thread.
-        params.max_streams = [] {
-            auto* run_man = G4RunManager::GetRunManager();
-            CELER_VALIDATE(run_man,
-                           << "G4RunManager was not created before "
-                              "initializing SharedParams");
-            return celeritas::get_num_threads(*run_man);
-        }();
+        params.max_streams = this->num_streams();
     }
 
     // Allocate device streams, or use the default stream if there is only one.
@@ -397,12 +636,11 @@ void SharedParams::initialize_core(SetupOptions const& options)
     CELER_ASSERT(params);
     params_ = std::make_shared<CoreParams>(std::move(params));
 
-    // Set up output after params are constructed
-    output_filename_ = options.output_file;
-    this->try_output();
-
     // Translate supported particles
     particles_ = build_g4_particles(params_->particle(), params_->physics());
+
+    // Save output filename (possibly empty if disabling output)
+    output_filename_ = options.output_file;
 }
 
 //---------------------------------------------------------------------------//
@@ -414,25 +652,56 @@ void SharedParams::initialize_core(SetupOptions const& options)
  */
 void SharedParams::try_output() const
 {
-    CELER_EXPECT(params_);
-    if (output_filename_.empty())
+    if (!output_reg_)
     {
+        // No output registry exists (either independently of setting up
+        // Celeritas or when calling Initialize)
         return;
     }
 
-#if CELERITAS_USE_JSON
-    CELER_LOG(info) << "Writing Celeritas output to \"" << output_filename_
-                    << '"';
+    std::string filename = output_filename_;
+    if (CELERITAS_USE_JSON && !params_ && filename.empty())
+    {
+        // Setup was not called but JSON is available: make a default filename
+        filename = "celeritas.out.json";
+        CELER_LOG(debug) << "Set default Celeritas output filename";
+    }
 
-    std::ofstream outf(output_filename_);
-    CELER_VALIDATE(
-        outf, << "failed to open output file at \"" << output_filename_ << '"');
-    params_->output_reg()->output(&outf);
-#else
-    CELER_LOG(warning)
-        << "JSON support is not enabled, so no output will be written to \""
-        << output_filename_ << '"';
-#endif
+    if (filename.empty())
+    {
+        CELER_LOG(debug) << "Skipping output: SetupOptions::output_file is "
+                            "empty";
+        return;
+    }
+
+    if (CELERITAS_USE_JSON)
+    {
+        auto msg = CELER_LOG(info);
+        msg << "Wrote Geant4 diagnostic output to ";
+        std::ofstream outf;
+        std::ostream* os{nullptr};
+        if (filename == "-")
+        {
+            os = &std::cout;
+            msg << "<stdout>";
+        }
+        else
+        {
+            os = &outf;
+            outf.open(filename);
+            CELER_VALIDATE(
+                outf, << "failed to open output file at \"" << filename << '"');
+            msg << '"' << filename << '"';
+        }
+        CELER_ASSERT(os);
+        output_reg_->output(os);
+    }
+    else
+    {
+        CELER_LOG(warning) << "JSON support is not enabled, so no output will "
+                              "be written to \""
+                           << filename << '"';
+    }
 }
 
 //---------------------------------------------------------------------------//

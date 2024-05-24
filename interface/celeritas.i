@@ -1,5 +1,5 @@
 //---------------------------------*-SWIG-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -46,6 +46,19 @@
 }
 
 //---------------------------------------------------------------------------//
+// STD
+//---------------------------------------------------------------------------//
+
+namespace std
+{
+%ignore hash;
+template<class T>
+struct hash;
+};
+
+%ignore *::operator++;
+
+//---------------------------------------------------------------------------//
 // CORECEL
 //---------------------------------------------------------------------------//
 
@@ -57,6 +70,7 @@
 %ignore celeritas::Byte;
 %include "corecel/Macros.hh"
 %include "corecel/Types.hh"
+%import "corecel/OpaqueId.hh"
 
 %template(VecReal) std::vector<celeritas::real_type>;
 
@@ -65,10 +79,12 @@
 //---------------------------------------------------------------------------//
 
 %{
+#include "celeritas/Types.hh"
 #include "celeritas/Units.hh"
 #include "celeritas/Constants.hh"
 %}
 
+%import "celeritas/Types.hh"
 %include "celeritas/Units.hh"
 %include "celeritas/Constants.hh"
 
@@ -97,6 +113,7 @@ namespace celeritas
 %celer_rename_to_cstring(vector_type, ImportPhysicsVectorType);
 %celer_rename_to_cstring(process_type, ImportProcessType);
 %celer_rename_to_cstring(process_class, ImportProcessClass);
+%celer_rename_to_cstring(material_state, ImportMaterialState);
 %celer_rename_to_cstring(model, ImportModelClass);
 %rename(process_class_to_geant_name) to_geant_name(ImportProcessClass);
 %rename(model_to_geant_name) to_geant_name(ImportModelClass);
@@ -109,6 +126,8 @@ namespace celeritas
 
 %include "celeritas/io/ImportPhysicsVector.hh"
 %template(VecImportPhysicsVector) std::vector<celeritas::ImportPhysicsVector>;
+
+%include "celeritas/io/ImportUnits.hh"
 
 %include "celeritas/io/ImportPhysicsTable.hh"
 %template(VecImportPhysicsTable) std::vector<celeritas::ImportPhysicsTable>;

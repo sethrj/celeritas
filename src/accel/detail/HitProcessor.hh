@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -54,7 +54,7 @@ class HitProcessor
     using StepStateHostRef = HostRef<StepStateData>;
     using StepStateDeviceRef = DeviceRef<StepStateData>;
     using SPConstVecLV
-        = std::shared_ptr<const std::vector<G4LogicalVolume const*>>;
+        = std::shared_ptr<std::vector<G4LogicalVolume const*> const>;
     using VecParticle = std::vector<G4ParticleDefinition const*>;
     //!@}
 
@@ -104,10 +104,6 @@ class HitProcessor
     StepPointSelection post_step_selection_;
 
     void update_track(ParticleId id) const;
-    bool update_touchable(Real3 const& pos,
-                          Real3 const& dir,
-                          G4LogicalVolume const* lv,
-                          G4VTouchable* touchable) const;
 };
 
 //---------------------------------------------------------------------------//

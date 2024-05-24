@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -46,10 +46,8 @@ class ValueGridInserter
         = Collection<real_type, Ownership::value, MemSpace::host>;
     using XsGridCollection
         = Collection<XsGridData, Ownership::value, MemSpace::host>;
-    using SpanConstReal = Span<real_type const>;
-    using InterpolatedGrid = std::pair<SpanConstReal, Interp>;
+    using SpanConstDbl = Span<double const>;
     using XsIndex = ItemId<XsGridData>;
-    using GenericIndex = ItemId<GenericGridData>;
     //!@}
 
   public:
@@ -59,13 +57,10 @@ class ValueGridInserter
     // Add a grid of xs-like data
     XsIndex operator()(UniformGridData const& log_grid,
                        size_type prime_index,
-                       SpanConstReal values);
+                       SpanConstDbl values);
 
     // Add a grid of uniform log-grid data
-    XsIndex operator()(UniformGridData const& log_grid, SpanConstReal values);
-
-    // Add a grid of generic data
-    GenericIndex operator()(InterpolatedGrid grid, InterpolatedGrid values);
+    XsIndex operator()(UniformGridData const& log_grid, SpanConstDbl values);
 
   private:
     CollectionBuilder<real_type, MemSpace::host, ItemId<real_type>> values_;

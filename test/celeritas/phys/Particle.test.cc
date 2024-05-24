@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -37,10 +37,10 @@ class ParticleTest : public Test
 
     void SetUp() override
     {
+        using namespace constants;
         using namespace units;
 
         constexpr auto zero = zero_quantity();
-        constexpr auto stable = ParticleRecord::stable_decay_constant();
 
         // Create particle defs, initialize on device
         ParticleParams::Input defs;
@@ -48,8 +48,9 @@ class ParticleTest : public Test
                         pdg::electron(),
                         MevMass{0.5109989461},
                         ElementaryCharge{-1},
-                        stable});
-        defs.push_back({"gamma", pdg::gamma(), zero, zero, stable});
+                        stable_decay_constant});
+        defs.push_back(
+            {"gamma", pdg::gamma(), zero, zero, stable_decay_constant});
         defs.push_back({"neutron",
                         PDGNumber{2112},
                         MevMass{939.565413},
@@ -59,7 +60,7 @@ class ParticleTest : public Test
                         pdg::positron(),
                         MevMass{0.5109989461},
                         ElementaryCharge{1},
-                        stable});
+                        stable_decay_constant});
 
         particle_params = std::make_shared<ParticleParams>(std::move(defs));
     }
@@ -90,13 +91,11 @@ TEST_F(ParticleTest, output)
     ParticleParamsOutput out(this->particle_params);
     EXPECT_EQ("particle", out.label());
 
-    if (CELERITAS_USE_JSON)
+    if (CELERITAS_USE_JSON && CELERITAS_UNITS == CELERITAS_UNITS_CGS)
     {
-        EXPECT_EQ(
-            R"json({"_units":{"charge":"e","mass":"MeV/c^2"},"charge":[-1.0,0.0,0.0,1.0],"decay_constant":[0.0,0.0,0.0011371389583807142,0.0],"is_antiparticle":[false,false,false,true],"label":["electron","gamma","neutron","positron"],"mass":[0.5109989461,0.0,939.565413,0.5109989461],"pdg":[11,22,2112,-11]})json",
-            to_string(out))
-            << "\n/*** REPLACE ***/\nR\"json(" << to_string(out)
-            << ")json\"\n/******/";
+        EXPECT_JSON_EQ(
+            R"json({"_category":"internal","_label":"particle","_units":{"charge":"e","mass":"MeV/c^2"},"charge":[-1.0,0.0,0.0,1.0],"decay_constant":[0.0,0.0,0.0011371389583807142,0.0],"is_antiparticle":[false,false,false,true],"label":["electron","gamma","neutron","positron"],"mass":[0.5109989461,0.0,939.565413,0.5109989461],"pdg":[11,22,2112,-11]})json",
+            to_string(out));
     }
 }
 
@@ -140,7 +139,7 @@ TEST_F(ParticleImportTest, TEST_IF_CELERITAS_USE_ROOT(import_particle))
         loaded_pdgs.push_back(particles->id_to_pdg(particle_id).get());
     }
 
-    const std::string expected_loaded_names[] = {"gamma", "e-", "e+"};
+    std::string const expected_loaded_names[] = {"gamma", "e-", "e+"};
     int const expected_loaded_pdgs[] = {22, 11, -11};
 
     EXPECT_VEC_EQ(expected_loaded_names, loaded_names);
@@ -176,15 +175,15 @@ TEST_F(ParticleTestHost, electron)
         particle_params->host_ref(), state_ref, TrackSlotId(0));
     particle = Initializer_t{ParticleId{0}, MevEnergy{0.5}};
 
-    EXPECT_DOUBLE_EQ(0.5, particle.energy().value());
-    EXPECT_DOUBLE_EQ(0.5109989461, particle.mass().value());
-    EXPECT_DOUBLE_EQ(-1., particle.charge().value());
-    EXPECT_DOUBLE_EQ(0.0, particle.decay_constant());
+    EXPECT_REAL_EQ(0.5, particle.energy().value());
+    EXPECT_REAL_EQ(0.5109989461, particle.mass().value());
+    EXPECT_REAL_EQ(-1., particle.charge().value());
+    EXPECT_REAL_EQ(0.0, particle.decay_constant());
     EXPECT_FALSE(particle.is_antiparticle());
     EXPECT_TRUE(particle.is_stable());
     EXPECT_SOFT_EQ(0.74453076757415848, particle.beta_sq());
-    EXPECT_SOFT_EQ(0.86286196322132447, particle.speed().value());
-    EXPECT_SOFT_EQ(25867950886.882648, native_value_from(particle.speed()));
+    EXPECT_SOFT_EQ(0.86286196322132447,
+                   value_as<units::LightSpeed>(particle.speed()));
     EXPECT_SOFT_EQ(1.9784755992474248, particle.lorentz_factor());
     EXPECT_SOFT_EQ(0.87235253544653601, particle.momentum().value());
     EXPECT_SOFT_EQ(0.7609989461, particle.momentum_sq().value());
@@ -192,10 +191,10 @@ TEST_F(ParticleTestHost, electron)
     // Stop the particle
     EXPECT_FALSE(particle.is_stopped());
     particle.subtract_energy(MevEnergy{0.25});
-    EXPECT_DOUBLE_EQ(0.25, particle.energy().value());
+    EXPECT_REAL_EQ(0.25, particle.energy().value());
     particle.energy(zero_quantity());
     EXPECT_TRUE(particle.is_stopped());
-    EXPECT_DOUBLE_EQ(0.0, particle.energy().value());
+    EXPECT_REAL_EQ(0.0, particle.energy().value());
 }
 
 TEST_F(ParticleTestHost, positron)
@@ -204,10 +203,10 @@ TEST_F(ParticleTestHost, positron)
         particle_params->host_ref(), state_ref, TrackSlotId(0));
     particle = Initializer_t{ParticleId{3}, MevEnergy{1}};
 
-    EXPECT_DOUBLE_EQ(1, particle.energy().value());
-    EXPECT_DOUBLE_EQ(0.5109989461, particle.mass().value());
-    EXPECT_DOUBLE_EQ(1., particle.charge().value());
-    EXPECT_DOUBLE_EQ(0.0, particle.decay_constant());
+    EXPECT_REAL_EQ(1, particle.energy().value());
+    EXPECT_REAL_EQ(0.5109989461, particle.mass().value());
+    EXPECT_REAL_EQ(1., particle.charge().value());
+    EXPECT_REAL_EQ(0.0, particle.decay_constant());
     EXPECT_TRUE(particle.is_antiparticle());
     EXPECT_TRUE(particle.is_stable());
 }
@@ -218,13 +217,13 @@ TEST_F(ParticleTestHost, gamma)
         particle_params->host_ref(), state_ref, TrackSlotId(0));
     particle = Initializer_t{ParticleId{1}, MevEnergy{10}};
 
-    EXPECT_DOUBLE_EQ(0, particle.mass().value());
-    EXPECT_DOUBLE_EQ(10, particle.energy().value());
+    EXPECT_REAL_EQ(0, particle.mass().value());
+    EXPECT_REAL_EQ(10, particle.energy().value());
     EXPECT_FALSE(particle.is_antiparticle());
     EXPECT_TRUE(particle.is_stable());
-    EXPECT_DOUBLE_EQ(1.0, particle.beta_sq());
-    EXPECT_DOUBLE_EQ(1.0, particle.speed().value());
-    EXPECT_DOUBLE_EQ(10, particle.momentum().value());
+    EXPECT_REAL_EQ(1.0, particle.beta_sq());
+    EXPECT_REAL_EQ(1.0, particle.speed().value());
+    EXPECT_REAL_EQ(10, particle.momentum().value());
 }
 
 TEST_F(ParticleTestHost, neutron)
@@ -233,8 +232,9 @@ TEST_F(ParticleTestHost, neutron)
         particle_params->host_ref(), state_ref, TrackSlotId(0));
     particle = Initializer_t{ParticleId{2}, MevEnergy{20}};
 
-    EXPECT_DOUBLE_EQ(20, particle.energy().value());
-    EXPECT_DOUBLE_EQ(1.0 / 879.4, particle.decay_constant());
+    EXPECT_REAL_EQ(20, particle.energy().value());
+    EXPECT_REAL_EQ(1.0 / 879.4 * (1 / units::second),
+                   particle.decay_constant());
     EXPECT_FALSE(particle.is_antiparticle());
     EXPECT_FALSE(particle.is_stable());
 }
@@ -265,30 +265,30 @@ TEST_F(ParticleDeviceTest, TEST_IF_CELER_DEVICE(calc_props))
     result = ptv_test(input);
 
     // Check results
-    double const expected_props[] = {0.5,
-                                     0.5109989461,
-                                     -1,
-                                     0,
-                                     0.8628619632213,
-                                     1.978475599247,
-                                     0.8723525354465,
-                                     0.7609989461,
-                                     10,
-                                     0,
-                                     0,
-                                     0,
-                                     1,
-                                     -1,
-                                     10,
-                                     100,
-                                     20,
-                                     939.565413,
-                                     0,
-                                     0.001137138958381,
-                                     0.2031037086894,
-                                     1.021286437031,
-                                     194.8912941103,
-                                     37982.61652};
+    real_type const expected_props[] = {0.5,
+                                        0.5109989461,
+                                        -1,
+                                        0,
+                                        0.8628619632213,
+                                        1.978475599247,
+                                        0.8723525354465,
+                                        0.7609989461,
+                                        10,
+                                        0,
+                                        0,
+                                        0,
+                                        1,
+                                        -1,
+                                        10,
+                                        100,
+                                        20,
+                                        939.565413,
+                                        0,
+                                        0.001137138958381,
+                                        0.2031037086894,
+                                        1.021286437031,
+                                        194.8912941103,
+                                        37982.61652};
     EXPECT_VEC_SOFT_EQ(expected_props, result.props);
 }
 //---------------------------------------------------------------------------//

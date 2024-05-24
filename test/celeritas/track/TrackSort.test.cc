@@ -1,6 +1,6 @@
 
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -11,9 +11,12 @@
 #include <vector>
 
 #include "corecel/data/Collection.hh"
+#include "corecel/io/LogContextException.hh"
+#include "geocel/UnitUtils.hh"
 #include "celeritas/Types.hh"
 #include "celeritas/ext/GeantPhysicsOptions.hh"
 #include "celeritas/global/ActionRegistry.hh"
+#include "celeritas/global/CoreParams.hh"
 #include "celeritas/global/CoreTrackData.hh"
 #include "celeritas/global/Stepper.hh"
 #include "celeritas/phys/PDGNumber.hh"
@@ -22,8 +25,8 @@
 #include "celeritas/track/TrackInitParams.hh"
 #include "celeritas/track/detail/TrackSortUtils.hh"
 
-#include "../TestEm3Base.hh"
 #include "celeritas_test.hh"
+#include "../TestEm3Base.hh"
 
 namespace celeritas
 {
@@ -50,7 +53,7 @@ class TestEm3NoMsc : public TestEm3Base
         CELER_ASSERT(p.particle_id);
         p.energy = units::MevEnergy{10000};
         p.track_id = TrackId{0};
-        p.position = {-22, 0, 0};
+        p.position = from_cm({-22, 0, 0});
         p.direction = {1, 0, 0};
         p.time = 0;
 
@@ -60,6 +63,16 @@ class TestEm3NoMsc : public TestEm3Base
             result[i].event_id = EventId{i};
         }
         return result;
+    }
+
+  protected:
+    auto build_init() -> SPConstTrackInit override
+    {
+        TrackInitParams::Input input;
+        input.capacity = 4096;
+        input.max_events = 4096;
+        input.track_order = TrackOrder::sort_step_limit_action;
+        return std::make_shared<TrackInitParams>(input);
     }
 };
 
@@ -114,14 +127,14 @@ class TestTrackSortActionIdEm3Stepper : public TestEm3NoMsc,
 
 #define TestActionCountEm3Stepper \
     TEST_IF_CELERITAS_GEANT(TestActionCountEm3Stepper)
+template<MemSpace M>
 class TestActionCountEm3Stepper : public TestEm3NoMsc, public TrackSortTestBase
 {
   protected:
-    template<MemSpace M>
-    using ActionThreads =
-        typename CoreState<MemSpace::device>::ActionThreads<M>;
-    template<MemSpace M>
-    using ActionThreadsItems = AllItems<ThreadId, M>;
+    template<MemSpace M2>
+    using ActionThreads = typename CoreState<M>::template ActionThreads<M2>;
+    template<MemSpace M2>
+    using ActionThreadsItems = AllItems<ThreadId, M2>;
 
     auto build_init() -> SPConstTrackInit override
     {
@@ -132,13 +145,13 @@ class TestActionCountEm3Stepper : public TestEm3NoMsc, public TrackSortTestBase
         return std::make_shared<TrackInitParams>(input);
     }
 
-    template<MemSpace M>
-    void check_action_count(ActionThreads<MemSpace::host> const& items,
-                            Stepper<M> const& step)
+    template<MemSpace M2>
+    void check_action_count(ActionThreads<M2> const& items, size_t size)
     {
+        static_assert(M2 == MemSpace::host || M2 == MemSpace::mapped,
+                      "ActionThreads must be host or mapped");
         auto total_threads = 0;
-        Span<ThreadId const> items_span
-            = items[ActionThreadsItems<MemSpace::host>{}];
+        Span<ThreadId const> items_span = items[ActionThreadsItems<M2>{}];
         auto pos = std::find(items_span.begin(), items_span.end(), ThreadId{});
         ASSERT_EQ(pos, items_span.end());
         for (size_type i = 0; i < items.size() - 1; ++i)
@@ -147,13 +160,45 @@ class TestActionCountEm3Stepper : public TestEm3NoMsc, public TrackSortTestBase
             total_threads += r.size();
             ASSERT_LE(items[ActionId{i}], items[ActionId{i + 1}]);
         }
-        ASSERT_EQ(total_threads, step.state().size());
+        ASSERT_EQ(total_threads, size);
     }
 };
 
 //---------------------------------------------------------------------------//
 // TESTS
 //---------------------------------------------------------------------------//
+
+TEST_F(TestEm3NoMsc, host_is_sorting)
+{
+    CoreState<MemSpace::host> state{*this->core(), StreamId{0}, 128};
+    auto execute = [&](std::string const& label) {
+        ActionId action_id = this->action_reg()->find_action(label);
+        CELER_VALIDATE(action_id, << "no '" << label << "' action found");
+        auto action = dynamic_cast<ExplicitCoreActionInterface const*>(
+            this->action_reg()->action(action_id).get());
+        CELER_VALIDATE(action, << "action '" << label << "' cannot execute");
+        CELER_TRY_HANDLE(action->execute(*this->core(), state),
+                         LogContextException{this->output_reg().get()});
+    };
+
+    auto primaries = this->make_primaries(state.size());
+    state.insert_primaries(make_span(primaries));
+    state.num_actions(this->action_reg()->num_actions() + 1);
+    execute("extend-from-primaries");
+    execute("initialize-tracks");
+    execute("pre-step");
+    execute("sort-tracks-post-step");
+    auto track_slots = state.ref().track_slots.data();
+    auto actions = detail::get_action_ptr(
+        state.ref(), this->core()->init()->host_ref().track_order);
+    detail::ActionAccessor action_accessor{actions, track_slots};
+    for (std::uint32_t i = 1; i < state.size(); ++i)
+    {
+        ASSERT_LE(action_accessor(ThreadId{i - 1}),
+                  action_accessor(ThreadId{i}))
+            << "Track slots are not sorted by action";
+    }
+}
 
 TEST_F(TestTrackPartitionEm3Stepper, host_is_partitioned)
 {
@@ -244,15 +289,15 @@ TEST_F(TestTrackSortActionIdEm3Stepper, host_is_sorted)
     step(make_span(primaries));
 
     auto check_is_sorted = [&step] {
-        auto& step_limit = step.state_ref().sim.step_limit;
+        auto& step_limit_action = step.state_ref().sim.post_step_action;
         auto& track_slots = step.state_ref().track_slots;
         for (celeritas::size_type i = 0; i < track_slots.size() - 1; ++i)
         {
             TrackSlotId tid_current{track_slots[ThreadId{i}]},
                 tid_next{track_slots[ThreadId{i + 1}]};
             ActionId::size_type aid_current{
-                step_limit[tid_current].action.unchecked_get()},
-                aid_next{step_limit[tid_next].action.unchecked_get()};
+                step_limit_action[tid_current].unchecked_get()},
+                aid_next{step_limit_action[tid_next].unchecked_get()};
             ASSERT_LE(aid_current, aid_next)
                 << aid_current << " is larger than " << aid_next;
         }
@@ -289,16 +334,16 @@ TEST_F(TestTrackSortActionIdEm3Stepper, TEST_IF_CELER_DEVICE(device_is_sorted))
         Collection<TrackSlotId::size_type, Ownership::value, MemSpace::host, ThreadId>
             track_slots;
         track_slots = state_ref.track_slots;
-        StateCollection<StepLimit, Ownership::value, MemSpace::host> step_limit;
-        step_limit = state_ref.sim.step_limit;
+        StateCollection<ActionId, Ownership::value, MemSpace::host> step_limit;
+        step_limit = state_ref.sim.post_step_action;
 
         for (celeritas::size_type i = 0; i < track_slots.size() - 1; ++i)
         {
             TrackSlotId tid_current{track_slots[ThreadId{i}]},
                 tid_next{track_slots[ThreadId{i + 1}]};
             ActionId::size_type aid_current{
-                step_limit[tid_current].action.unchecked_get()},
-                aid_next{step_limit[tid_next].action.unchecked_get()};
+                step_limit[tid_current].unchecked_get()},
+                aid_next{step_limit[tid_next].unchecked_get()};
             ASSERT_LE(aid_current, aid_next)
                 << aid_current << " is larger than " << aid_next;
         }
@@ -323,7 +368,8 @@ TEST_F(TestTrackSortActionIdEm3Stepper, TEST_IF_CELER_DEVICE(device_is_sorted))
     }
 }
 
-TEST_F(TestActionCountEm3Stepper, host_count_actions)
+using TestActionCountEm3StepperH = TestActionCountEm3Stepper<MemSpace::host>;
+TEST_F(TestActionCountEm3StepperH, host_count_actions)
 {
     using ActionThreadsH = ActionThreads<MemSpace::host>;
     using ActionThreadsItemsH = ActionThreadsItems<MemSpace::host>;
@@ -349,7 +395,7 @@ TEST_F(TestActionCountEm3Stepper, host_count_actions)
                                         buffer,
                                         TrackOrder::sort_step_limit_action);
 
-        check_action_count(buffer, step);
+        check_action_count(buffer, step.state().size());
         step();
     };
 
@@ -366,7 +412,8 @@ TEST_F(TestActionCountEm3Stepper, host_count_actions)
     }
 }
 
-TEST_F(TestActionCountEm3Stepper, TEST_IF_CELER_DEVICE(device_count_actions))
+using TestActionCountEm3StepperD = TestActionCountEm3Stepper<MemSpace::device>;
+TEST_F(TestActionCountEm3StepperD, TEST_IF_CELER_DEVICE(device_count_actions))
 {
     // Initialize some primaries and take a step
     auto step = this->make_stepper<MemSpace::device>(128);
@@ -379,7 +426,7 @@ TEST_F(TestActionCountEm3Stepper, TEST_IF_CELER_DEVICE(device_count_actions))
     // can't access the collection in CoreState, so test do the counting in a
     // temporary instead
     ActionThreads<MemSpace::device> buffer_d;
-    ActionThreads<MemSpace::host> buffer_h;
+    ActionThreads<MemSpace::mapped> buffer_h;
     resize(&buffer_d, num_actions + 1);
     resize(&buffer_h, num_actions + 1);
 
@@ -392,7 +439,7 @@ TEST_F(TestActionCountEm3Stepper, TEST_IF_CELER_DEVICE(device_count_actions))
             buffer_h,
             TrackOrder::sort_step_limit_action);
 
-        check_action_count(buffer_h, step);
+        check_action_count(buffer_h, step.state().size());
         step();
     };
 

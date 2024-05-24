@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -62,7 +62,7 @@ auto PhotoelectricProcess::step_limits(Applicability applic) const
 /*!
  * Name of the process.
  */
-std::string PhotoelectricProcess::label() const
+std::string_view PhotoelectricProcess::label() const
 {
     return "Photoelectric effect";
 }

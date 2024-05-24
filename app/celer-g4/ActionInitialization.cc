@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -8,11 +8,13 @@
 #include "ActionInitialization.hh"
 
 #include "corecel/io/Logger.hh"
+#include "accel/HepMC3PrimaryGenerator.hh"
 #include "accel/LocalTransporter.hh"
 
 #include "EventAction.hh"
 #include "GlobalSetup.hh"
-#include "PrimaryGeneratorAction.hh"
+#include "HepMC3PrimaryGeneratorAction.hh"
+#include "PGPrimaryGeneratorAction.hh"
 #include "RunAction.hh"
 #include "TrackingAction.hh"
 
@@ -23,13 +25,19 @@ namespace app
 //---------------------------------------------------------------------------//
 /*!
  * Construct global data to be shared across Celeritas workers.
+ *
+ * The parameters will be distributed to worker threads and all the actions.
  */
-ActionInitialization::ActionInitialization() : init_celeritas_{true}
+ActionInitialization::ActionInitialization(SPParams params)
+    : params_{std::move(params)}, init_shared_{true}
 {
-    // Create params to be shared across worker threads
-    params_ = std::make_shared<SharedParams>();
-    // Make global setup commands available to UI
-    GlobalSetup::Instance();
+    CELER_EXPECT(params_);
+
+    // Create Geant4 diagnostics to be shared across worker threads
+    diagnostics_ = std::make_shared<GeantDiagnostics>();
+
+    num_events_ = GlobalSetup::Instance()->setup_options().max_num_events;
+    CELER_ENSURE(num_events_ > 0);
 }
 
 //---------------------------------------------------------------------------//
@@ -49,10 +57,11 @@ void ActionInitialization::BuildForMaster() const
         new RunAction{GlobalSetup::Instance()->GetSetupOptions(),
                       params_,
                       nullptr,
-                      init_celeritas_});
+                      diagnostics_,
+                      init_shared_});
 
-    // Subsequent worker threads must not set up celeritas
-    init_celeritas_ = false;
+    // Subsequent worker threads must not set up celeritas or diagnostics
+    init_shared_ = false;
 }
 
 //---------------------------------------------------------------------------//
@@ -61,26 +70,35 @@ void ActionInitialization::BuildForMaster() const
  */
 void ActionInitialization::Build() const
 {
-    CELER_LOG_LOCAL(status) << "Constructing user actions on worker threads";
+    CELER_LOG_LOCAL(status) << "Constructing user action";
 
     // Primary generator emits source particles
-    this->SetUserAction(new PrimaryGeneratorAction());
+    if (auto hepmc_gen = GlobalSetup::Instance()->hepmc_gen())
+    {
+        this->SetUserAction(new HepMC3PrimaryGeneratorAction(hepmc_gen));
+    }
+    else
+    {
+        this->SetUserAction(new PGPrimaryGeneratorAction(
+            GlobalSetup::Instance()->input().primary_options));
+    }
 
     // Create thread-local transporter to share between actions
     auto transport = std::make_shared<LocalTransporter>();
 
-    // Run action sets up Celeritas (init_celeritas_ will be true iff
+    // Run action sets up Celeritas (init_shared_ will be true if and only if
     // using a serial run manager)
     this->SetUserAction(
         new RunAction{GlobalSetup::Instance()->GetSetupOptions(),
                       params_,
                       transport,
-                      init_celeritas_});
+                      diagnostics_,
+                      init_shared_});
     // Event action saves event ID for offloading and runs queued particles at
     // end of event
-    this->SetUserAction(new EventAction{params_, transport});
+    this->SetUserAction(new EventAction{params_, transport, diagnostics_});
     // Tracking action offloads tracks to device and kills them
-    this->SetUserAction(new TrackingAction{params_, transport});
+    this->SetUserAction(new TrackingAction{params_, transport, diagnostics_});
 }
 
 //---------------------------------------------------------------------------//

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -17,10 +17,10 @@
 #include "celeritas/Quantities.hh"
 #include "celeritas/Types.hh"
 #include "celeritas/mat/MaterialParams.hh"
-#include "celeritas/phys/PDGNumber.hh"
 
 #include "CutoffData.hh"
 #include "CutoffView.hh"
+#include "PDGNumber.hh"
 
 namespace celeritas
 {
@@ -88,10 +88,10 @@ class CutoffParams final : public ParamsDataInterface<CutoffParamsData>
     inline CutoffView get(MaterialId material) const;
 
     //! Access cutoff data on the host
-    HostRef const& host_ref() const final { return data_.host(); }
+    HostRef const& host_ref() const final { return data_.host_ref(); }
 
     //! Access cutoff data on the device
-    DeviceRef const& device_ref() const final { return data_.device(); }
+    DeviceRef const& device_ref() const final { return data_.device_ref(); }
 
   private:
     // Host/device storage and reference

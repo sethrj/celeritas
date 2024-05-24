@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -8,14 +8,19 @@
 #pragma once
 
 #include "corecel/Types.hh"
-#include "orange/OrangeData.hh"
-#include "orange/OrangeTypes.hh"
-#include "orange/construct/OrangeInput.hh"
+#include "corecel/data/CollectionBuilder.hh"
+#include "corecel/data/DedupeCollectionBuilder.hh"
+
+#include "TransformRecordInserter.hh"
+#include "../OrangeData.hh"
+#include "../OrangeInput.hh"
+#include "../OrangeTypes.hh"
 
 namespace celeritas
 {
 namespace detail
 {
+class UniverseInserter;
 //---------------------------------------------------------------------------//
 /*!
  * Convert a RectArrayInput a RectArrayRecord.
@@ -29,14 +34,20 @@ class RectArrayInserter
     //!@}
 
   public:
-    // Construct from full parameter data
-    RectArrayInserter(Data* orange_data);
+    // Construct with universe inserter and parameter data
+    RectArrayInserter(UniverseInserter* insert_universe, Data* orange_data);
 
     // Create a simple unit and return its ID
-    RectArrayId operator()(RectArrayInput const& inp);
+    UniverseId operator()(RectArrayInput const& inp);
 
   private:
     Data* orange_data_{nullptr};
+    TransformRecordInserter insert_transform_;
+    UniverseInserter* insert_universe_;
+
+    CollectionBuilder<RectArrayRecord> rect_arrays_;
+    DedupeCollectionBuilder<real_type> reals_;
+    CollectionBuilder<Daughter> daughters_;
 };
 
 //---------------------------------------------------------------------------//

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -8,6 +8,7 @@
 #pragma once
 
 #include <iosfwd>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -18,19 +19,22 @@
 #include "orange/OrangeData.hh"
 #include "celeritas/Types.hh"
 
+#include "OrangeTestBase.hh"
 #include "Test.hh"
 
 namespace celeritas
 {
+//---------------------------------------------------------------------------//
 struct UnitInput;
 class OrangeParams;
+
 namespace test
 {
 //---------------------------------------------------------------------------//
 /*!
  * Test base for loading geometry.
  */
-class OrangeGeoTestBase : public Test
+class OrangeGeoTestBase : public OrangeTestBase
 {
   public:
     //!@{
@@ -38,6 +42,8 @@ class OrangeGeoTestBase : public Test
     using HostStateRef = HostRef<OrangeStateData>;
     using HostParamsRef = HostCRef<OrangeParamsData>;
     using Params = OrangeParams;
+    using SPConstParams = std::shared_ptr<OrangeParams const>;
+    using Initializer_t = GeoTrackInitializer;
     //!@}
 
     //!@{
@@ -60,14 +66,11 @@ class OrangeGeoTestBase : public Test
     // Convert a string to a sense vector
     static std::vector<Sense> string_to_senses(std::string const& s);
 
-    // Default constructor
-    OrangeGeoTestBase();
-
-    // Default destructor
-    ~OrangeGeoTestBase();
+    // Load `test/geocel/data/{filename}` GDML input using Geant4
+    void build_gdml_geometry(std::string const& filename);
 
     // Load `test/orange/data/{filename}` JSON input
-    void build_geometry(char const* filename);
+    void build_geometry(std::string const& filename);
 
     // Load geometry with one infinite volume
     void build_geometry(OneVolInput);
@@ -94,10 +97,10 @@ class OrangeGeoTestBase : public Test
     //// QUERYING ////
 
     // Find the volume from its label (nullptr allowed)
-    VolumeId find_volume(char const* label) const;
+    VolumeId find_volume(std::string const& label) const;
 
     // Find the surface from its label (NULL pointer allowed)
-    SurfaceId find_surface(char const* label) const;
+    SurfaceId find_surface(std::string const& label) const;
 
     // Surface name (or sentinel if no surface)
     std::string id_to_label(UniverseId uid, LocalSurfaceId surfid) const;
@@ -114,8 +117,13 @@ class OrangeGeoTestBase : public Test
     // Print geometry description
     void describe(std::ostream& os) const;
 
-    //! Number of volumes
+    // Number of volumes
     VolumeId::size_type num_volumes() const;
+
+    //// GenericGeoTestBase ////
+
+    // Return the geometry that was created
+    SPConstGeo build_geometry() final;
 
   private:
     //// TYPES ////
@@ -126,7 +134,7 @@ class OrangeGeoTestBase : public Test
     //// DATA ////
 
     // Param data
-    std::unique_ptr<Params> params_;
+    SPConstParams params_;
 
     // State data
     HostStateStore host_state_;

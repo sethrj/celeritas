@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -12,6 +12,7 @@
 #include "celeritas_config.h"
 #include "corecel/Assert.hh"
 #include "celeritas/io/ImportData.hh"
+#include "celeritas/io/ImporterInterface.hh"
 
 #include "RootUniquePtr.hh"
 
@@ -26,7 +27,8 @@ namespace celeritas
  *
  * RootImporter loads particle, element, material, process, and volume
  * information from a ROOT file that contains an \c ImportData object.
- * Currently, said ROOT file is created by the \c RootExporter class.
+ * Currently, said ROOT file is created by the \c RootExporter class. The
+ * imported data will be converted to the native unit system.
  *
  * \c RootImporter , along with all \c Import[Class] type of classes, are the
  * link between Geant4 and Celeritas. Every Celeritas' host/device class that
@@ -42,7 +44,7 @@ namespace celeritas
  *  // And so on
  * \endcode
  */
-class RootImporter
+class RootImporter final : public ImporterInterface
 {
   public:
     // Construct with ROOT file name

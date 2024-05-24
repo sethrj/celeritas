@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -105,7 +105,7 @@ auto HostKNDemoRunner::operator()(celeritas::app::KNDemoRunArgs args)
     // Construct initialization
     InitialData initial;
     initial.particle = ParticleTrackInitializer{kn_data_.ids.gamma,
-                                                units::MevEnergy{args.energy}};
+                                                units::MevEnergy(args.energy)};
 
     HostRef<StateData> state;
     state.particle = track_states;
@@ -217,8 +217,9 @@ auto HostKNDemoRunner::operator()(celeritas::app::KNDemoRunArgs args)
     }
 
     // Copy integrated energy deposition
-    result.edep.resize(detector_params.tally_grid.size);
-    celeritas::app::finalize(params, state, make_span(result.edep));
+    std::vector<real_type> edep(detector_params.tally_grid.size);
+    celeritas::app::finalize(params, state, make_span(edep));
+    result.edep.assign(edep.begin(), edep.end());
 
     // Store timings
     result.time.push_back(transport_time);

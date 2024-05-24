@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -10,9 +10,11 @@
 #include <algorithm>
 #include <cctype>
 #include <fstream>
+#include <regex>
 
 #include "celeritas_test_config.h"
 #include "corecel/Assert.hh"
+#include "corecel/Types.hh"
 #include "corecel/sys/Environment.hh"
 
 namespace celeritas
@@ -31,10 +33,23 @@ Test::test_data_path(std::string_view subdir, std::string_view filename)
     std::ostringstream os;
     os << celeritas_source_dir << "/test/" << subdir << "/data/" << filename;
 
-    std::string result = os.str();
-    CELER_VALIDATE(std::ifstream(result).good(),
-                   << "Failed to open test data file at " << result);
-    return result;
+    std::string path = os.str();
+    if (!filename.empty())
+    {
+        CELER_VALIDATE(std::ifstream(path).good(),
+                       << "Failed to open test data file at '" << path << "'");
+    }
+    return path;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Replace pointer addresses with 0x0 for improved testability.
+ */
+[[nodiscard]] std::string Test::genericize_pointers(std::string_view s)
+{
+    static std::regex const subs_ptr("0x[0-9a-f]{2,}");
+    return std::regex_replace(std::string{s}, subs_ptr, "0x0");
 }
 
 //---------------------------------------------------------------------------//
@@ -130,6 +145,16 @@ bool Test::strict_testing()
         // Disable strict testing for Geant4
         return false;
     }
+    if (CELERITAS_REAL_TYPE != CELERITAS_REAL_TYPE_DOUBLE)
+    {
+        // Disable strict testing for single precision
+        return false;
+    }
+    if (CELERITAS_UNITS != CELERITAS_UNITS_CGS)
+    {
+        // Disable strict testing for non-CLHEP units
+        return false;
+    }
     return !envstr.empty();
 }
 
@@ -137,7 +162,7 @@ bool Test::strict_testing()
 // Provide a definition for the "inf" value. (This is needed by C++ < 17 so
 // that the adddress off the static value can be taken.)
 constexpr double Test::inf;
-
+constexpr real_type Test::coarse_eps;
 //---------------------------------------------------------------------------//
 }  // namespace test
 }  // namespace celeritas

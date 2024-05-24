@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -29,6 +29,25 @@ namespace celeritas
 {
 class ParticleParams;
 struct ImportData;
+//---------------------------------------------------------------------------//
+//! Small helper class to hopefully help a little with debugging errors
+class IPAContextException : public RichContextException
+{
+  public:
+    IPAContextException(ParticleId id, ImportProcessClass ipc, MaterialId mid);
+
+    //! This class type
+    char const* type() const final { return "ImportProcessAdapterContext"; }
+
+    // Save context to a JSON object
+    void output(JsonPimpl*) const final {}
+
+    //! Get an explanatory message
+    char const* what() const noexcept final { return what_.c_str(); }
+
+  private:
+    std::string what_;
+};
 
 //---------------------------------------------------------------------------//
 /*!

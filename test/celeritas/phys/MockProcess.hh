@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -19,6 +19,29 @@ namespace celeritas
 {
 namespace test
 {
+//---------------------------------------------------------------------------//
+//! Energy loss rate [MeV/cm] per volume [cm^-3] -> [MeV * cm^2]
+struct MevCmSq
+{
+    static CELER_CONSTEXPR_FUNCTION real_type value()
+    {
+        return units::Mev::value() * ipow<2>(units::centimeter);
+    }
+};
+
+using MevCmSqLossDens = Quantity<MevCmSq>;
+
+//! Energy loss rate
+struct MevPerCm
+{
+    static CELER_CONSTEXPR_FUNCTION real_type value()
+    {
+        return units::Mev::value() / units::centimeter;
+    }
+};
+
+using MevPerCmLoss = Quantity<MevPerCm>;
+
 //---------------------------------------------------------------------------//
 /*!
  * Mock process.
@@ -55,7 +78,7 @@ class MockProcess : public Process
         VecApplicability applic;  //!< Applicablity per model
         ModelCallback interact;  //!< MockModel::interact callback
         VecMicroXs xs;  //!< Constant per atom [bn]
-        real_type energy_loss{};  //!< Constant per atom [MeV/cm / cm^-3]
+        MevCmSqLossDens energy_loss{};  //!< Constant per atom
     };
 
   public:
@@ -64,7 +87,7 @@ class MockProcess : public Process
     VecModel build_models(ActionIdIter start_id) const final;
     StepLimitBuilders step_limits(Applicability range) const final;
     bool use_integral_xs() const final;
-    std::string label() const final;
+    std::string_view label() const final;
 
   private:
     Input data_;

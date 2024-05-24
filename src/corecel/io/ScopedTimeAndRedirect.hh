@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -30,9 +30,6 @@ namespace celeritas
         vecgeom::DoNoisyAndLongStuff();
     }
    \endcode
- *
- * \warning During scope, you should be sure *NOT* to call the logger, which by
- * default prints to cerr.
  */
 class ScopedTimeAndRedirect
 {
@@ -42,7 +39,7 @@ class ScopedTimeAndRedirect
 
     //!@{
     //! Prevent copying and moving for RAII class
-    CELER_DELETE_COPY_MOVE(ScopedTimeAndRedirect)
+    CELER_DELETE_COPY_MOVE(ScopedTimeAndRedirect);
     //!@}
 
   private:

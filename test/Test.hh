@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -10,7 +10,9 @@
 #include <cmath>
 #include <string>
 #include <string_view>
-#include <gtest/gtest.h>
+#include <gtest/gtest.h>  // IWYU pragma: export
+
+#include "celeritas_config.h"
 
 namespace celeritas
 {
@@ -43,11 +45,23 @@ class Test : public ::testing::Test
     static std::string
     test_data_path(std::string_view subdir, std::string_view filename);
 
+    // Replace pointer addresses with 0x0 for improved testability
+    [[nodiscard]] static std::string genericize_pointers(std::string_view s);
+
     // True if CELER_TEST_STRICT is set (under CI)
     static bool strict_testing();
 
     // Define "inf" value for subclass testing
     static constexpr double inf = HUGE_VAL;
+    static constexpr float inff = HUGE_VALF;
+
+    // Define coarse epsilon (sqrt typical precision)
+
+#if CELERITAS_REAL_TYPE == CELERITAS_REAL_TYPE_DOUBLE
+    static constexpr double coarse_eps = 1e-6;
+#elif CELERITAS_REAL_TYPE == CELERITAS_REAL_TYPE_FLOAT
+    static constexpr float coarse_eps = 1e-3f;
+#endif
 
   private:
     int filename_counter_ = 0;

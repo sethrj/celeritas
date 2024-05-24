@@ -1,5 +1,5 @@
 #----------------------------------*-CMake-*----------------------------------#
-# Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+# Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 # See the top-level COPYRIGHT file for details.
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 #[=======================================================================[.rst:
@@ -15,11 +15,6 @@ and
 https://cmake.org/cmake/help/latest/variable/CMAKE_USER_MAKE_RULES_OVERRIDE.html
 
 #]=======================================================================]
-
-# Default to building device debug code
-# (note this only works for CMake 3.21+, see
-# https://gitlab.kitware.com/cmake/cmake/-/merge_requests/6253 )
-set(CMAKE_CUDA_FLAGS_DEBUG_INIT "-O0 -g -G")
 
 # Enable lots of warnings for GCC and Clang by default
 foreach(_lang C CXX)

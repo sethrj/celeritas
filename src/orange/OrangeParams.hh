@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -15,9 +15,9 @@
 #include "corecel/data/CollectionMirror.hh"
 #include "corecel/data/ParamsDataInterface.hh"
 #include "corecel/io/Label.hh"
+#include "geocel/BoundingBox.hh"
+#include "geocel/GeoParamsInterface.hh"
 
-#include "BoundingBox.hh"
-#include "GeoParamsInterface.hh"
 #include "OrangeData.hh"
 #include "OrangeTypes.hh"
 
@@ -38,27 +38,30 @@ class OrangeParams final : public GeoParamsSurfaceInterface,
                            public ParamsDataInterface<OrangeParamsData>
 {
   public:
-    // Construct from a JSON file (if JSON is enabled)
-    explicit OrangeParams(std::string const& json_filename);
+    // Construct from a JSON or GDML file (if JSON or Geant4 are enabled)
+    explicit OrangeParams(std::string const& filename);
 
     // Construct in-memory from Geant4 (not implemented)
     explicit OrangeParams(G4VPhysicalVolume const*);
 
     // ADVANCED usage: construct from explicit host data
-    explicit OrangeParams(OrangeInput input);
+    explicit OrangeParams(OrangeInput&& input);
 
     //! Whether safety distance calculations are accurate and precise
     bool supports_safety() const final { return supports_safety_; }
 
     //! Outer bounding box of geometry
-    BoundingBox const& bbox() const final { return bbox_; }
+    BBox const& bbox() const final { return bbox_; }
+
+    //! Maximum universe depth
+    size_type max_depth() const { return this->host_ref().scalars.max_depth; }
 
     //// VOLUMES ////
 
     // Number of volumes
     inline VolumeId::size_type num_volumes() const final;
 
-    // Get the label for a placed volume ID
+    // Get the label for a volume ID
     Label const& id_to_label(VolumeId vol_id) const final;
 
     //! \cond
@@ -79,38 +82,44 @@ class OrangeParams final : public GeoParamsSurfaceInterface,
 
     //// SURFACES ////
 
-    // Get the label for a placed volume ID
+    // Get the label for a surface ID
     Label const& id_to_label(SurfaceId surf_id) const final;
 
     // Get the surface ID corresponding to a unique label name
     SurfaceId find_surface(std::string const& name) const final;
 
-    //! Number of distinct surfaces
+    // Number of distinct surfaces
     inline SurfaceId::size_type num_surfaces() const final;
+
+    //// UNIVERSES ////
+
+    // Get the label for a universe ID
+    Label const& id_to_label(UniverseId surf_id) const;
+
+    // Get the universe ID corresponding to a unique label name
+    UniverseId find_universe(std::string const& name) const;
+
+    // Number of universes
+    inline UniverseId::size_type num_universes() const;
 
     //// DATA ACCESS ////
 
     //! Reference to CPU geometry data
-    HostRef const& host_ref() const final { return data_.host(); }
+    HostRef const& host_ref() const final { return data_.host_ref(); }
 
     //! Reference to managed GPU geometry data
-    DeviceRef const& device_ref() const final { return data_.device(); }
+    DeviceRef const& device_ref() const final { return data_.device_ref(); }
 
   private:
     // Host metadata/access
+    LabelIdMultiMap<UniverseId> univ_labels_;
     LabelIdMultiMap<SurfaceId> surf_labels_;
     LabelIdMultiMap<VolumeId> vol_labels_;
-    BoundingBox bbox_;
+    BBox bbox_;
     bool supports_safety_{};
 
     // Host/device storage and reference
     CollectionMirror<OrangeParamsData> data_;
-
-  private:
-    //// HELPER METHODS ////
-
-    // Get surface and volume labels for all universes.
-    void process_metadata(OrangeInput const& input);
 };
 
 //---------------------------------------------------------------------------//
@@ -137,11 +146,20 @@ VolumeId::size_type OrangeParams::num_volumes() const
 
 //---------------------------------------------------------------------------//
 /*!
- * Number of distinct surfaces.
+ * Number of surfaces.
  */
 SurfaceId::size_type OrangeParams::num_surfaces() const
 {
     return surf_labels_.size();
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Number of universes.
+ */
+UniverseId::size_type OrangeParams::num_universes() const
+{
+    return univ_labels_.size();
 }
 
 //---------------------------------------------------------------------------//

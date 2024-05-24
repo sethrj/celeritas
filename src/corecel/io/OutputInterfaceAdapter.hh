@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -51,7 +51,7 @@ class OutputInterfaceAdapter final : public OutputInterface
     Category category() const final { return cat_; }
 
     //! Label of the entry inside the category.
-    std::string label() const final { return label_; }
+    std::string_view label() const final { return label_; }
 
     // Write output to the given JSON object
     void output(JsonPimpl* jp) const final;
@@ -128,7 +128,7 @@ void OutputInterfaceAdapter<T>::output(JsonPimpl* j) const
 #if CELERITAS_USE_JSON
     to_json(j->obj, *obj_);
 #else
-    CELER_NOT_IMPLEMENTED("nlohmann_json");
+    CELER_NOT_CONFIGURED("nlohmann_json");
 #endif
 }
 

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -30,7 +30,7 @@ MockProcess::MockProcess(Input data) : data_(std::move(data))
         || std::any_of(data_.xs.begin(), data_.xs.end(), [](BarnMicroXs x) {
                return x > zero_quantity();
            }));
-    CELER_EXPECT(data_.energy_loss >= 0);
+    CELER_EXPECT(data_.energy_loss >= zero_quantity());
 }
 
 //---------------------------------------------------------------------------//
@@ -52,40 +52,43 @@ auto MockProcess::build_models(ActionIdIter start_id) const -> VecModel
 }
 
 //---------------------------------------------------------------------------//
-auto MockProcess::step_limits(Applicability range) const -> StepLimitBuilders
+auto MockProcess::step_limits(Applicability applic) const -> StepLimitBuilders
 {
-    CELER_EXPECT(range.material);
-    CELER_EXPECT(range.particle);
+    CELER_EXPECT(applic.material);
+    CELER_EXPECT(applic.particle);
 
-    using VecReal = std::vector<real_type>;
+    using VecDbl = std::vector<double>;
 
-    MaterialView mat(data_.materials->host_ref(), range.material);
+    MaterialView mat(data_.materials->host_ref(), applic.material);
     real_type numdens = mat.number_density();
 
     StepLimitBuilders builders;
     if (!data_.xs.empty())
     {
-        VecReal xs_grid;
+        VecDbl xs_grid;
         for (auto xs : data_.xs)
+        {
             xs_grid.push_back(native_value_from(xs) * numdens);
+        }
         builders[ValueGridType::macro_xs]
             = std::make_unique<ValueGridLogBuilder>(
-                range.lower.value(), range.upper.value(), xs_grid);
+                applic.lower.value(), applic.upper.value(), xs_grid);
     }
-    if (data_.energy_loss > 0)
+    if (data_.energy_loss > zero_quantity())
     {
-        real_type eloss_rate = data_.energy_loss * numdens;
+        auto eloss_rate = native_value_to<units::MevEnergy>(
+            native_value_from(data_.energy_loss) * numdens);
         builders[ValueGridType::energy_loss]
             = std::make_unique<ValueGridLogBuilder>(
-                range.lower.value(),
-                range.upper.value(),
-                VecReal{eloss_rate, eloss_rate});
+                applic.lower.value(),
+                applic.upper.value(),
+                VecDbl{eloss_rate.value(), eloss_rate.value()});
 
         builders[ValueGridType::range] = std::make_unique<ValueGridLogBuilder>(
-            range.lower.value(),
-            range.upper.value(),
-            VecReal{range.lower.value() / eloss_rate,
-                    range.upper.value() / eloss_rate});
+            applic.lower.value(),
+            applic.upper.value(),
+            VecDbl{applic.lower.value() / eloss_rate.value(),
+                   applic.upper.value() / eloss_rate.value()});
     }
 
     return builders;
@@ -98,7 +101,7 @@ bool MockProcess::use_integral_xs() const
 }
 
 //---------------------------------------------------------------------------//
-std::string MockProcess::label() const
+std::string_view MockProcess::label() const
 {
     return data_.label;
 }

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -16,8 +16,8 @@
 #include "corecel/data/CollectionBuilder.hh"
 #include "corecel/grid/UniformGridData.hh"
 #include "celeritas/Units.hh"
-#include "celeritas/field/RZMapFieldData.hh"
 
+#include "RZMapFieldData.hh"
 #include "RZMapFieldInput.hh"
 
 namespace celeritas
@@ -52,6 +52,9 @@ RZMapFieldParams::RZMapFieldParams(RZMapFieldInput const& inp)
         << "invalid field length (field_r size=" << inp.field_r.size()
         << "): should be " << inp.field_z.size());
 
+    // Throw a runtime error if any driver options are invalid
+    validate_input(inp.driver_options);
+
     auto host_data = [&inp] {
         HostVal<RZMapFieldParamsData> host;
 
@@ -64,12 +67,14 @@ RZMapFieldParams::RZMapFieldParams(RZMapFieldInput const& inp)
         fieldmap.reserve(inp.field_z.size());
         for (auto i : range(inp.field_z.size()))
         {
-            // Save field vector, converting from Tesla to native units
+            // Save field vector
             FieldMapElement el;
-            el.value_z = inp.field_z[i] * units::tesla;
-            el.value_r = inp.field_r[i] * units::tesla;
+            el.value_z = inp.field_z[i];
+            el.value_r = inp.field_r[i];
             fieldmap.push_back(el);
         }
+
+        host.options = inp.driver_options;
         return host;
     }();
 

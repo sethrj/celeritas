@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -33,15 +33,15 @@ class TestInterface final : public OutputInterface
     }
 
     Category category() const final { return cat_; }
-    std::string label() const final { return label_; }
+    std::string_view label() const final { return label_; }
 
     void output(JsonPimpl* json) const final
     {
 #if CELERITAS_USE_JSON
         json->obj = value_;
 #else
-        (void)sizeof(json);
-        (void)sizeof(value_);
+        CELER_DISCARD(json);
+        CELER_DISCARD(value_);
 #endif
     }
 
@@ -71,10 +71,10 @@ class MockKernelContextException : public RichContextException
         json->obj["event"] = event_;
         json->obj["track"] = track_;
 #else
-        (void)sizeof(json);
-        (void)sizeof(thread_);
-        (void)sizeof(event_);
-        (void)sizeof(track_);
+        CELER_DISCARD(json);
+        CELER_DISCARD(thread_);
+        CELER_DISCARD(event_);
+        CELER_DISCARD(track_);
 #endif
     }
 
@@ -95,8 +95,8 @@ class OutputRegistryTest : public Test
 
     std::string to_string(OutputRegistry const& reg)
     {
-        static const std::regex file_match(R"re("file":"[^"]+")re");
-        static const std::regex line_match(R"re("line":[0-9]+)re");
+        static std::regex const file_match(R"re("file":"[^"]+")re");
+        static std::regex const line_match(R"re("line":[0-9]+)re");
         std::ostringstream os;
         reg.output(&os);
         std::string result = os.str();
@@ -145,7 +145,7 @@ TEST_F(OutputRegistryTest, minimal)
     std::string result = this->to_string(reg);
     if (CELERITAS_USE_JSON)
     {
-        EXPECT_EQ(
+        EXPECT_JSON_EQ(
             R"json({"input":{"input_value":42},"result":{"out":1,"timing":2}})json",
             result);
     }
@@ -177,7 +177,7 @@ TEST_F(OutputRegistryTest, exception_output)
     std::string result = this->to_string(reg);
     if (CELERITAS_USE_JSON)
     {
-        EXPECT_EQ(
+        EXPECT_JSON_EQ(
             R"json({"result":{"exception":{"condition":"false","file":"FILE","line":123,"type":"RuntimeError","what":"things went wrong","which":"runtime"}}})json",
             result);
     }
@@ -197,7 +197,7 @@ TEST_F(OutputRegistryTest, nested_exception_output)
     std::string result = this->to_string(reg);
     if (CELERITAS_USE_JSON)
     {
-        EXPECT_EQ(
+        EXPECT_JSON_EQ(
             R"json({"result":{"exception":{"condition":"false","context":{"event":2,"thread":123,"track":4567,"type":"MockKernelContextException"},"file":"FILE","line":123,"type":"RuntimeError","what":"things went wrong","which":"runtime"}}})json",
             result);
     }

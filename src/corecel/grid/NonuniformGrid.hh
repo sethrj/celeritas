@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -32,6 +32,7 @@ class NonuniformGrid
     using value_type = T;
     using Values
         = Collection<value_type, Ownership::const_reference, MemSpace::native>;
+    using SpanConstT = typename Values::SpanConstT;
     //!@}
 
   public:
@@ -61,8 +62,7 @@ class NonuniformGrid
     inline CELER_FUNCTION size_type find(value_type value) const;
 
   private:
-    // TODO: change backend for effiency if needeed
-    Span<value_type const> data_;
+    SpanConstT data_;
 };
 
 //---------------------------------------------------------------------------//

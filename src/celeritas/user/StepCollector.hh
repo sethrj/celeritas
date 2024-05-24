@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -39,6 +39,9 @@ struct StepStorage;
  * detectors" (mapping volume IDs to detector IDs and ignoring unmapped
  * volumes) and supporting unfiltered output for "MC truth" . Right now only
  * one or the other can be used, not both.
+ *
+ * \todo Add a "begin run" interface to set up the stream store, rather than
+ * passing in number of streams at construction time.
  */
 class StepCollector
 {

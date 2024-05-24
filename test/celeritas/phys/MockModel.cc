@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -23,6 +23,15 @@ MockModel::MockModel(Input data) : data_(std::move(data))
     CELER_EXPECT(data_.materials);
     CELER_EXPECT(data_.applic);
     CELER_EXPECT(data_.cb);
+    label_ = "mock-model-";
+    label_ += std::to_string(data_.id.get() - 4);
+
+    std::ostringstream os;
+    os << "MockModel(" << (data_.id.get() - 4)
+       << ", p=" << data_.applic.particle.get()
+       << ", emin=" << data_.applic.lower.value()
+       << ", emax=" << data_.applic.upper.value() << ")";
+    description_ = std::move(os).str();
 }
 
 auto MockModel::applicability() const -> SetApplicability
@@ -42,7 +51,7 @@ auto MockModel::micro_xs(Applicability range) const -> MicroXsBuilders
         builders.resize(mat.num_elements());
         for (auto elcomp_idx : celeritas::range(mat.num_elements()))
         {
-            std::vector<real_type> xs_grid;
+            std::vector<double> xs_grid;
             for (auto xs : data_.xs)
             {
                 xs_grid.push_back(native_value_from(xs));
@@ -64,21 +73,6 @@ void MockModel::execute(CoreParams const&, CoreStateDevice&) const
 {
     // Inform calling test code that we've been executed
     data_.cb(this->action_id());
-}
-
-std::string MockModel::label() const
-{
-    return std::string("mock-model-") + std::to_string(data_.id.get() - 4);
-}
-
-std::string MockModel::description() const
-{
-    std::ostringstream os;
-    os << "MockModel(" << (data_.id.get() - 4)
-       << ", p=" << data_.applic.particle.get()
-       << ", emin=" << data_.applic.lower.value()
-       << ", emax=" << data_.applic.upper.value() << ")";
-    return os.str();
 }
 
 //---------------------------------------------------------------------------//

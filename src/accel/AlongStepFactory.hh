@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -19,6 +19,7 @@ namespace celeritas
 {
 struct ImportData;
 struct RZMapFieldInput;
+struct UniformFieldParams;
 class CutoffParams;
 class FluctuationParams;
 class GeoMaterialParams;
@@ -79,7 +80,7 @@ class AlongStepFactoryInterface
     //!@{
     //! \name Type aliases
     using argument_type = AlongStepFactoryInput const&;
-    using result_type = std::shared_ptr<ExplicitActionInterface const>;
+    using result_type = std::shared_ptr<ExplicitCoreActionInterface const>;
     //!@}
 
   public:
@@ -90,7 +91,7 @@ class AlongStepFactoryInterface
 
   protected:
     AlongStepFactoryInterface() = default;
-    CELER_DEFAULT_COPY_MOVE(AlongStepFactoryInterface)
+    CELER_DEFAULT_COPY_MOVE(AlongStepFactoryInterface);
 };
 
 //---------------------------------------------------------------------------//
@@ -98,14 +99,14 @@ class AlongStepFactoryInterface
  * Create an along-step method for a uniform (or zero) field.
  *
  * The constructor is a lazily evaluated function that must return the field
- * vector in native Geant4 units.  If unspecified, the field is zero.
+ * definition and driver configuration. If unspecified, the field is zero.
  */
 class UniformAlongStepFactory final : public AlongStepFactoryInterface
 {
   public:
     //!@{
     //! \name Type aliases
-    using FieldFunction = std::function<G4ThreeVector()>;
+    using FieldFunction = std::function<UniformFieldParams()>;
     //!@}
 
   public:

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -10,14 +10,14 @@
 
 #include <cstdint>
 
+#include "celeritas_config.h"
 // IWYU pragma: begin_exports
 #include "corecel/Assert.hh"
 #include "corecel/Macros.hh"
 #include "corecel/OpaqueId.hh"
 #include "corecel/Types.hh"
-#include "corecel/cont/Array.hh"
 #include "corecel/sys/ThreadId.hh"
-#include "orange/Types.hh"
+#include "geocel/Types.hh"
 // IWYU pragma: end_exports
 
 namespace celeritas
@@ -33,32 +33,29 @@ using ActionId = OpaqueId<class ActionInterface>;
 using ElementId = OpaqueId<struct ElementRecord>;
 
 //! Counter for the initiating event for a track
-using EventId = OpaqueId<struct Event>;
+using EventId = OpaqueId<struct Event_>;
 
 //! Opaque index to IsotopeRecord in a vector
 using IsotopeId = OpaqueId<struct IsotopeRecord>;
-
-//! Opaque index to MaterialRecord in a vector: represents a material ID
-using MaterialId = OpaqueId<struct MaterialRecord>;
 
 //! Opaque index of model in the list of physics processes
 using ModelId = OpaqueId<class Model>;
 
 //! Opaque index to ParticleRecord in a vector: represents a particle type
-using ParticleId = OpaqueId<struct ParticleRecord>;
+using ParticleId = OpaqueId<struct Particle_>;
 
 //! Opaque index of physics process
 using ProcessId = OpaqueId<class Process>;
 
 //! Unique ID (for an event) of a track among all primaries and secondaries
-using TrackId = OpaqueId<struct Track>;
+using TrackId = OpaqueId<struct Track_>;
 
 //---------------------------------------------------------------------------//
 // (detailed type aliases)
 //---------------------------------------------------------------------------//
 
 //! Opaque index for mapping volume-specific "sensitive detector" objects
-using DetectorId = OpaqueId<struct Detector>;
+using DetectorId = OpaqueId<struct Detector_>;
 
 //! Opaque index to one elemental component datum in a particular material
 using ElementComponentId = OpaqueId<struct MatElementComponent>;
@@ -73,7 +70,10 @@ using ParticleProcessId = OpaqueId<ProcessId>;
 using ParticleModelId = OpaqueId<ModelId>;
 
 //! Opaque index of electron subshell
-using SubshellId = OpaqueId<struct Subshell>;
+using SubshellId = OpaqueId<struct Subshell_>;
+
+//! Opaque index of particle-nucleon cascade channel
+using ChannelId = OpaqueId<struct Channel_>;
 
 //---------------------------------------------------------------------------//
 // ENUMERATIONS
@@ -82,7 +82,8 @@ using SubshellId = OpaqueId<struct Subshell>;
 enum class Interp
 {
     linear,
-    log
+    log,
+    size_
 };
 
 //---------------------------------------------------------------------------//
@@ -144,6 +145,29 @@ enum class TrackOrder
     sort_along_step_action,  //!< Sort only by the along-step action id
     sort_step_limit_action,  //!< Sort only by the step limit action id
     sort_action,  //!< Sort by along-step id, then post-step ID
+    sort_particle_type,  //!< Sort by particle type
+    size_
+};
+
+//---------------------------------------------------------------------------//
+//! Algorithm used to calculate the multiple scattering step limit
+enum class MscStepLimitAlgorithm
+{
+    minimal,
+    safety,
+    safety_plus,
+    distance_to_boundary,
+    size_,
+};
+
+//---------------------------------------------------------------------------//
+//! Nuclear form factor model for Coulomb scattering
+enum class NuclearFormFactorType
+{
+    none,
+    flat,
+    exponential,
+    gaussian,
     size_
 };
 
@@ -168,6 +192,9 @@ struct StepLimit
 // HELPER FUNCTIONS (HOST)
 //---------------------------------------------------------------------------//
 
+// Get a string corresponding to an interpolation
+char const* to_cstring(Interp);
+
 // Get a string corresponding to a material state
 char const* to_cstring(MatterState);
 
@@ -176,6 +203,12 @@ char const* to_cstring(ActionOrder);
 
 // Get a string corresponding to a track ordering policy
 char const* to_cstring(TrackOrder);
+
+// Get a string corresponding to the MSC step limit algorithm
+char const* to_cstring(MscStepLimitAlgorithm value);
+
+// Get a string corresponding to the nuclear form factor model
+char const* to_cstring(NuclearFormFactorType value);
 
 // Checks that the TrackOrder will sort tracks by actions applied at the given
 // ActionOrder

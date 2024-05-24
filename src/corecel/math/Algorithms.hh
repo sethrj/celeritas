@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -15,6 +15,7 @@
 #include "corecel/Macros.hh"
 
 #include "detail/AlgorithmsImpl.hh"
+#include "detail/MathImpl.hh"
 
 namespace celeritas
 {
@@ -109,6 +110,56 @@ struct Less<void>
 
 //---------------------------------------------------------------------------//
 // Replace/extend <algorithm>
+//---------------------------------------------------------------------------//
+/*!
+ * Whether the predicate is true for all items.
+ */
+template<class InputIt, class Predicate>
+inline CELER_FUNCTION bool all_of(InputIt iter, InputIt last, Predicate p)
+{
+    for (; iter != last; ++iter)
+    {
+        if (!p(*iter))
+            return false;
+    }
+    return true;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Whether the predicate is true for any item.
+ */
+template<class InputIt, class Predicate>
+inline CELER_FUNCTION bool any_of(InputIt iter, InputIt last, Predicate p)
+{
+    for (; iter != last; ++iter)
+    {
+        if (p(*iter))
+            return true;
+    }
+    return false;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Whether the predicate is true for pairs of consecutive items.
+ */
+template<class InputIt, class Predicate>
+inline CELER_FUNCTION bool all_adjacent(InputIt iter, InputIt last, Predicate p)
+{
+    if (iter == last)
+        return true;
+
+    auto prev = *iter++;
+    while (iter != last)
+    {
+        if (!p(prev, *iter))
+            return false;
+        prev = *iter++;
+    }
+    return true;
+}
+
 //---------------------------------------------------------------------------//
 /*!
  * Clamp the value between lo and hi values.
@@ -224,6 +275,35 @@ CELER_FORCEINLINE_FUNCTION ForwardIt upper_bound(ForwardIt first,
 
 //---------------------------------------------------------------------------//
 /*!
+ * Find the given element in a sorted range.
+ */
+template<class ForwardIt, class T, class Compare>
+inline CELER_FUNCTION ForwardIt
+find_sorted(ForwardIt first, ForwardIt last, T const& value, Compare comp)
+{
+    auto iter = ::celeritas::lower_bound(first, last, value, comp);
+    if (iter == last || comp(*iter, value) || comp(value, *iter))
+    {
+        // Insertion point is off the end, or value is not equal
+        return last;
+    }
+    return iter;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Find the given element in a sorted range.
+ */
+template<class ForwardIt, class T>
+CELER_FORCEINLINE_FUNCTION ForwardIt find_sorted(ForwardIt first,
+                                                 ForwardIt last,
+                                                 T const& value)
+{
+    return ::celeritas::find_sorted(first, last, value, Less<>{});
+}
+
+//---------------------------------------------------------------------------//
+/*!
  * Partition elements in the given range, "true" before "false".
  *
  * This is done by swapping elements until the range is partitioned.
@@ -269,23 +349,17 @@ CELER_FORCEINLINE_FUNCTION void sort(RandomAccessIt first, RandomAccessIt last)
  * This function is specialized when building CUDA device code, which has
  * special intrinsics for max.
  */
-#ifndef __CUDA_ARCH__
-template<class T>
-#else
-template<class T, typename = std::enable_if_t<!std::is_arithmetic<T>::value>>
-#endif
+template<class T, std::enable_if_t<!std::is_floating_point<T>::value, bool> = true>
 CELER_CONSTEXPR_FUNCTION T const& max(T const& a, T const& b) noexcept
 {
     return (b > a) ? b : a;
 }
 
-#ifdef __CUDA_ARCH__
-template<class T, typename = std::enable_if_t<std::is_arithmetic<T>::value>>
+template<class T, std::enable_if_t<std::is_floating_point<T>::value, bool> = true>
 CELER_CONSTEXPR_FUNCTION T max(T a, T b) noexcept
 {
-    return ::max(a, b);
+    return std::fmax(a, b);
 }
-#endif
 
 //---------------------------------------------------------------------------//
 /*!
@@ -294,23 +368,17 @@ CELER_CONSTEXPR_FUNCTION T max(T a, T b) noexcept
  * This function is specialized when building CUDA device code, which has
  * special intrinsics for min.
  */
-#ifndef __CUDA_ARCH__
-template<class T>
-#else
-template<class T, typename = std::enable_if_t<!std::is_arithmetic<T>::value>>
-#endif
+template<class T, std::enable_if_t<!std::is_floating_point<T>::value, bool> = true>
 CELER_CONSTEXPR_FUNCTION T const& min(T const& a, T const& b) noexcept
 {
     return (b < a) ? b : a;
 }
 
-#ifdef __CUDA_ARCH__
-template<class T, typename = std::enable_if_t<std::is_arithmetic<T>::value>>
+template<class T, std::enable_if_t<std::is_floating_point<T>::value, bool> = true>
 CELER_CONSTEXPR_FUNCTION T min(T a, T b) noexcept
 {
-    return ::min(a, b);
+    return std::fmin(a, b);
 }
-#endif
 
 //---------------------------------------------------------------------------//
 /*!
@@ -348,20 +416,57 @@ CELER_FORCEINLINE_FUNCTION ForwardIt min_element(ForwardIt first,
 //---------------------------------------------------------------------------//
 // Replace/extend <cmath>
 //---------------------------------------------------------------------------//
+//! Generate overloads for a single-argument math function
+#define CELER_WRAP_MATH_FLOAT_DBL_1(PREFIX, FUNC)        \
+    CELER_FORCEINLINE_FUNCTION float FUNC(float value)   \
+    {                                                    \
+        return ::PREFIX##FUNC##f(value);                 \
+    }                                                    \
+    CELER_FORCEINLINE_FUNCTION double FUNC(double value) \
+    {                                                    \
+        return ::PREFIX##FUNC(value);                    \
+    }
+#define CELER_WRAP_MATH_FLOAT_DBL_PTR_2(PREFIX, FUNC)                        \
+    CELER_FORCEINLINE_FUNCTION void FUNC(float value, float* a, float* b)    \
+    {                                                                        \
+        return ::PREFIX##FUNC##f(value, a, b);                               \
+    }                                                                        \
+    CELER_FORCEINLINE_FUNCTION void FUNC(double value, double* a, double* b) \
+    {                                                                        \
+        return ::PREFIX##FUNC(value, a, b);                                  \
+    }
+
+//---------------------------------------------------------------------------//
 /*!
  * Return an integer power of the input value.
  *
  * Example: \code
   assert(9.0 == ipow<2>(3.0));
   assert(256 == ipow<8>(2));
+  static_assert(256 == ipow<8>(2));
  \endcode
  */
 template<unsigned int N, class T>
 CELER_CONSTEXPR_FUNCTION T ipow(T v) noexcept
 {
-    return (N == 0)       ? 1
-           : (N % 2 == 0) ? ipow<N / 2>(v) * ipow<N / 2>(v)
-                          : v * ipow<(N - 1) / 2>(v) * ipow<(N - 1) / 2>(v);
+    if constexpr (N == 0)
+    {
+        CELER_DISCARD(v)  // Suppress warning in older compilers
+        return 1;
+    }
+    else if constexpr (N % 2 == 0)
+    {
+        return ipow<N / 2>(v) * ipow<N / 2>(v);
+    }
+    else
+    {
+        return v * ipow<(N - 1) / 2>(v) * ipow<(N - 1) / 2>(v);
+    }
+#if (__CUDACC_VER_MAJOR__ < 11) \
+    || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ < 5)
+    // "error: missing return statement at end of non-void function"
+    return T{};
+#endif
 }
 
 //---------------------------------------------------------------------------//
@@ -375,7 +480,7 @@ CELER_CONSTEXPR_FUNCTION T ipow(T v) noexcept
   assert(9.0 == fastpow(3.0, 2.0));
  \endcode
  */
-template<class T, typename = std::enable_if_t<std::is_floating_point<T>::value>>
+template<class T, std::enable_if_t<std::is_floating_point<T>::value, bool> = true>
 inline CELER_FUNCTION T fastpow(T a, T b)
 {
     CELER_EXPECT(a > 0 || (a == 0 && b != 0));
@@ -383,7 +488,7 @@ inline CELER_FUNCTION T fastpow(T a, T b)
 }
 
 #ifdef __CUDACC__
-using ::rsqrt;
+CELER_WRAP_MATH_FLOAT_DBL_1(, rsqrt)
 #else
 //---------------------------------------------------------------------------//
 /*!
@@ -406,6 +511,33 @@ inline CELER_FUNCTION float rsqrt(float value)
 
 //---------------------------------------------------------------------------//
 /*!
+ * Use fused multiply-add for generic calculations.
+ *
+ * This provides a floating point specialization so that \c fma can be used in
+ * code that is accelerated for floating point calculations but still works
+ * correctly with integer arithmetic.
+ *
+ * Because of the single template parameter, it may be easier to use \c
+ * std::fma directly in most cases.
+ */
+template<class T, std::enable_if_t<std::is_floating_point<T>::value, bool> = true>
+inline CELER_FUNCTION T fma(T a, T b, T y)
+{
+    return std::fma(a, b, y);
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Provide an FMA-like interface for integers.
+ */
+template<class T, std::enable_if_t<!std::is_floating_point<T>::value, bool> = true>
+CELER_CONSTEXPR_FUNCTION T fma(T a, T b, T y)
+{
+    return a * b + y;
+}
+
+//---------------------------------------------------------------------------//
+/*!
  * Integer division, rounding up, for positive numbers.
  */
 template<class T>
@@ -414,6 +546,106 @@ CELER_CONSTEXPR_FUNCTION T ceil_div(T top, T bottom)
     static_assert(std::is_unsigned<T>::value, "Value is not an unsigned int");
     return (top / bottom) + (top % bottom != 0);
 }
+
+//---------------------------------------------------------------------------//
+/*!
+ * Negation that won't return signed zeros.
+ */
+template<class T>
+[[nodiscard]] CELER_CONSTEXPR_FUNCTION T negate(T value)
+{
+    return T{0} - value;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Calculate the difference of squares \f$ a^2 - b^2 \f$.
+ *
+ * This calculation exchanges one multiplication for one addition, but it does
+ * not increase the accuracy of the computed result. It is used
+ * occasionally in Geant4 but is likely a premature optimization... see
+ * https://github.com/celeritas-project/celeritas/pull/1082
+ */
+template<class T>
+CELER_CONSTEXPR_FUNCTION T diffsq(T a, T b)
+{
+    return (a - b) * (a + b);
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Calculate the Euclidian modulus of two numbers.
+ *
+ * If both numbers are positive, this should be the same as fmod. If the
+ * sign of the remainder and denominator don't match, the remainder will be
+ * remapped so that it is between zero and the denominator.
+ *
+ * This function is useful for normalizing user-provided angles.
+ */
+template<class T, std::enable_if_t<std::is_floating_point<T>::value, bool> = true>
+CELER_CONSTEXPR_FUNCTION T eumod(T numer, T denom)
+{
+    T r = std::fmod(numer, denom);
+    if (r < 0)
+    {
+        if (denom >= 0)
+        {
+            r += denom;
+        }
+        else
+        {
+            r -= denom;
+        }
+    }
+    return r;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Double-precision math constant (POSIX derivative).
+ *
+ * These should be used in *host* or *type-dependent* circumstances because, if
+ * using \c CELERITAS_REAL_TYPE=float, this could have more accuracy than
+ * \c celeritas::constants::pi .
+ */
+inline constexpr double m_pi = detail::m_pi;
+
+//---------------------------------------------------------------------------//
+//!@{
+//! CUDA/HIP equivalent routines
+#if CELER_DEVICE_SOURCE
+// CUDA and HIP define sinpi and sinpif, and sincospi, sincosf
+CELER_WRAP_MATH_FLOAT_DBL_1(, sinpi)
+CELER_WRAP_MATH_FLOAT_DBL_1(, cospi)
+CELER_WRAP_MATH_FLOAT_DBL_PTR_2(, sincospi)
+CELER_WRAP_MATH_FLOAT_DBL_PTR_2(, sincos)
+#elif __APPLE__ && !defined(__CLING__)
+// Apple defines __sinpi, __sinpif, __sincospi, ...
+CELER_WRAP_MATH_FLOAT_DBL_1(__, sinpi)
+CELER_WRAP_MATH_FLOAT_DBL_1(__, cospi)
+CELER_WRAP_MATH_FLOAT_DBL_PTR_2(__, sincospi)
+CELER_WRAP_MATH_FLOAT_DBL_PTR_2(__, sincos)
+#else
+using ::celeritas::detail::cospi;
+using ::celeritas::detail::sinpi;
+CELER_FORCEINLINE void sincos(float a, float* s, float* c)
+{
+    return detail::sincos(a, s, c);
+}
+CELER_FORCEINLINE void sincos(double a, double* s, double* c)
+{
+    return detail::sincos(a, s, c);
+}
+CELER_FORCEINLINE void sincospi(float a, float* s, float* c)
+{
+    return detail::sincospi(a, s, c);
+}
+CELER_FORCEINLINE void sincospi(double a, double* s, double* c)
+{
+    return detail::sincospi(a, s, c);
+}
+#endif
+//!@}
 
 //---------------------------------------------------------------------------//
 }  // namespace celeritas

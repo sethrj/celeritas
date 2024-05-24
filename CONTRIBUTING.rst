@@ -1,4 +1,4 @@
-.. Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+.. Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 .. See the doc/COPYRIGHT file for details.
 .. SPDX-License-Identifier: CC-BY-4.0
 
@@ -67,18 +67,21 @@ Submitting code changes
 
 When you believe that you've made a substantive [#]_ and self-contained
 improvement to the code, it's time to create a `pull request`_ (PR) to get
-feedback on your changes before they're merged into the code base.
+feedback on your changes before they're merged into the code base. The pull
+request should be as close to a "single change" as possible (i.e., the short
+pull request title can essentially describe the entire change set), typically
+a few hundred lines (not including tests and test data). A pull request could
+be as small as a single line for a bug fix. If your changes involve both
+substantial refactoring and new features, try to split the refactoring into a
+separate commit.
 
 Before opening the pull request, check that the :ref:`code <code_guidelines>`
 and :ref:`style <style_guidelines>` guidelines have been followed for all new
 code and code changes.  Ensure the use of the correct formatting as well as the
 addition of documentation and unit tests for new code and bug fixes.
 
-All tests must pass on the CI runner before a PR can be merged. (Exceptions
-will be made if any failures are clearly unrelated to the changes and enough
-tests and/or configuration are passing to show that the new code is working.
-For example, some of the configurations have a tendency to fail due to disk
-space issues.) It's best to test locally first before submitting your pull
+All tests must pass on the CI runner before a PR can be merged. It's best to
+test locally first before submitting your pull
 request, and keep in mind that the multiple configurations on the CI (different
 dependency versions, different features) may reveal failures that your local
 testing might have missed.

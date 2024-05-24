@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -17,12 +17,12 @@
 #include "celeritas/em/data/RelativisticBremData.hh"
 #include "celeritas/em/data/SeltzerBergerData.hh"
 #include "celeritas/em/executor/CombinedBremExecutor.hh"
+#include "celeritas/em/interactor/detail/PhysicsConstants.hh"
 #include "celeritas/global/ActionLauncher.hh"
 #include "celeritas/global/CoreParams.hh"
 #include "celeritas/global/TrackExecutor.hh"
 #include "celeritas/phys/InteractionApplier.hh"
 
-#include "../interactor/detail/PhysicsConstants.hh"
 #include "RelativisticBremModel.hh"
 #include "SeltzerBergerModel.hh"
 

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -72,9 +72,9 @@ class RelativisticBremInteractor
     // Shared constant physics properties
     RelativisticBremRef const& shared_;
     // Incident particle energy
-    const Energy inc_energy_;
+    Energy const inc_energy_;
     // Incident particle momentum
-    const Momentum inc_momentum_;
+    Momentum const inc_momentum_;
     // Incident direction
     Real3 const& inc_direction_;
     // Allocate space for a secondary particle
@@ -113,7 +113,7 @@ RelativisticBremInteractor::RelativisticBremInteractor(
                  || particle.particle_id() == shared_.ids.positron);
 
     // Valid energy region of the relativistic e-/e+ Bremsstrahlung model
-    CELER_EXPECT(inc_energy_ > detail::seltzer_berger_limit());
+    CELER_EXPECT(inc_energy_ >= detail::seltzer_berger_limit());
 }
 
 //---------------------------------------------------------------------------//
@@ -124,7 +124,7 @@ template<class Engine>
 CELER_FUNCTION Interaction RelativisticBremInteractor::operator()(Engine& rng)
 {
     // Allocate space for the brems photon
-    Secondary* secondaries = this->allocate_(1);
+    Secondary* secondaries = allocate_(1);
     if (secondaries == nullptr)
     {
         // Failed to allocate space for the secondary

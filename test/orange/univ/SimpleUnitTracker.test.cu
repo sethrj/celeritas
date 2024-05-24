@@ -1,5 +1,5 @@
 //---------------------------------*-CUDA-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -38,12 +38,7 @@ __global__ void initialize_kernel(ParamsRef<MemSpace::device> const params,
 void test_initialize(ParamsRef<MemSpace::device> const& params,
                      StateRef<MemSpace::device> const& state)
 {
-    CELER_LAUNCH_KERNEL(initialize,
-                        device().default_block_size(),
-                        state.size(),
-                        0,
-                        params,
-                        state);
+    CELER_LAUNCH_KERNEL(initialize, state.size(), 0, params, state);
     CELER_DEVICE_CALL_PREFIX(DeviceSynchronize());
 }
 

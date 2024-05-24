@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -38,6 +38,7 @@ struct HeuristicGeoScalars
     // Set from geometry
     VolumeId::size_type num_volumes{};
     bool ignore_zero_safety{};
+    VolumeId world_volume;
 
     explicit CELER_FUNCTION operator bool() const
     {

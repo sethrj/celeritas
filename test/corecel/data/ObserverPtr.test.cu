@@ -1,5 +1,5 @@
 //---------------------------------*-CUDA-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -43,13 +43,7 @@ void copy_test(ObserverPtr<int const, MemSpace::device> in_data,
                ObserverPtr<int, MemSpace::device> out_data,
                size_type size)
 {
-    CELER_LAUNCH_KERNEL(copy_test,
-                        device().default_block_size(),
-                        size,
-                        0,
-                        in_data,
-                        out_data,
-                        size);
+    CELER_LAUNCH_KERNEL(copy_test, size, 0, in_data, out_data, size);
 
     CELER_DEVICE_CALL_PREFIX(DeviceSynchronize());
 }

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -18,8 +18,15 @@
 namespace celeritas
 {
 //---------------------------------------------------------------------------//
+class SphereCentered;
+
+//---------------------------------------------------------------------------//
 /*!
  * Sphere centered at an arbitrary point.
+ *
+ * \f[
+   (x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 - r^2 = 0
+ * \f]
  */
 class Sphere
 {
@@ -27,7 +34,7 @@ class Sphere
     //@{
     //! Type aliases
     using Intersections = Array<real_type, 2>;
-    using Storage = Span<const real_type, 4>;
+    using StorageSpan = Span<real_type const, 4>;
     //@}
 
     //// CLASS ATTRIBUTES ////
@@ -44,11 +51,18 @@ class Sphere
   public:
     //// CONSTRUCTORS ////
 
+    // Construct with square of radius for simplification
+    static Sphere from_radius_sq(Real3 const& origin, real_type rsq);
+
     // Construct with origin and radius
     inline CELER_FUNCTION Sphere(Real3 const& origin, real_type radius);
 
     // Construct from raw data
-    explicit inline CELER_FUNCTION Sphere(Storage);
+    template<class R>
+    explicit inline CELER_FUNCTION Sphere(Span<R, StorageSpan::extent>);
+
+    // Promote from a centered sphere
+    explicit Sphere(SphereCentered const& other) noexcept;
 
     //// ACCESSORS ////
 
@@ -59,7 +73,7 @@ class Sphere
     CELER_FUNCTION real_type radius_sq() const { return radius_sq_; }
 
     //! Get a view to the data for type-deleted storage
-    CELER_FUNCTION Storage data() const { return {origin_.data(), 4}; }
+    CELER_FUNCTION StorageSpan data() const { return {origin_.data(), 4}; }
 
     //// CALCULATION ////
 
@@ -78,6 +92,9 @@ class Sphere
     Real3 origin_;
     // Square of the radius
     real_type radius_sq_;
+
+    //! Private default constructor for manual construction
+    Sphere() = default;
 };
 
 //---------------------------------------------------------------------------//
@@ -96,7 +113,8 @@ CELER_FUNCTION Sphere::Sphere(Real3 const& origin, real_type radius)
 /*!
  * Construct from raw data.
  */
-CELER_FUNCTION Sphere::Sphere(Storage data)
+template<class R>
+CELER_FUNCTION Sphere::Sphere(Span<R, StorageSpan::extent> data)
     : origin_{data[0], data[1], data[2]}, radius_sq_{data[3]}
 {
 }
@@ -140,9 +158,8 @@ CELER_FUNCTION auto Sphere::calc_intersections(Real3 const& pos,
  */
 CELER_FUNCTION Real3 Sphere::calc_normal(Real3 const& pos) const
 {
-    Real3 tpos{pos[0] - origin_[0], pos[1] - origin_[1], pos[2] - origin_[2]};
-    normalize_direction(&tpos);
-    return tpos;
+    return make_unit_vector(
+        Real3{pos[0] - origin_[0], pos[1] - origin_[1], pos[2] - origin_[2]});
 }
 
 //---------------------------------------------------------------------------//

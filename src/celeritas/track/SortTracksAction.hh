@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -19,9 +19,16 @@ namespace celeritas
  * automatically determined by TrackOrder. This should not have any impact on
  * simulation output: it is only useful for accelerator optimizations.
  */
-class SortTracksAction final : public ExplicitActionInterface,
+class SortTracksAction final : public ExplicitCoreActionInterface,
                                public BeginRunActionInterface
 {
+  public:
+    //@{
+    //! \name Type aliases
+    using ExplicitCoreActionInterface::CoreStateDevice;
+    using ExplicitCoreActionInterface::CoreStateHost;
+    //@}
+
   public:
     // Construct with action ID and sort criteria
     SortTracksAction(ActionId id, TrackOrder track_order);
@@ -45,10 +52,10 @@ class SortTracksAction final : public ExplicitActionInterface,
     ActionId action_id() const final { return id_; }
 
     //! Short name for the action
-    std::string label() const final;
+    std::string_view label() const final;
 
     //! Description of the action for user interaction
-    std::string description() const final { return "sort tracks states"; }
+    std::string_view description() const final { return "sort tracks states"; }
 
     //! Dependency ordering of the action
     ActionOrder order() const final { return action_order_; }

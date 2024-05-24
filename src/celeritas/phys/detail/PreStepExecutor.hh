@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -12,13 +12,13 @@
 #include "corecel/math/Quantity.hh"
 #include "celeritas/Types.hh"
 #include "celeritas/global/CoreTrackView.hh"
-#include "celeritas/phys/PhysicsStepView.hh"
-#include "celeritas/phys/PhysicsTrackView.hh"
 #include "celeritas/random/RngEngine.hh"
 #include "celeritas/random/distribution/ExponentialDistribution.hh"
 #include "celeritas/track/SimTrackView.hh"
 
 #include "../PhysicsStepUtils.hh"  // IWYU pragma: associated
+#include "../PhysicsStepView.hh"
+#include "../PhysicsTrackView.hh"
 
 namespace celeritas
 {
@@ -86,7 +86,7 @@ PreStepExecutor::operator()(celeritas::CoreTrackView const& track)
 
     // Initialize along-step action based on particle charge:
     // This should eventually be dependent on region, energy, etc.
-    sim.along_step_action() = [&particle, &scalars = track.core_scalars()] {
+    sim.along_step_action([&particle, &scalars = track.core_scalars()] {
         if (particle.charge() == zero_quantity())
         {
             return scalars.along_step_neutral_action;
@@ -95,7 +95,7 @@ PreStepExecutor::operator()(celeritas::CoreTrackView const& track)
         {
             return scalars.along_step_user_action;
         }
-    }();
+    }());
 }
 
 //---------------------------------------------------------------------------//

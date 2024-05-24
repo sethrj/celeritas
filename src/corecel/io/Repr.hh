@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2021-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2021-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -414,8 +414,9 @@ struct ContainerReprTraits
     }
 };
 
-template<class T>
-struct ReprTraits<std::vector<T>> : public ContainerReprTraits<std::vector<T>>
+template<class T, class A>
+struct ReprTraits<std::vector<T, A>>
+    : public ContainerReprTraits<std::vector<T, A>>
 {
     using value_type = std::decay_t<T>;
 

@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -11,11 +11,11 @@
 #include "corecel/Types.hh"
 #include "corecel/math/Algorithms.hh"
 #include "corecel/sys/ThreadId.hh"
-#include "celeritas/global/CoreTrackDataFwd.hh"
-#include "celeritas/global/CoreTrackView.hh"
 #include "celeritas/track/SimTrackView.hh"
 
 #include "CoreTrackData.hh"
+#include "CoreTrackDataFwd.hh"
+#include "CoreTrackView.hh"
 #include "detail/TrackExecutorImpl.hh"
 
 namespace celeritas
@@ -54,6 +54,7 @@ class TrackExecutor
     //! \name Type aliases
     using ParamsPtr = CoreParamsPtr<MemSpace::native>;
     using StatePtr = CoreStatePtr<MemSpace::native>;
+    using Applier = T;
     //!@}
 
   public:
@@ -99,6 +100,7 @@ class ConditionalTrackExecutor
     //! \name Type aliases
     using ParamsPtr = CoreParamsPtr<MemSpace::native>;
     using StatePtr = CoreStatePtr<MemSpace::native>;
+    using Applier = T;
     //!@}
 
   public:
@@ -141,15 +143,13 @@ class ConditionalTrackExecutor
 template<class T>
 CELER_FUNCTION TrackExecutor(CoreParamsPtr<MemSpace::native>,
                              CoreStatePtr<MemSpace::native>,
-                             T&&)
-    ->TrackExecutor<T>;
+                             T&&) -> TrackExecutor<T>;
 
 template<class C, class T>
 CELER_FUNCTION ConditionalTrackExecutor(CoreParamsPtr<MemSpace::native>,
                                         CoreStatePtr<MemSpace::native>,
                                         C&&,
-                                        T&&)
-    ->ConditionalTrackExecutor<C, T>;
+                                        T&&) -> ConditionalTrackExecutor<C, T>;
 
 //---------------------------------------------------------------------------//
 // FREE FUNCTIONS

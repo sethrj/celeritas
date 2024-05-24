@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -19,21 +19,22 @@ namespace test
 {
 //---------------------------------------------------------------------------//
 
-TEST(DeviceAllocationTest, always)
+// NOTE: don't have 'device' in the name here
+TEST(ConstructionTest, should_work_always)
 {
     DeviceAllocation alloc;
     EXPECT_EQ(0, alloc.size());
     EXPECT_TRUE(alloc.empty());
 }
 
-TEST(DeviceAllocationTest, nocuda)
-{
 #if !CELER_USE_DEVICE
+TEST(ConstructionTest, nodevice)
+#else
+TEST(ConstructionTest, DISABLED_nodevice)
+#endif
+{
     // Can't allocate
     EXPECT_THROW(DeviceAllocation(1234), DebugError);
-#else
-    GTEST_SKIP() << "CUDA is enabled";
-#endif
 }
 
 TEST(DeviceAllocationTest, TEST_IF_CELER_DEVICE(device))
@@ -44,29 +45,30 @@ TEST(DeviceAllocationTest, TEST_IF_CELER_DEVICE(device))
 
     {
         DeviceAllocation other(128);
-        Byte* orig_alloc = alloc.device_ref().data();
-        Byte* orig_other = other.device_ref().data();
+        std::byte* orig_alloc = alloc.device_ref().data();
+        std::byte* orig_other = other.device_ref().data();
         swap(alloc, other);
         EXPECT_EQ(1024, other.size());
         EXPECT_EQ(orig_other, alloc.device_ref().data());
         EXPECT_EQ(orig_alloc, other.device_ref().data());
     }
-    EXPECT_EQ(128, alloc.size());
+    std::vector<std::byte> data(alloc.size());
+    ASSERT_EQ(128, data.size());
 
-    std::vector<Byte> data(alloc.size());
-    data.front() = Byte(1);
-    data.back() = Byte(127);
+    data.front() = std::byte(1);
+    data.back() = std::byte(127);
 
     alloc.copy_to_device(make_span(data));
 
-    std::vector<Byte> newdata(alloc.size());
+    std::vector<std::byte> newdata(alloc.size());
+    ASSERT_EQ(128, newdata.size());
     alloc.copy_to_host(make_span(newdata));
-    EXPECT_EQ(Byte(1), newdata.front());
-    EXPECT_EQ(Byte(127), newdata.back());
+    EXPECT_EQ(std::byte(1), newdata.front());
+    EXPECT_EQ(std::byte(127), newdata.back());
 
     // Test move construction/assignment
     {
-        Byte* orig_ptr = alloc.device_ref().data();
+        std::byte* orig_ptr = alloc.device_ref().data();
         DeviceAllocation other(std::move(alloc));
         EXPECT_EQ(128, other.size());
         EXPECT_EQ(0, alloc.size());
@@ -81,7 +83,7 @@ TEST(DeviceAllocationTest, TEST_IF_CELER_DEVICE(empty))
     EXPECT_EQ(0, alloc.size());
     EXPECT_EQ(nullptr, alloc.device_ref().data());
 
-    std::vector<Byte> newdata(alloc.size());
+    std::vector<std::byte> newdata(alloc.size());
     alloc.copy_to_device(make_span(newdata));
     alloc.copy_to_host(make_span(newdata));
 }

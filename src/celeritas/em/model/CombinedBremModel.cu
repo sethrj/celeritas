@@ -1,9 +1,9 @@
 //---------------------------------*-CUDA-*----------------------------------//
-// Copyright 2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2023-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
-//! \file celeritas/em/model/BetheHeitlerModel.cu
+//! \file celeritas/em/model/CombinedBremModel.cu
 //---------------------------------------------------------------------------//
 #include "CombinedBremModel.hh"
 

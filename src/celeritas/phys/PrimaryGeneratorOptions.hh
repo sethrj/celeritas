@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2022-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2022-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -7,7 +7,12 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
+#include <algorithm>
+#include <functional>
+#include <random>
+
 #include "corecel/io/StringEnumMapper.hh"
+#include "geocel/Types.hh"
 
 #include "PDGNumber.hh"
 
@@ -43,6 +48,9 @@ struct DistributionOptions
 /*!
  * Primary generator options.
  *
+ * TODO: distributions should be std::variant (see ORANGE input)
+ *
+ * - \c seed: RNG seed
  * - \c pdg: PDG numbers of the primaries. An equal number of primaries of each
  *   type will be generated
  * - \c num_events: total number of events to generate
@@ -53,6 +61,7 @@ struct DistributionOptions
  */
 struct PrimaryGeneratorOptions
 {
+    unsigned int seed{};
     std::vector<PDGNumber> pdg;
     size_type num_events{};
     size_type primaries_per_event{};
@@ -71,6 +80,31 @@ struct PrimaryGeneratorOptions
                && position && direction;
     }
 };
+
+// TODO: move to PrimaryGenerator.hh
+
+using PrimaryGeneratorEngine = std::mt19937;
+
+//---------------------------------------------------------------------------//
+// FREE FUNCTIONS
+//---------------------------------------------------------------------------//
+
+// Get a distribution name
+char const* to_cstring(DistributionSelection value);
+
+// TODO: move these to PrimaryGenerator.hh
+
+// Return a distribution for sampling the energy
+std::function<real_type(PrimaryGeneratorEngine&)>
+make_energy_sampler(DistributionOptions options);
+
+// Return a distribution for sampling the position
+std::function<Real3(PrimaryGeneratorEngine&)>
+make_position_sampler(DistributionOptions options);
+
+// Return a distribution for sampling the direction
+std::function<Real3(PrimaryGeneratorEngine&)>
+make_direction_sampler(DistributionOptions options);
 
 //---------------------------------------------------------------------------//
 }  // namespace celeritas

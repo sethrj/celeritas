@@ -1,5 +1,5 @@
 //----------------------------------*-C++-*----------------------------------//
-// Copyright 2020-2023 UT-Battelle, LLC, and other Celeritas developers.
+// Copyright 2020-2024 UT-Battelle, LLC, and other Celeritas developers.
 // See the top-level COPYRIGHT file for details.
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
@@ -46,7 +46,7 @@ auto EPlusGGModel::applicability() const -> SetApplicability
 {
     Applicability applic;
     applic.particle = data_.ids.positron;
-    applic.lower = neg_max_quantity();  // Valid at rest
+    applic.lower = zero_quantity();  // Valid at rest
     applic.upper = units::MevEnergy{1e8};  // 100 TeV
 
     return {applic};
