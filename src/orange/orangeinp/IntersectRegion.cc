@@ -66,6 +66,10 @@ Box::Box(Real3 const& halfwidths) : hw_{halfwidths}
 //---------------------------------------------------------------------------//
 /*!
  * Build surfaces.
+ *
+ * The constructed planes have the same ordering as a prism shape: Z planes
+ * first, then radial planes starting with the rightward-pointing one and going
+ * counterclockwise.
  */
 void Box::build(IntersectSurfaceBuilder& insert_surface) const
 {
@@ -73,12 +77,13 @@ void Box::build(IntersectSurfaceBuilder& insert_surface) const
     constexpr auto Y = to_int(Axis::y);
     constexpr auto Z = to_int(Axis::z);
 
-    insert_surface(Sense::outside, PlaneX{-hw_[X]});
-    insert_surface(Sense::inside, PlaneX{hw_[X]});
-    insert_surface(Sense::outside, PlaneY{-hw_[Y]});
-    insert_surface(Sense::inside, PlaneY{hw_[Y]});
-    insert_surface(Sense::outside, PlaneZ{-hw_[Z]});
     insert_surface(Sense::inside, PlaneZ{hw_[Z]});
+    insert_surface(Sense::outside, PlaneZ{-hw_[Z]});
+
+    insert_surface(Sense::inside, PlaneX{hw_[X]});
+    insert_surface(Sense::inside, PlaneY{hw_[Y]});
+    insert_surface(Sense::outside, PlaneX{-hw_[X]});
+    insert_surface(Sense::outside, PlaneY{-hw_[Y]});
 }
 
 //---------------------------------------------------------------------------//
@@ -140,8 +145,8 @@ void Cone::build(IntersectSurfaceBuilder& insert_surface) const
     }
 
     // Build the bottom and top planes
-    insert_surface(Sense::outside, PlaneZ{-hh_});
     insert_surface(Sense::inside, PlaneZ{hh_});
+    insert_surface(Sense::outside, PlaneZ{-hh_});
 
     // Calculate the cone using lo and hi radii
     real_type const lo{radii_[0]};
@@ -236,8 +241,8 @@ bool Cylinder::encloses(Cylinder const& other) const
  */
 void Cylinder::build(IntersectSurfaceBuilder& insert_surface) const
 {
-    insert_surface(Sense::outside, PlaneZ{-hh_});
     insert_surface(Sense::inside, PlaneZ{hh_});
+    insert_surface(Sense::outside, PlaneZ{-hh_});
     insert_surface(CCylZ{radius_});
 }
 
@@ -503,13 +508,13 @@ void GenPrism::build(IntersectSurfaceBuilder& insert_surface) const
     constexpr int Y = 1;
 
     // Build the bottom and top planes
-    if (degen_ != Degenerate::lo)
-    {
-        insert_surface(Sense::outside, PlaneZ{-hz_});
-    }
     if (degen_ != Degenerate::hi)
     {
         insert_surface(Sense::inside, PlaneZ{hz_});
+    }
+    if (degen_ != Degenerate::lo)
+    {
+        insert_surface(Sense::outside, PlaneZ{-hz_});
     }
 
     // TODO: use plane normal equality from SoftSurfaceEqual, or maybe soft
@@ -704,16 +709,14 @@ void Parallelepiped::build(IntersectSurfaceBuilder& insert_surface) const
     auto yoffset = dot_product(b, ynorm);
 
     // Build top and bottom planes
-    insert_surface(Sense::outside, PlaneZ{-hpr_[Z]});
     insert_surface(Sense::inside, PlaneZ{hpr_[Z]});
+    insert_surface(Sense::outside, PlaneZ{-hpr_[Z]});
 
-    // Build the side planes roughly perpendicular to y-axis
-    insert_surface(Sense::outside, Plane{ynorm, -yoffset});
-    insert_surface(Sense::inside, Plane{ynorm, yoffset});
-
-    // Build the side planes roughly perpendicular to x-axis
-    insert_surface(Sense::outside, Plane{xnorm, -xoffset});
+    // Build radial planes ordered like prism
     insert_surface(Sense::inside, Plane{xnorm, xoffset});
+    insert_surface(Sense::inside, Plane{ynorm, yoffset});
+    insert_surface(Sense::outside, Plane{xnorm, -xoffset});
+    insert_surface(Sense::outside, Plane{ynorm, -yoffset});
 
     // Add an exterior bounding box
     auto half_diagonal = a + b + c;
@@ -761,8 +764,8 @@ void Prism::build(IntersectSurfaceBuilder& insert_surface) const
     using constants::pi;
 
     // Build top and bottom
-    insert_surface(Sense::outside, PlaneZ{-hh_});
     insert_surface(Sense::inside, PlaneZ{hh_});
+    insert_surface(Sense::outside, PlaneZ{-hh_});
 
     // Offset (if user offset is zero) is calculated to put a plane on the
     // -y face (sitting upright as visualized). An offset of 1 produces a
