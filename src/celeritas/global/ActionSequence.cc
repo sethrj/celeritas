@@ -98,8 +98,9 @@ void ActionSequence::step(CoreParams const& params, CoreState<M>& state)
     };
 
     auto step_actions = make_span(actions_.step());
-    if (options_.action_times && !state.warming_up())
+    if (action_times_ && !state.warming_up())
     {
+        auto const& record_action_time = action_times_->get(state);
         // Execute all actions and record the time elapsed
         for (auto i : range(step_actions.size()))
         {
