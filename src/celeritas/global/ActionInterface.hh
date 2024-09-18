@@ -26,6 +26,9 @@ using CoreBeginRunActionInterface
 //! Action interface for core stepping loop
 using CoreStepActionInterface = StepActionInterface<CoreParams, CoreState>;
 
+//! Interface called at end of the core stepping loop
+using CoreEndRunActionInterface = EndRunActionInterface<CoreParams, CoreState>;
+
 //---------------------------------------------------------------------------//
 // HELPER FUNCTIONS
 //---------------------------------------------------------------------------//

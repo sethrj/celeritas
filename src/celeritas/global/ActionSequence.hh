@@ -62,6 +62,10 @@ class ActionSequence
     template<MemSpace M>
     void step(CoreParams const&, CoreState<M>& state);
 
+    // Merge results at the end of a run
+    template<MemSpace M>
+    void end_run(CoreParams const& params, Span<CoreState<M>* const> states);
+
     //// ACCESSORS ////
 
     //! Whether synchronization is taking place
