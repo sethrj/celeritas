@@ -304,11 +304,7 @@ TEST_F(BadGeometryTest, no_volume_host)
         "Killing track 0 of event 0 (in track slot 0) at {-5, 0, 0} cm along {1, 0, 0}: lost 100 MeV energy",
     };
     // clang-format on
-    if (CELERITAS_REAL_TYPE == CELERITAS_REAL_TYPE_DOUBLE
-        && CELERITAS_UNITS == CELERITAS_UNITS_CGS)
-    {
-        EXPECT_VEC_EQ(expected_log_messages, scoped_log.messages());
-    }
+    EXPECT_VEC_EQ(expected_log_messages, scoped_log.messages());
 
     static char const* const expected_log_levels[] = {"error", "error"};
     EXPECT_VEC_EQ(expected_log_levels, scoped_log.levels());

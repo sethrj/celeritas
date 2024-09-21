@@ -90,7 +90,7 @@ TEST_F(ExceptionConverterTest, debug)
     EXPECT_EQ("me.cc:123", handler().origin);
     EXPECT_EQ("test001", handler().code);
     EXPECT_EQ(G4ExceptionSeverity::FatalException, handler().level);
-    EXPECT_EQ("internal assertion failed: there are five lights",
+    EXPECT_EQ("internal assertion failed: there are four lights",
               handler().desc);
 }
 
