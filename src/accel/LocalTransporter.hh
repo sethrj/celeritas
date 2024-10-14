@@ -101,7 +101,7 @@ class LocalTransporter
     std::shared_ptr<StepperInterface> step_;
     std::vector<Primary> buffer_;
 
-    EventId event_id_;
+    UniqueEventId event_id_;
     TrackId::size_type track_counter_{};
 
     size_type auto_flush_{};

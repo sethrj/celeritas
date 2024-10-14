@@ -24,14 +24,18 @@ namespace celeritas
  */
 void reseed_rng(HostCRef<RngParamsData> const& params,
                 HostRef<RngStateData> const& state,
-                size_type event_id)
+                UniqueEventId event_id)
 {
-    for (auto tid : range(TrackSlotId{state.size()}))
+    CELER_EXPECT(event_id);
+    static_assert(sizeof(ull_int) == sizeof(UniqueEventId::size_type));
+
+    auto size = static_cast<ull_int>(state.size());
+    for (TrackSlotId::size_type i = 0; i < size; ++i)
     {
         RngEngine::Initializer_t init;
         init.seed = params.seed;
-        init.subsequence = event_id * state.size() + tid.get();
-        RngEngine engine(params, state, tid);
+        init.subsequence = event_id.unchecked_get() * size + i;
+        RngEngine engine(params, state, TrackSlotId{i});
         engine = init;
     }
 }
