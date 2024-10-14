@@ -9,13 +9,16 @@
 
 namespace celeritas
 {
+namespace detail
+{
+struct ActionTimeState;
+}
+
 //---------------------------------------------------------------------------//
 /*!
  * Record action times and add to output registry at end of run.
  */
-class ActionTimes : public StaticConcreteAction,
-                    public AuxParamsInterface,
-                    public EndRunInterface
+class ActionTimes : public StaticConcreteAction, public AuxParamsInterface
 {
   public:
     //!@{
@@ -29,9 +32,11 @@ class ActionTimes : public StaticConcreteAction,
                        AuxId aux_id,
                        WPOutputRegistry registry);
 
+    // Initialize with the names of all step actions
+
     // Get a scoped time recorder for the current state
     template<MemSpace M>
-    ScopedActionRecorder get(CoreState<M>&) const;
+    ActionTimeAccumulator get(CoreState<M>&) const;
 
     //!@{
     //! \name Aux params interface
@@ -44,9 +49,9 @@ class ActionTimes : public StaticConcreteAction,
     //!@{
     //! \name End run interface
     // Merge host data at the end of a run
-    void end_run(CoreParams const&, SpanCoreStateHost) final;
+    void end_run(CoreParams const&, SpanCoreStateHost);
     // Merge device data at the end of a run
-    void end_run(CoreParams const&, SpanCoreStateDevice) final;
+    void end_run(CoreParams const&, SpanCoreStateDevice);
     //!@}
 
   private:
@@ -55,7 +60,9 @@ class ActionTimes : public StaticConcreteAction,
     AuxId aux_id_;
     WPOutputRegistry output_;
 
-    void end_run_impl(CoreParams const&, Span<AuxStateVec const*>) final;
+    template<MemSpace M>
+    void end_run_impl(CoreParams const&, Span<CoreState<M>>);
+    void end_run_impl(CoreParams const&, Span<AuxStateVec const*>);
 };
 
 //---------------------------------------------------------------------------//

@@ -70,13 +70,10 @@ class ActionSequence
     //! Get the ordered vector of actions in the sequence
     ActionGroupsT const& actions() const { return actions_; }
 
-    //! Get the corresponding accumulated time, if 'sync' or host called
-    VecDouble const& accum_time() const { return accum_time_; }
-
   private:
     ActionGroupsT actions_;
     Options options_;
-    VecDouble accum_time_;
+    std::shared_ptr<ActionTimes> action_times_;
     std::shared_ptr<StatusChecker const> status_checker_;
 };
 

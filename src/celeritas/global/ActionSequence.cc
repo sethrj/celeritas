@@ -114,6 +114,7 @@ void ActionSequence::step(CoreParams const& params, CoreState<M>& state)
                 {
                     stream->sync();
                 }
+                record(i,
                 accum_time_[i] += get_time();
                 if (CELER_UNLIKELY(status_checker_))
                 {
