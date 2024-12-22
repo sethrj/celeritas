@@ -10,6 +10,14 @@
 namespace celeritas
 {
 //---------------------------------------------------------------------------//
+auto ActionTimes::create_state(MemSpace m,
+                               StreamId id,
+                               size_type size) const -> UPState
+{
+    auto reg =
+}
+
+//---------------------------------------------------------------------------//
 /*!
  * Merge host data at the end of a run.
  */
@@ -40,7 +48,7 @@ void ActionTimes::end_run_impl(CoreParams const& params,
     std::vector<AuxStateVec const*> state_vec{states.size()};
     for (auto i : states.size())
     {
-        state_vec[i] =
+        state_vec[i] = states[i]
     }
 }
 

@@ -118,7 +118,7 @@ void ActionSequence::step(CoreParams const& params, CoreState<M>& state)
     auto step_actions = make_span(actions_.step());
     if (action_times_ && !state.warming_up())
     {
-        auto const& record_action_time = action_times_->get(state);
+        auto&& record_action_time = action_times_->get(state);
         // Execute all actions and record the time elapsed
         for (auto i : range(step_actions.size()))
         {
@@ -132,8 +132,7 @@ void ActionSequence::step(CoreParams const& params, CoreState<M>& state)
                 {
                     stream->sync();
                 }
-                record(i,
-                accum_time_[i] += get_time();
+                record_action_time(i, get_time());
                 if (CELER_UNLIKELY(status_checker_))
                 {
                     status_checker_->step(action.action_id(), params, state);

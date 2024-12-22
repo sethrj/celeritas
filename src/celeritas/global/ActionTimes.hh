@@ -7,13 +7,12 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
+#include <memory>
+
+#include "detail/ActionTimeImpl.hh"
+
 namespace celeritas
 {
-namespace detail
-{
-struct ActionTimeState;
-}
-
 //---------------------------------------------------------------------------//
 /*!
  * Record action times and add to output registry at end of run.
@@ -24,17 +23,17 @@ class ActionTimes : public StaticConcreteAction, public AuxParamsInterface
     //!@{
     //! \name Type aliases
     using WPOutputRegistry = std::weak_ptr<OutputRegistry>;
+    using ActionTimeAccumulator = detail::ActionTimeAccumulator;
     //!@}
 
   public:
     // Construct with output
-    inline ActionTimes(ActionId action_id,
-                       AuxId aux_id,
-                       WPOutputRegistry registry);
+    ActionTimes(ActionId action_id, AuxId aux_id, WPOutputRegistry registry);
 
     // Initialize with the names of all step actions
+    void initialize(
 
-    // Get a scoped time recorder for the current state
+    // Get a helper function to record times for the given state
     template<MemSpace M>
     ActionTimeAccumulator get(CoreState<M>&) const;
 

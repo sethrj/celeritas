@@ -73,6 +73,8 @@ enum class StepActionOrder
  *
  * The \c description should be a verb phrase (and not have a title-cased
  * start).
+ *
+ * \todo Action ID is really only needed for stepping actions.
  */
 class ActionInterface
 {
@@ -285,6 +287,9 @@ class ConcreteAction : virtual public ActionInterface
  * used manually for classes that inherit from multiple \c label methods (e.g.,
  * something that's both an action and has aux data) for which the mixin method
  * does not work.
+ *
+ * \todo rename StaticActionMetaData and perhaps have this be returned as the
+ * virtual function call?
  */
 class StaticActionData
 {
