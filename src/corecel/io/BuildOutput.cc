@@ -93,6 +93,7 @@ void BuildOutput::output(JsonPimpl* j) const
             if constexpr (CELERITAS_USE_VECGEOM)
             {
                 deps["VecGeom"] = celeritas_vecgeom_version;
+                deps["G4VG"] = celeritas_g4vg_version;
             }
             return deps;
         }();
