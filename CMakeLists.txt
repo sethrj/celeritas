@@ -414,6 +414,13 @@ if(CELERITAS_USE_VecGeom)
       OFF
     )
   endif()
+  if(VecGeom_VERSION VERSION_GREATER_EQUAL 2.0)
+    celeritas_error_incompatible_option(
+      "VecGeom version \"${VecGeom_VERSION}\" at \"${VecGeom_DIR}\" is too new for Celeritas to use: you must downgrade to 1.x"
+      CELERITAS_USE_VecGeom
+      OFF
+    )
+  endif()
 
   if(CELERITAS_USE_CUDA AND NOT VecGeom_CUDA_FOUND)
     celeritas_error_incompatible_option(
