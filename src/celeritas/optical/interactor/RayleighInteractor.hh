@@ -8,9 +8,9 @@
 
 #include "corecel/Assert.hh"
 #include "corecel/math/ArrayOperators.hh"
-#include "corecel/math/ArraySoftUnit.hh"
 #include "corecel/math/ArrayUtils.hh"
 #include "corecel/math/SoftEqual.hh"
+#include "corecel/math/SoftVector.hh"
 #include "corecel/random/distribution/BernoulliDistribution.hh"
 #include "corecel/random/distribution/RejectionSampler.hh"
 #include "geocel/random/IsotropicDistribution.hh"

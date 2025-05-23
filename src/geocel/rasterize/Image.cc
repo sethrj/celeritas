@@ -13,8 +13,8 @@
 #include "corecel/data/CollectionAlgorithms.hh"
 #include "corecel/io/Repr.hh"
 #include "corecel/math/ArrayOperators.hh"
-#include "corecel/math/ArraySoftUnit.hh"
 #include "corecel/math/ArrayUtils.hh"
+#include "corecel/math/SoftVector.hh"
 
 namespace celeritas
 {
@@ -28,7 +28,7 @@ namespace celeritas
  */
 ImageParams::ImageParams(ImageInput const& inp)
 {
-    CELER_VALIDATE(ArraySoftUnit{real_type{0.001}}(inp.rightward),
+    CELER_VALIDATE(SoftUnit{real_type{0.001}}(inp.rightward),
                    << "rightward axis " << repr(inp.rightward)
                    << " is not a unit vector");
     CELER_VALIDATE(inp.vertical_pixels > 0,

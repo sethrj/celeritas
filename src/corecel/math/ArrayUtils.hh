@@ -14,8 +14,8 @@
 #include "corecel/cont/Array.hh"
 
 #include "Algorithms.hh"
-#include "ArraySoftUnit.hh"
 #include "SoftEqual.hh"
+#include "SoftVector.hh"
 
 #include "detail/ArrayUtilsImpl.hh"
 

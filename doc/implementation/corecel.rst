@@ -232,7 +232,7 @@ tolerance.
 .. doxygenclass:: celeritas::SoftEqual
 .. doxygenclass:: celeritas::SoftZero
 .. doxygenclass:: celeritas::EqualOr
-.. doxygenclass:: celeritas::ArraySoftUnit
+.. doxygenclass:: celeritas::SoftUnit
 
 
 .. _api_io:

@@ -2,7 +2,8 @@
 // Copyright Celeritas contributors: see top-level COPYRIGHT file for details
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
-//! \file corecel/math/ArraySoftUnit.hh
+//! \file corecel/math/SoftVector.hh
+//! \brief Soft equivalence operations for vectors.
 //---------------------------------------------------------------------------//
 #pragma once
 
@@ -42,7 +43,7 @@ namespace celeritas
    \f]
  */
 template<class T = ::celeritas::real_type>
-class ArraySoftUnit
+class SoftUnit
 {
   public:
     //!@{
@@ -52,10 +53,10 @@ class ArraySoftUnit
 
   public:
     // Construct with explicit tolerance
-    CELER_FUNCTION inline ArraySoftUnit(value_type tol);
+    CELER_FUNCTION inline SoftUnit(value_type tol);
 
     // Construct with default tolerance
-    CELER_CONSTEXPR_FUNCTION ArraySoftUnit();
+    CELER_CONSTEXPR_FUNCTION SoftUnit();
 
     // Calculate whether the array is nearly a unit vector
     template<::celeritas::size_type N>
@@ -69,7 +70,7 @@ class ArraySoftUnit
 // TEMPLATE DEDUCTION GUIDES
 //---------------------------------------------------------------------------//
 template<class T>
-CELER_FUNCTION ArraySoftUnit(T) -> ArraySoftUnit<T>;
+CELER_FUNCTION SoftUnit(T) -> SoftUnit<T>;
 
 //---------------------------------------------------------------------------//
 // FREE FUNCTIONS
@@ -85,7 +86,7 @@ CELER_CONSTEXPR_FUNCTION bool is_soft_unit_vector(Array<T, N> const& v);
  * Construct with explicit tolereance.
  */
 template<class T>
-CELER_FUNCTION ArraySoftUnit<T>::ArraySoftUnit(T tol) : tol_{3 * tol}
+CELER_FUNCTION SoftUnit<T>::SoftUnit(T tol) : tol_{3 * tol}
 {
     CELER_EXPECT(tol_ > 0);
 }
@@ -95,7 +96,7 @@ CELER_FUNCTION ArraySoftUnit<T>::ArraySoftUnit(T tol) : tol_{3 * tol}
  * Construct with default tolereance.
  */
 template<class T>
-CELER_CONSTEXPR_FUNCTION ArraySoftUnit<T>::ArraySoftUnit()
+CELER_CONSTEXPR_FUNCTION SoftUnit<T>::SoftUnit()
     : tol_{3 * detail::SoftEqualTraits<T>::rel_prec()}
 {
 }
@@ -112,7 +113,7 @@ CELER_CONSTEXPR_FUNCTION ArraySoftUnit<T>::ArraySoftUnit()
 template<class T>
 template<::celeritas::size_type N>
 CELER_CONSTEXPR_FUNCTION bool
-ArraySoftUnit<T>::operator()(Array<T, N> const& arr) const
+SoftUnit<T>::operator()(Array<T, N> const& arr) const
 {
     T length_sq{};
     for (size_type i = 0; i != N; ++i)
@@ -127,7 +128,7 @@ ArraySoftUnit<T>::operator()(Array<T, N> const& arr) const
 template<class T, size_type N>
 CELER_CONSTEXPR_FUNCTION bool is_soft_unit_vector(Array<T, N> const& v)
 {
-    return ArraySoftUnit<T>{}(v);
+    return SoftUnit<T>{}(v);
 }
 
 //---------------------------------------------------------------------------//

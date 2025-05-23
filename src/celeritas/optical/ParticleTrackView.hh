@@ -6,7 +6,7 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
-#include "corecel/math/ArraySoftUnit.hh"
+#include "corecel/math/SoftVector.hh"
 #include "geocel/Types.hh"
 #include "celeritas/Quantities.hh"
 
