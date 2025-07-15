@@ -23,6 +23,7 @@ set(PUBLIC_DEPS
 
 list(APPEND SOURCES
   AlongStepFactory.cc
+  CherenkovProcess.cc
   FastSimulationIntegration.cc
   FastSimulationModel.cc
   GeantSimpleCalo.cc
