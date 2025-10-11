@@ -12,8 +12,10 @@ concurrency:
 jobs:
   build-docker:
     uses: ./.github/workflows/build-docker.yml
+    secrets: inherit
   build-spack:
     uses: ./.github/workflows/build-spack.yml
+    secrets: inherit
   all:
     needs: [build-docker, build-spack]
     runs-on: ubuntu-24.04
