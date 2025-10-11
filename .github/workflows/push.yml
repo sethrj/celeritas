@@ -3,24 +3,19 @@ name: push
 on:
   push:
     branches:
-      - develop
-      - backports/**
+      - codecov-temp
 
 concurrency:
   group: push-${{github.ref}}-${{github.run_number}}-${{github.workflow}}
   cancel-in-progress: true
 
 jobs:
-  build-ultralite:
-    uses: ./.github/workflows/build-ultralite.yml
-  build-fast:
-    uses: ./.github/workflows/build-fast.yml
   build-docker:
     uses: ./.github/workflows/build-docker.yml
   build-spack:
     uses: ./.github/workflows/build-spack.yml
   all:
-    needs: [build-fast, build-docker, build-spack]
+    needs: [build-docker, build-spack]
     runs-on: ubuntu-24.04
     steps:
     - name: Success
