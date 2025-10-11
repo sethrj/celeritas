@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   workflow_call:
     secrets:
-      codecov_token:
+      CODECOV_TOKEN:
         required: true
 
 concurrency:
