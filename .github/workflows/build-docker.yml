@@ -47,7 +47,7 @@ jobs:
                 matrix.special)}}
     runs-on: ubuntu-24.04
     container:
-      image: docker.io/celeritas/ci-ubuntu-rocm7:${{image}}
+      image: docker.io/celeritas/ci-ubuntu-rocm7:${{matrix.image}}
     steps:
       - name: Find all files
         run: |
