@@ -34,7 +34,7 @@ jobs:
         special: [null]
         geometry: ["orange"]
         buildtype: ["ndebug"]
-        image: ["7:2025-11-01", "6:2025-01-02"]
+        image: ["7:2025-11-04", "7:2025-11-01", "6:2025-01-02"]
 
     env:
       CELER_TEST_STRICT: 0 # TODO: enable with Geant4 v11.3
