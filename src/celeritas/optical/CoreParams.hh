@@ -128,7 +128,7 @@ class CoreParams final : public ParamsDataInterface<CoreParamsData>
     inline ConstPtr<M> ptr() const;
 
     //! Maximum number of streams
-    size_type max_streams() const { return input_.max_streams; }
+    StreamId::size_type max_streams() const { return input_.max_streams; }
 
   private:
     Input input_;

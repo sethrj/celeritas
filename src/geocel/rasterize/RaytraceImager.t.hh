@@ -106,8 +106,9 @@ void RaytraceImager<G>::raytrace_impl(Image<M>* image)
         {
             geo_state_store = {};
         }
-        geo_state_store
-            = StateStore{geo_params.host_ref(), img_params.num_lines()};
+        geo_state_store = StateStore{
+            geo_params.host_ref(),
+            static_cast<TrackSlotId::size_type>(img_params.num_lines())};
     }
 
     // Raytrace it!

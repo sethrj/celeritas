@@ -94,7 +94,7 @@ class CoreState final : public CoreStateInterface
     // Construct with manual slot count
     CoreState(CoreParams const& params,
               StreamId stream_id,
-              size_type num_track_slots);
+              TrackSlotId::size_type num_track_slots);
 
     // Default destructor
     ~CoreState() final;

@@ -150,10 +150,13 @@ class CoreParams final : public ParamsDataInterface<CoreParamsData>
     inline ConstPtr<M> ptr() const;
 
     //! Maximum number of streams
-    size_type max_streams() const { return input_.max_streams; }
+    StreamId::size_type max_streams() const { return input_.max_streams; }
 
     //! Number of track slots per stream
-    size_type tracks_per_stream() const { return input_.tracks_per_stream; }
+    TrackSlotId::size_type tracks_per_stream() const
+    {
+        return input_.tracks_per_stream;
+    }
 
   private:
     Input input_;

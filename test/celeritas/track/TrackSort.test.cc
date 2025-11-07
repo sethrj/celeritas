@@ -190,7 +190,7 @@ class TestActionCountEm3Stepper : public TestEm3NoMsc
         Span<ThreadId const> items_span = items[AllActionThreads{}];
         auto pos = std::find(items_span.begin(), items_span.end(), ThreadId{});
         ASSERT_EQ(pos, items_span.end());
-        for (size_type i = 0; i < items.size() - 1; ++i)
+        for (ActionId::size_type i = 0; i < items.size() - 1; ++i)
         {
             Range<ThreadId> r{items[ActionId{i}], items[ActionId{i + 1}]};
             total_threads += r.size();

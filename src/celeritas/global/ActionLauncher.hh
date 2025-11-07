@@ -10,7 +10,6 @@
 
 #include "corecel/Config.hh"
 
-#include "corecel/Assert.hh"
 #include "corecel/Types.hh"
 #include "corecel/sys/MultiExceptionHandler.hh"
 #include "corecel/sys/ThreadId.hh"
@@ -29,7 +28,7 @@ namespace celeritas
  * This allows using a custom number of threads rather than the state size.
  */
 template<class F>
-void launch_core(size_type num_threads,
+void launch_core(ThreadId::size_type num_threads,
                  std::string_view label,
                  celeritas::CoreParams const& params,
                  celeritas::CoreState<MemSpace::host>& state,
@@ -39,7 +38,7 @@ void launch_core(size_type num_threads,
 #if defined(_OPENMP) && CELERITAS_OPENMP == CELERITAS_OPENMP_TRACK
 #    pragma omp parallel for
 #endif
-    for (size_type i = 0; i < num_threads; ++i)
+    for (ThreadId::size_type i = 0; i < num_threads; ++i)
     {
         CELER_TRY_HANDLE_CONTEXT(
             execute_thread(ThreadId{i}),
@@ -81,7 +80,7 @@ void launch_core(std::string_view label,
  */
 template<class F>
 void launch_action(CoreStepActionInterface const& action,
-                   size_type num_threads,
+                   ThreadId::size_type num_threads,
                    celeritas::CoreParams const& params,
                    celeritas::CoreState<MemSpace::host>& state,
                    F&& execute_thread)

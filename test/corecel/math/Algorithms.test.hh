@@ -133,7 +133,7 @@ struct AlgorithmTestData
 
     InputRef input;
     OutputRef output;
-    size_type num_threads{};
+    ThreadId::size_type num_threads{};
 };
 
 //---------------------------------------------------------------------------//

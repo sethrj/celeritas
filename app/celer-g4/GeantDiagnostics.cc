@@ -63,7 +63,7 @@ GeantDiagnostics::GeantDiagnostics(SharedParams const& params)
     // Get output registry
     auto const& output_reg = params.output_reg();
     CELER_ASSERT(output_reg);
-    size_type num_threads = params.num_streams();
+    StreamId::size_type num_streams = params.num_streams();
 
     auto& global_setup = *GlobalSetup::Instance();
     if (global_setup.StepDiagnostic())
@@ -71,7 +71,7 @@ GeantDiagnostics::GeantDiagnostics(SharedParams const& params)
         // Create the track step diagnostic and add to output registry
         auto num_bins = GlobalSetup::Instance()->GetStepDiagnosticBins();
         step_diagnostic_
-            = std::make_shared<GeantStepDiagnostic>(num_bins, num_threads);
+            = std::make_shared<GeantStepDiagnostic>(num_bins, num_streams);
         output_reg->insert(step_diagnostic_);
 
         // Add the Celeritas step diagnostic if Celeritas offloading is enabled

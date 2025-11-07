@@ -12,29 +12,26 @@
 #include <nlohmann/json.hpp>
 
 #include "corecel/Assert.hh"
-#include "corecel/Macros.hh"
 #include "corecel/cont/Range.hh"
 #include "corecel/io/JsonPimpl.hh"
 #include "geocel/GeantUtils.hh"
-
-#include "ExceptionConverter.hh"
 
 namespace celeritas
 {
 //---------------------------------------------------------------------------//
 /*!
- * Construct with number of bins and threads.
+ * Construct with number of bins and streams.
  *
  * The final bin is for overflow.
  */
 GeantStepDiagnostic::GeantStepDiagnostic(size_type num_bins,
-                                         size_type num_threads)
+                                         StreamId::size_type num_streams)
     : num_bins_(num_bins + 2)
 {
     CELER_EXPECT(num_bins_ > 2);
-    CELER_EXPECT(num_threads > 0);
+    CELER_EXPECT(num_streams > 0);
 
-    thread_store_.resize(num_threads);
+    stream_store_.resize(num_streams);
 }
 
 //---------------------------------------------------------------------------//
@@ -69,12 +66,12 @@ void GeantStepDiagnostic::Update(G4Track const* track)
         return;
     }
 
-    auto thread_id = static_cast<size_type>(get_geant_thread_id());
-    CELER_ASSERT(thread_id < thread_store_.size());
+    auto stream_id = static_cast<size_type>(get_geant_thread_id());
+    CELER_ASSERT(stream_id < stream_store_.size());
 
     // Get the vector of counts for this particle
     auto pdg = track->GetDefinition()->GetPDGEncoding();
-    VecCount& counts = thread_store_[thread_id][pdg];
+    VecCount& counts = stream_store_[stream_id][pdg];
     counts.resize(num_bins_);
 
     // Increment the bin corresponding to the given step count
@@ -84,14 +81,14 @@ void GeantStepDiagnostic::Update(G4Track const* track)
 
 //---------------------------------------------------------------------------//
 /*!
- * Get the diagnostic results accumulated over all threads.
+ * Get the diagnostic results accumulated over all streams.
  */
 auto GeantStepDiagnostic::CalcSteps() const -> VecVecCount
 {
     auto pdgs = this->GetPDGs();
     VecVecCount result(pdgs.size(), VecCount(num_bins_));
 
-    for (auto const& pdg_to_count : thread_store_)
+    for (auto const& pdg_to_count : stream_store_)
     {
         for (auto pdg_idx : range(pdgs.size()))
         {
@@ -115,7 +112,7 @@ auto GeantStepDiagnostic::CalcSteps() const -> VecVecCount
 std::vector<int> GeantStepDiagnostic::GetPDGs() const
 {
     std::set<int> pdgs;
-    for (auto const& pdg_to_count : thread_store_)
+    for (auto const& pdg_to_count : stream_store_)
     {
         for (auto const& kv : pdg_to_count)
         {

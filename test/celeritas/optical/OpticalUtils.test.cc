@@ -69,7 +69,7 @@ TEST(OpticalUtilsTest, find_distribution_index)
 {
     using optical::detail::find_distribution_index;
 
-    size_type num_threads = 8;
+    ThreadId::size_type num_threads = 8;
     std::vector<size_type> vacancies = {1, 2, 4, 6, 7};
 
     // Number of photons to generate from each distribution

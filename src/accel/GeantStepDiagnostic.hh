@@ -14,6 +14,7 @@
 
 #include "corecel/Types.hh"
 #include "corecel/io/OutputInterface.hh"
+#include "corecel/sys/ThreadId.hh"
 
 namespace celeritas
 {
@@ -35,8 +36,8 @@ class GeantStepDiagnostic final : public OutputInterface
     //!@}
 
   public:
-    // Construct with number of bins and threads
-    GeantStepDiagnostic(size_type num_bins, size_type num_threads);
+    // Construct with number of bins and streams
+    GeantStepDiagnostic(size_type num_bins, StreamId::size_type num_streams);
 
     //!@{
     //! \name Output interface
@@ -52,14 +53,14 @@ class GeantStepDiagnostic final : public OutputInterface
     // Update the step count from the given track
     void Update(G4Track const* track);
 
-    // Get the results accumulated over all threads
+    // Get the results accumulated over all streams
     VecVecCount CalcSteps() const;
 
     // Get a sorted vector of PDGs
     std::vector<int> GetPDGs() const;
 
   private:
-    std::vector<MapIntVecCount> thread_store_;
+    std::vector<MapIntVecCount> stream_store_;
     size_type num_bins_;
 };
 

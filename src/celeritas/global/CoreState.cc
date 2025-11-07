@@ -39,7 +39,7 @@ CoreState<M>::CoreState(CoreParams const& params, StreamId stream_id)
 template<MemSpace M>
 CoreState<M>::CoreState(CoreParams const& params,
                         StreamId stream_id,
-                        size_type num_track_slots)
+                        TrackSlotId::size_type num_track_slots)
 {
     CELER_VALIDATE(stream_id < params.max_streams(),
                    << "stream ID " << stream_id.unchecked_get()

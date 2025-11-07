@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "corecel/Types.hh"
-#include "corecel/cont/Array.hh"
+#include "corecel/sys/ThreadId.hh"
 
 class G4LogicalVolume;
 
@@ -34,8 +34,8 @@ struct GeantSimpleCaloStorage
 
     //! SD name
     std::string name;
-    //! Number of threads
-    size_type num_threads{};
+    //! Number of G4 CPU threads (aka streams!!)
+    StreamId::size_type num_threads{};
     //! Map of logical volume to "detector ID" index
     MapVolumeIdx volume_to_index;
     //! Accumulated energy deposition [thread][volume]
