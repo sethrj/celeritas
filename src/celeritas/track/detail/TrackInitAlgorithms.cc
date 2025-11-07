@@ -7,11 +7,8 @@
 #include "TrackInitAlgorithms.hh"
 
 #include <algorithm>
-#include <numeric>
 
 #include "corecel/math/Algorithms.hh"
-
-#include "../Utils.hh"
 
 namespace celeritas
 {
@@ -24,7 +21,7 @@ namespace detail
  *
  * \return New size of the vacancy vector
  */
-size_type remove_if_alive(
+TrackSlotId::size_type remove_if_alive(
     StateCollection<TrackSlotId, Ownership::reference, MemSpace::host> const&
         vacancies,
     StreamId)
@@ -45,23 +42,22 @@ size_type remove_if_alive(
  * The input size is one greater than the number of track slots so that the
  * final element will be the total accumulated value.
  */
-size_type exclusive_scan_counts(
-    StateCollection<size_type, Ownership::reference, MemSpace::host> const& counts,
-    StreamId)
+TrackSlotId::size_type
+exclusive_scan_counts(HostRef<TrackSlotCollection> const& counts, StreamId)
 {
     CELER_EXPECT(!counts.empty());
     auto* data = counts.data().get();
 #ifdef __cpp_lib_parallel_algorithm
-    auto* stop
-        = std::exclusive_scan(data, data + counts.size(), data, size_type{0});
+    auto* stop = std::exclusive_scan(
+        data, data + counts.size(), data, TrackSlotId::size_type{0});
 #else
     // Standard library shipped with GCC 8.5 does not include exclusive_scan
     // (I guess it's *too* exclusive)
-    size_type acc = 0;
+    TrackSlotId::size_type acc = 0;
     auto* const stop = data + counts.size();
     for (; data != stop; ++data)
     {
-        size_type current = *data;
+        TrackSlotId::size_type current = *data;
         *data = acc;
         acc += current;
     }
@@ -77,12 +73,11 @@ size_type exclusive_scan_counts(
  * This partitions an array of indices used to access the track initializers
  * and the thread IDs of the initializers' parent tracks.
  */
-void partition_initializers(
-    CoreParams const& params,
-    TrackInitStateData<Ownership::reference, MemSpace::host> const& init,
-    CoreStateCounters const& counters,
-    size_type count,
-    StreamId)
+void partition_initializers(CoreParams const& params,
+                            HostRef<TrackInitStateData> const& init,
+                            CoreStateCounters const& counters,
+                            TrackSlotId::size_type count,
+                            StreamId)
 {
     // Partition the indices based on the track initializer charge
     auto start = init.indices.data().get();

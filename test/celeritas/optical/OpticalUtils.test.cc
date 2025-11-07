@@ -48,7 +48,7 @@ std::vector<int> locate_vacancies(std::vector<TrackStatus> const& input)
 
     StateRef<TrackStatus, M> status_ref(status);
     StateRef<TrackSlotId, M> vacancies_ref(vacancies);
-    size_type num_vacancies = optical::detail::copy_if_vacant(
+    auto num_vacancies = optical::detail::copy_if_vacant(
         status_ref, vacancies_ref, StreamId{0});
 
     auto host_vacancies = copy_to_host(vacancies);

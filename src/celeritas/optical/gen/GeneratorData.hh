@@ -100,6 +100,8 @@ struct GeneratorStateData
     template<class T>
     using Items = Collection<T, W, M>;
 
+    using size_type = TrackSlotId::size_type;
+
     //// DATA ////
 
     // Buffer of distribution data for generating optical photons

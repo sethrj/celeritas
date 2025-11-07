@@ -36,7 +36,8 @@ struct IsNeutral
 
 //---------------------------------------------------------------------------//
 //! Get an initializer index where thread 0 has the last valid element
-CELER_FORCEINLINE_FUNCTION size_type index_before(size_type size, ThreadId tid)
+CELER_FORCEINLINE_FUNCTION auto
+index_before(TrackSlotId::size_type size, ThreadId tid)
 {
     CELER_EXPECT(tid.get() + 1 <= size);
     return size - tid.unchecked_get() - 1;

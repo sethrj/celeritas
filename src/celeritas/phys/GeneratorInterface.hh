@@ -68,7 +68,7 @@ class GeneratorInterface
 struct GeneratorStateBase : public AuxStateInterface
 {
     //! Counts since the start of the optical loop
-    GeneratorCounters<size_type> counters;
+    GeneratorCounters<TrackSlotId::size_type> counters;
     //! Counts accumulated over the event for diagnostics
     GeneratorCounters<std::size_t> accum;
 };

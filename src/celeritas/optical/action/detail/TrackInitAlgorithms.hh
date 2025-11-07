@@ -10,6 +10,7 @@
 #include "corecel/Macros.hh"
 #include "corecel/Types.hh"
 #include "corecel/data/Collection.hh"
+#include "corecel/sys/ThreadId.hh"
 #include "celeritas/Types.hh"
 
 namespace celeritas
@@ -36,20 +37,21 @@ struct IsVacant
 
 //---------------------------------------------------------------------------//
 // Compact the \c TrackSlotIds of the inactive tracks
-size_type copy_if_vacant(TrackStatusRef<MemSpace::host> const&,
-                         TrackSlotRef<MemSpace::host> const&,
-                         StreamId);
-size_type copy_if_vacant(TrackStatusRef<MemSpace::device> const&,
-                         TrackSlotRef<MemSpace::device> const&,
-                         StreamId);
+TrackSlotId::size_type copy_if_vacant(TrackStatusRef<MemSpace::host> const&,
+                                      TrackSlotRef<MemSpace::host> const&,
+                                      StreamId);
+TrackSlotId::size_type copy_if_vacant(TrackStatusRef<MemSpace::device> const&,
+                                      TrackSlotRef<MemSpace::device> const&,
+                                      StreamId);
 
 //---------------------------------------------------------------------------//
 // INLINE DEFINITIONS
 //---------------------------------------------------------------------------//
 #if !CELER_USE_DEVICE
-inline size_type copy_if_vacant(TrackStatusRef<MemSpace::device> const&,
-                                TrackSlotRef<MemSpace::device> const&,
-                                StreamId)
+inline TrackSlotId::size_type
+copy_if_vacant(TrackStatusRef<MemSpace::device> const&,
+               TrackSlotRef<MemSpace::device> const&,
+               StreamId)
 {
     CELER_NOT_CONFIGURED("CUDA or HIP");
 }

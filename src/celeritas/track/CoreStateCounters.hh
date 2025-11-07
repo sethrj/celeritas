@@ -7,6 +7,7 @@
 #pragma once
 
 #include "corecel/Types.hh"
+#include "celeritas/Types.hh"
 
 namespace celeritas
 {
@@ -27,6 +28,8 @@ namespace celeritas
  */
 struct CoreStateCounters
 {
+    using size_type = TrackSlotId::size_type;
+
     //!@{
     //! \name Set when primaries are generated
     size_type num_pending{0};  //!< Number waiting to be generated

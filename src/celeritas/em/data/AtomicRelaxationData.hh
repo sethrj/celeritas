@@ -11,6 +11,7 @@
 #include "corecel/cont/Range.hh"
 #include "corecel/data/Collection.hh"
 #include "corecel/data/CollectionBuilder.hh"
+#include "corecel/sys/ThreadId.hh"
 #include "celeritas/Quantities.hh"
 #include "celeritas/Types.hh"
 
@@ -119,7 +120,7 @@ struct AtomicRelaxStateData
 
     //! Storage for the stack of vacancy subshell IDs
     Items<SubshellId> scratch;  // 2D array: [num states][max stack size]
-    size_type num_states;
+    TrackSlotId::size_type num_states;
 
     //! Whether the interface is assigned
     explicit CELER_FUNCTION operator bool() const

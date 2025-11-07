@@ -110,7 +110,7 @@ __global__ void
 tracks_per_action_kernel(ObserverPtr<ActionId const> actions,
                          ObserverPtr<TrackSlotId::size_type const> track_slots,
                          Span<ThreadId> offsets,
-                         size_type size)
+                         ThreadId::size_type size)
 {
     ThreadId tid = celeritas::KernelParamCalculator::thread_id();
     ActionAccessor get_action{actions, track_slots};

@@ -10,6 +10,7 @@
 #include <optional>
 
 #include "corecel/math/NumericLimits.hh"
+#include "corecel/sys/ThreadId.hh"
 #include "celeritas/Types.hh"
 #include "celeritas/optical/Types.hh"
 #include "celeritas/phys/GeneratorCounters.hh"
@@ -78,7 +79,7 @@ class OpticalCollector
         std::shared_ptr<optical::CoreParams> optical_params;
 
         //! Number track slots in the optical loop
-        size_type num_track_slots{};
+        TrackSlotId::size_type num_track_slots{};
 
         //! Number of steps that have created optical particles
         size_type buffer_capacity{};

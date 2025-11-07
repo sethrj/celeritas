@@ -282,7 +282,7 @@ Constant GenericGeoTestInterface::unit_length() const
 }
 
 //---------------------------------------------------------------------------//
-size_type GenericGeoTestInterface::num_track_slots() const
+auto GenericGeoTestInterface::num_track_slots() const -> TrackSlotId::size_type
 {
     return 1;
 }

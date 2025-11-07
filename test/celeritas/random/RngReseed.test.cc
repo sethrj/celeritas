@@ -43,7 +43,7 @@ TEST_F(RngReseedTest, reseed)
     init.seed = params->host_ref().seed;
     init.offset = 0;
 
-    for (size_type i = 1; i < states.size(); ++i)
+    for (TrackSlotId::size_type i = 1; i < states.size(); ++i)
     {
         // Check that the reseeded RNGs were skipped ahead the correct number
         // of subsequences

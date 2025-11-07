@@ -30,60 +30,55 @@ struct IsNeutralStencil
     ParamsPtr params;
     TrackInitializer const* initializers;
 
-    CELER_FUNCTION bool operator()(size_type i) const
+    CELER_FUNCTION bool operator()(TrackSlotId::size_type i) const
     {
         CELER_EXPECT(initializers);
         return IsNeutral{params}(initializers[i]);
     }
 };
 
+template<Ownership W, MemSpace M>
+using TrackSlotCollection = StateCollection<TrackSlotId, W, M>;
+
 //---------------------------------------------------------------------------//
 // Remove all elements in the vacancy vector that were flagged as alive
-size_type remove_if_alive(
-    StateCollection<TrackSlotId, Ownership::reference, MemSpace::host> const&,
-    StreamId);
-size_type remove_if_alive(
-    StateCollection<TrackSlotId, Ownership::reference, MemSpace::device> const&,
-    StreamId);
+TrackSlotId::size_type
+remove_if_alive(HostRef<TrackSlotCollection> const&, StreamId);
+TrackSlotId::size_type
+remove_if_alive(DeviceRef<TrackSlotCollection> const&, StreamId);
 
 //---------------------------------------------------------------------------//
 // Calculate the exclusive prefix sum of the number of surviving secondaries
-size_type exclusive_scan_counts(
-    StateCollection<size_type, Ownership::reference, MemSpace::host> const&,
-    StreamId);
-size_type exclusive_scan_counts(
-    StateCollection<size_type, Ownership::reference, MemSpace::device> const&,
-    StreamId);
+TrackSlotId::size_type
+exclusive_scan_counts(HostRef<TrackSlotCollection> const&, StreamId);
+TrackSlotId::size_type
+exclusive_scan_counts(DeviceRef<TrackSlotCollection> const&, StreamId);
 
 //---------------------------------------------------------------------------//
 // Sort the tracks that will be initialized in this step by charged/neutral
-void partition_initializers(
-    CoreParams const&,
-    TrackInitStateData<Ownership::reference, MemSpace::host> const&,
-    CoreStateCounters const&,
-    size_type,
-    StreamId);
-void partition_initializers(
-    CoreParams const&,
-    TrackInitStateData<Ownership::reference, MemSpace::device> const&,
-    CoreStateCounters const&,
-    size_type,
-    StreamId);
+void partition_initializers(CoreParams const&,
+                            HostRef<TrackInitStateData> const&,
+                            CoreStateCounters const&,
+                            TrackSlotId::size_type,
+                            StreamId);
+void partition_initializers(CoreParams const&,
+                            DeviceRef<TrackInitStateData> const&,
+                            CoreStateCounters const&,
+                            TrackSlotId::size_type,
+                            StreamId);
 
 //---------------------------------------------------------------------------//
 // INLINE DEFINITIONS
 //---------------------------------------------------------------------------//
 #if !CELER_USE_DEVICE
-inline size_type remove_if_alive(
-    StateCollection<TrackSlotId, Ownership::reference, MemSpace::device> const&,
-    StreamId)
+inline TrackSlotId::size_type
+remove_if_alive(DeviceRef<TrackSlotCollection> const&, StreamId)
 {
     CELER_NOT_CONFIGURED("CUDA or HIP");
 }
 
-inline size_type exclusive_scan_counts(
-    StateCollection<size_type, Ownership::reference, MemSpace::device> const&,
-    StreamId)
+inline TrackSlotId::size_type
+exclusive_scan_counts(DeviceRef<TrackSlotCollection> const&, StreamId)
 {
     CELER_NOT_CONFIGURED("CUDA or HIP");
 }
@@ -92,7 +87,7 @@ inline void partition_initializers(
     CoreParams const&,
     TrackInitStateData<Ownership::reference, MemSpace::device> const&,
     CoreStateCounters const&,
-    size_type,
+    TrackSlotId::size_type,
     StreamId)
 {
     CELER_NOT_CONFIGURED("CUDA or HIP");

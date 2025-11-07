@@ -40,7 +40,7 @@ namespace
 //---------------------------------------------------------------------------//
 //! Construct a state
 template<MemSpace M>
-auto make_state(StreamId stream, size_type size)
+auto make_state(StreamId stream, TrackSlotId::size_type size)
 {
     using StoreT = CollectionStateStore<GeneratorStateData, M>;
 
@@ -234,7 +234,7 @@ void GeneratorAction::generate(CoreParams const& params,
 
     auto& aux_state
         = get<GeneratorState<MemSpace::native>>(*state.aux(), this->aux_id());
-    size_type num_gen
+    auto num_gen
         = min(state.counters().num_vacancies, aux_state.counters.num_pending);
     {
         // Generate optical photons in vacant track slots

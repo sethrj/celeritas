@@ -6,6 +6,8 @@
 //---------------------------------------------------------------------------//
 #include "TrackInitAlgorithms.hh"
 
+#include "corecel/sys/ThreadId.hh"
+
 namespace celeritas
 {
 namespace optical
@@ -18,16 +20,17 @@ namespace detail
  *
  * \return Number of vacant track slots
  */
-size_type copy_if_vacant(TrackStatusRef<MemSpace::host> const& status,
-                         TrackSlotRef<MemSpace::host> const& vacancies,
-                         StreamId)
+TrackSlotId::size_type
+copy_if_vacant(TrackStatusRef<MemSpace::host> const& status,
+               TrackSlotRef<MemSpace::host> const& vacancies,
+               StreamId)
 {
     CELER_EXPECT(status.size() == vacancies.size());
 
     auto* data = status.data().get();
     auto* result = vacancies.data().get();
 
-    size_type tid = 0;
+    TrackSlotId::size_type tid = 0;
     auto* const stop = data + status.size();
     for (; data != stop; ++data)
     {

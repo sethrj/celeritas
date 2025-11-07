@@ -98,7 +98,7 @@ class CoreParams final : public ParamsDataInterface<CoreParamsData>
         StreamId::size_type max_streams{1};
 
         //! Number of track slots per stream
-        StreamId::size_type tracks_per_stream{0};
+        TrackSlotId::size_type tracks_per_stream{0};
 
         //! True if all params are assigned and valid
         explicit operator bool() const

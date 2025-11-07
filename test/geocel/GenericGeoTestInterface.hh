@@ -78,7 +78,7 @@ class GenericGeoTestInterface : public LazyGeantGeoManager
     virtual Constant unit_length() const;
 
     // Maximum number of local track slots
-    virtual size_type num_track_slots() const;
+    virtual TrackSlotId::size_type num_track_slots() const;
 
     // Whether surface normals work for the current geometry/test
     virtual bool supports_surface_normal() const;

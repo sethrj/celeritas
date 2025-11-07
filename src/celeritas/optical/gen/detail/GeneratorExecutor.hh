@@ -37,7 +37,7 @@ struct GeneratorExecutor
     NativeCRef<CherenkovData> const cherenkov;
     NativeCRef<ScintillationData> const scintillation;
     NativeRef<GeneratorStateData> const offload;
-    size_type buffer_size{};
+    TrackSlotId::size_type buffer_size{};
     CoreStateCounters counters;
 
     //// FUNCTIONS ////
@@ -62,6 +62,7 @@ CELER_FUNCTION void GeneratorExecutor::operator()(TrackSlotId tid) const
     CELER_EXPECT(offload);
 
     using DistId = ItemId<GeneratorDistributionData>;
+    using size_type = TrackSlotId::size_type;
 
     CoreTrackView track(*params, *state, tid);
 

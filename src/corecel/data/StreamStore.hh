@@ -79,7 +79,7 @@ class StreamStore
     // necessary.
     template<MemSpace M>
     inline S<Ownership::reference, M>&
-    state(StreamId stream_id, size_type size);
+    state(StreamId stream_id, TrackSlotId::size_type size);
 
     //! Get a pointer to the state data, null if not allocated
     template<MemSpace M>
@@ -196,7 +196,7 @@ template<template<Ownership, MemSpace> class P,
          template<Ownership, MemSpace> class S>
 template<MemSpace M>
 S<Ownership::reference, M>&
-StreamStore<P, S>::state(StreamId stream_id, size_type size)
+StreamStore<P, S>::state(StreamId stream_id, TrackSlotId::size_type size)
 {
     CELER_EXPECT(*this);
     CELER_EXPECT(stream_id < num_streams_);

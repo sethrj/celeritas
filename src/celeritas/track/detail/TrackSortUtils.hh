@@ -45,7 +45,7 @@ void count_tracks_per_action(
 
 //---------------------------------------------------------------------------//
 // Fill missing action offsets.
-void backfill_action_count(Span<ThreadId>, size_type);
+void backfill_action_count(Span<ThreadId>, ThreadId::size_type);
 
 //---------------------------------------------------------------------------//
 // HELPER CLASSES AND FUNCTIONS
@@ -55,7 +55,7 @@ struct IsNotInactive
 {
     ObserverPtr<TrackStatus const> status_;
 
-    CELER_FUNCTION bool operator()(size_type track_slot) const
+    CELER_FUNCTION bool operator()(TrackSlotId::size_type track_slot) const
     {
         return status_.get()[track_slot] != TrackStatus::inactive;
     }

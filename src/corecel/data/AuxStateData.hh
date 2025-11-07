@@ -9,6 +9,7 @@
 #include <memory>
 
 #include "corecel/Types.hh"
+#include "corecel/sys/ThreadId.hh"
 
 #include "AuxInterface.hh"
 #include "CollectionStateStore.hh"
@@ -50,10 +51,10 @@ class AuxStateData final : public AuxStateInterface
     template<template<Ownership, MemSpace> class P>
     inline AuxStateData(HostCRef<P> const& p,
                         StreamId stream_id,
-                        size_type size);
+                        TrackSlotId::size_type size);
 
     // Construct by resizing without params
-    inline AuxStateData(StreamId stream_id, size_type size);
+    inline AuxStateData(StreamId stream_id, TrackSlotId::size_type size);
 
     //! Whether any data is being stored
     explicit operator bool() const { return static_cast<bool>(store_); }
@@ -129,7 +130,7 @@ template<template<Ownership, MemSpace> class S, MemSpace M>
 template<template<Ownership, MemSpace> class P>
 AuxStateData<S, M>::AuxStateData(HostCRef<P> const& p,
                                  StreamId stream_id,
-                                 size_type size)
+                                 TrackSlotId::size_type size)
     : store_{p, stream_id, size}
 {
 }
@@ -139,7 +140,8 @@ AuxStateData<S, M>::AuxStateData(HostCRef<P> const& p,
  * Construct by resizing.
  */
 template<template<Ownership, MemSpace> class S, MemSpace M>
-AuxStateData<S, M>::AuxStateData(StreamId stream_id, size_type size)
+AuxStateData<S, M>::AuxStateData(StreamId stream_id,
+                                 TrackSlotId::size_type size)
     : store_{stream_id, size}
 {
 }

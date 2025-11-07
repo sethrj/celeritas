@@ -8,6 +8,7 @@
 
 #include <optional>
 
+#include "corecel/sys/ThreadId.hh"
 #include "celeritas/Types.hh"
 
 namespace celeritas
@@ -39,7 +40,7 @@ struct StateCapacity
     //! Maximum number of primaries that can be buffered before stepping
     size_type primaries{};
     //! Maximum number of track slots to be simultaneously stepped
-    size_type tracks{};
+    TrackSlotId::size_type tracks{};
 };
 
 //---------------------------------------------------------------------------//

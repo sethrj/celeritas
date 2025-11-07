@@ -372,9 +372,9 @@ auto build_optical_offload(
     CELER_ASSERT(p.control.optical_capacity);
     inp::OpticalStateCapacity const& cap = *p.control.optical_capacity;
     auto num_streams = oc_inp.optical_params->max_streams();
-    oc_inp.num_track_slots = ceil_div(cap.tracks, num_streams);
-    oc_inp.buffer_capacity = ceil_div(cap.generators, num_streams);
-    oc_inp.auto_flush = ceil_div(cap.primaries, num_streams);
+    oc_inp.num_track_slots = ceil_div<size_type>(cap.tracks, num_streams);
+    oc_inp.buffer_capacity = ceil_div<size_type>(cap.generators, num_streams);
+    oc_inp.auto_flush = ceil_div<size_type>(cap.primaries, num_streams);
     oc_inp.max_step_iters = p.tracking.limits.optical_step_iters;
 
     CELER_ENSURE(oc_inp);
@@ -500,7 +500,7 @@ ProblemLoaded problem(inp::Problem const& p, ImportData const& imported)
     auto tracks = p.control.capacity.tracks;
     CELER_VALIDATE(tracks > 0,
                    << "nonpositive control.capacity.tracks=" << tracks);
-    params.tracks_per_stream = ceil_div(tracks, params.max_streams);
+    params.tracks_per_stream = ceil_div<size_type>(tracks, params.max_streams);
 
     // Construct core
     auto core_params = std::make_shared<CoreParams>(std::move(params));

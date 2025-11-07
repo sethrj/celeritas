@@ -110,7 +110,7 @@ void count_tracks_per_action(
 #if CELERITAS_OPENMP == CELERITAS_OPENMP_TRACK
 #    pragma omp parallel for
 #endif
-    for (size_type i = 1; i < size; ++i)
+    for (ThreadId::size_type i = 1; i < size; ++i)
     {
         ActionId current_action = get_action(ThreadId{i});
         if (!current_action)
@@ -134,7 +134,8 @@ void count_tracks_per_action(
 /*!
  * Fill missing action offsets.
  */
-void backfill_action_count(Span<ThreadId> offsets, size_type num_actions)
+void backfill_action_count(Span<ThreadId> offsets,
+                           ThreadId::size_type num_actions)
 {
     CELER_EXPECT(offsets.size() >= 2);
     // offsets.size() == num_actions + 1, have the last offsets be the # of

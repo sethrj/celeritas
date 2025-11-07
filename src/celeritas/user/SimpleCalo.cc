@@ -31,7 +31,7 @@ namespace celeritas
  */
 SimpleCalo::SimpleCalo(std::string output_label,
                        VecLabel labels,
-                       size_type num_streams)
+                       StreamId::size_type num_streams)
     : output_label_{std::move(output_label)}, volume_labels_{std::move(labels)}
 {
     CELER_EXPECT(!output_label_.empty());
