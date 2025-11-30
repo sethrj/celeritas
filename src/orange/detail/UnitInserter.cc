@@ -386,7 +386,6 @@ UnitInserter::UnitInserter(UniverseInserter* insert_universe, Data* orange_data)
     CELER_EXPECT(orange_data->scalars.tol);
 
     // Initialize scalars
-    orange_data_->scalars.max_faces = 1;
     orange_data_->scalars.max_intersections = 1;
 }
 
@@ -604,8 +603,7 @@ VolumeRecord UnitInserter::insert_volume(SurfacesRecord const& surf_record,
         output.flags |= VolumeRecord::Flags::simple_safety;
     }
 
-    if (output.max_intersections > forced_scalar_max().intersections
-        || output.faces.size() > forced_scalar_max().faces)
+    if (output.max_intersections > forced_scalar_max().intersections)
     {
         CELER_LOG(warning) << "Max intersections (" << output.max_intersections
                            << ") and/or faces (" << output.faces.size()
@@ -628,7 +626,6 @@ VolumeRecord UnitInserter::insert_volume(SurfacesRecord const& surf_record,
 
     // Update global max faces/intersections/logic
     OrangeParamsScalars& scalars = orange_data_->scalars;
-    inplace_max<size_type>(&scalars.max_faces, output.faces.size());
     inplace_max<size_type>(&scalars.max_intersections,
                            output.max_intersections);
     inplace_max<size_type>(&scalars.max_csg_levels, depth);
