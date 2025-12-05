@@ -2,30 +2,30 @@
 // Copyright Celeritas contributors: see top-level COPYRIGHT file for details
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
-//! \file orange/inp/IO.json.hh
+//! \file orange/inp/OrangePerf.hh
 //---------------------------------------------------------------------------//
 #pragma once
 
-#include <nlohmann/json.hpp>
-
-#include "Import.hh"
-#include "OrangePerf.hh"
+#include <iosfwd>
 
 namespace celeritas
 {
 namespace inp
 {
 //---------------------------------------------------------------------------//
+/*!
+ * Performance knobs for runtime setup, including BIH construction.
+ */
+struct OrangePerf
+{
+    //! Maximum number of intersections per step (zero for unlimited)
+    unsigned int max_intersect{};
+};
 
-void to_json(nlohmann::json& j, InlineSingletons const&);
-void from_json(nlohmann::json const& j, InlineSingletons&);
-
-void to_json(nlohmann::json& j, OrangeGeoFromGeant const&);
-void from_json(nlohmann::json const& j, OrangeGeoFromGeant&);
-
-// JSON serialization
-void to_json(nlohmann::json& j, OrangePerf const& v);
-void from_json(nlohmann::json const& j, OrangePerf& v);
+// Helper to read from a file or stream
+std::istream& operator>>(std::istream& is, OrangePerf&);
+// Helper to write to a file or stream
+std::ostream& operator<<(std::ostream& os, OrangePerf const&);
 
 //---------------------------------------------------------------------------//
 }  // namespace inp

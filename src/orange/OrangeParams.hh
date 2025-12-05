@@ -28,6 +28,11 @@ struct OrangeInput;
 class GeantGeoParams;
 class VolumeParams;
 
+namespace inp
+{
+struct OrangePerf;
+}
+
 //---------------------------------------------------------------------------//
 /*!
  * Persistent model data for an ORANGE geometry.
@@ -44,9 +49,20 @@ class OrangeParams final : public GeoParamsInterface,
     using SurfaceMap = LabelIdMultiMap<ImplSurfaceId>;
     using UniverseMap = LabelIdMultiMap<UnivId>;
     using SPConstVolumes = std::shared_ptr<VolumeParams const>;
+    using PerfInput = inp::OrangePerf;
     //!@}
 
   public:
+    //!@{
+    //! \name Hacky static constructor helpers for setting performance knobs
+    //! These are overridden by the ORANGE_PERF_OPTIONS environment variable
+    //! when loading from G4, and may be used in unit tests.
+
+    // Set performance options
+    static void perf(PerfInput const& p);
+
+    //!@}
+
     //!@{
     //! \name Static constructor helpers
     //! \todo Move these to a "model" abstraction that loads/emits geometry,

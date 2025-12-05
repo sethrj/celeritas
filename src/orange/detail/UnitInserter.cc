@@ -198,57 +198,6 @@ BoundingBoxBumper<fast_real_type, real_type> make_bumper(Tolerance<> const& tol)
     return BoundingBoxBumper<fast_real_type, real_type>(std::move(bbox_tol));
 }
 
-struct ForceMax
-{
-    size_type faces = std::numeric_limits<size_type>::max();
-    size_type intersections = std::numeric_limits<size_type>::max();
-};
-
-static char const mfi_hack_envname[] = "ORANGE_MAX_FACE_INTERSECT";
-
-//---------------------------------------------------------------------------//
-/*!
- * Force maximum faces/intersections.
- *
- * This is if we know the "automatic" value is wrong, specifically if all
- * complicated/background cells are unreachable.
- *
- * See https://github.com/celeritas-project/celeritas/issues/1334 .
- */
-ForceMax const& forced_scalar_max()
-{
-    static ForceMax const result = [] {
-        std::string mfi = celeritas::getenv(mfi_hack_envname);
-        if (mfi.empty())
-        {
-            return ForceMax{};
-        }
-        CELER_LOG(warning)
-            << "Using a temporary, unsupported, and dangerous hack to "
-               "override maximum faces and intersections in ORANGE: "
-            << mfi_hack_envname << "='" << mfi << "'";
-
-        ForceMax result;
-        static std::regex const mfi_regex{R"re(^(\d+),(\d+)$)re"};
-        std::smatch mfi_match;
-        CELER_VALIDATE(std::regex_match(mfi, mfi_match, mfi_regex),
-                       << "invalid pattern for " << mfi_hack_envname);
-        auto get = [](char const* type, auto const& submatch) {
-            auto&& s = submatch.str();
-            auto updated = std::stoi(s);
-            CELER_VALIDATE(updated > 0,
-                           << "invalid maximum " << type << ": " << updated);
-            CELER_LOG(warning)
-                << "Forcing maximum " << type << " to " << updated;
-            return static_cast<size_type>(updated);
-        };
-        result.faces = get("faces", mfi_match[0]);
-        result.intersections = get("intersections", mfi_match[1]);
-        return result;
-    }();
-    return result;
-}
-
 //---------------------------------------------------------------------------//
 std::string to_string(VolumeInput::VariantLabel const& vlabel)
 {
@@ -601,22 +550,6 @@ VolumeRecord UnitInserter::insert_volume(SurfacesRecord const& surf_record,
     if (simple_safety)
     {
         output.flags |= VolumeRecord::Flags::simple_safety;
-    }
-
-    if (output.max_intersections > forced_scalar_max().intersections)
-    {
-        CELER_LOG(warning) << "Max intersections (" << output.max_intersections
-                           << ") and/or faces (" << output.faces.size()
-                           << ") exceed limits of '" << mfi_hack_envname
-                           << " in volume '" << to_string(v.label)
-                           << "': replacing with unreachable volume";
-
-        output.faces = {};
-        output.logic = logic_ints_.insert_back(std::begin(nowhere_logic),
-                                               std::end(nowhere_logic));
-        output.max_intersections = 0;
-        output.flags = VolumeRecord::implicit_vol
-                       | VolumeRecord::Flags::simple_safety;
     }
 
     // Calculate the maximum stack depth of the volume definition

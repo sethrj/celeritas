@@ -10,14 +10,19 @@
 #include "corecel/io/EnumStringMapper.hh"
 #include "corecel/io/JsonUtils.json.hh"
 #include "corecel/io/StringEnumMapper.hh"
-#include "orange/OrangeTypesIO.json.hh"
+#include "orange/OrangeTypesIO.json.hh"  // IWYU pragma: keep
+
+#include "OrangePerf.hh"
 
 namespace celeritas
 {
 namespace inp
 {
-//---------------------------------------------------------------------------//
-static char const format_str[] = "g4org-options";
+namespace
+{
+static char const g4org_format_str[] = "g4org-options";
+static char const perf_format_str[] = "orange-perf";
+}  // namespace
 
 //---------------------------------------------------------------------------//
 /*!
@@ -73,12 +78,12 @@ void to_json(nlohmann::json& j, OrangeGeoFromGeant const& v)
 
 #undef OPT_JSON_STRING
 
-    save_format(j, format_str);
+    save_format(j, g4org_format_str);
 }
 
 void from_json(nlohmann::json const& j, OrangeGeoFromGeant& v)
 {
-    check_format(j, format_str);
+    check_format(j, g4org_format_str);
 
 #define OPT_LOAD_OPTION(NAME) CELER_JSON_LOAD_OPTION(j, v, NAME)
 
@@ -99,6 +104,20 @@ void from_json(nlohmann::json const& j, OrangeGeoFromGeant& v)
 #undef OPT_LOAD_OPTION
 }
 
+void to_json(nlohmann::json& j, OrangePerf const& v)
+{
+    j = nlohmann::json{
+        CELER_JSON_PAIR(v, max_intersect),
+    };
+    save_format(j, perf_format_str);
+}
+
+void from_json(nlohmann::json const& j, OrangePerf& v)
+{
+    check_format(j, perf_format_str);
+    CELER_JSON_LOAD_OPTION(j, v, max_intersect);
+}
+
 //!@}
 
 //---------------------------------------------------------------------------//
@@ -107,8 +126,8 @@ void from_json(nlohmann::json const& j, OrangeGeoFromGeant& v)
  *
  * Example to read from a file:
  * \code
-   Options inp;
-   std::ifstream("foo.json") >> inp;
+    Options inp;
+    std::ifstream("foo.json") >> inp;
  * \endcode
  */
 std::istream& operator>>(std::istream& is, OrangeGeoFromGeant& inp)
@@ -125,6 +144,34 @@ std::istream& operator>>(std::istream& is, OrangeGeoFromGeant& inp)
 std::ostream& operator<<(std::ostream& os, OrangeGeoFromGeant const& inp)
 {
     nlohmann::json j = inp;
+    os << j.dump();
+    return os;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Helper to read the performance knobs from a file or stream.
+ *
+ * Example to read from a file:
+ * \code
+    OrangePerf perf;
+    std::ifstream("foo.json") >> perf;
+ * \endcode
+ */
+std::istream& operator>>(std::istream& is, OrangePerf& perf)
+{
+    auto j = nlohmann::json::parse(is);
+    j.get_to(perf);
+    return is;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Helper to write the performance knobs to a file or stream.
+ */
+std::ostream& operator<<(std::ostream& os, OrangePerf const& perf)
+{
+    nlohmann::json j = perf;
     os << j.dump();
     return os;
 }

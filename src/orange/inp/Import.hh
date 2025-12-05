@@ -42,6 +42,10 @@ enum class InlineSingletons
  * https://github.com/celeritas-project/celeritas/issues/1260)
  * - remove_interior to be true (see
  * https://github.com/celeritas-project/celeritas/issues/2012 )
+ *
+ * \todo Move to OrangePerf:
+ * - remove_negated_join
+ * - org_output_file
  */
 struct OrangeGeoFromGeant
 {

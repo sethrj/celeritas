@@ -15,31 +15,104 @@
 
 #include "corecel/Assert.hh"
 #include "corecel/cont/VariantUtils.hh"
-#include "corecel/data/Collection.hh"
 #include "corecel/io/Logger.hh"
 #include "corecel/io/ScopedTimeLog.hh"
 #include "corecel/io/StringUtils.hh"
 #include "corecel/sys/ScopedMem.hh"
 #include "corecel/sys/ScopedProfiling.hh"
-#include "geocel/BoundingBox.hh"
 #include "geocel/GeantGeoParams.hh"
 #include "geocel/VolumeParams.hh"
+#include "orange/detail/DepthCalculator.hh"
 #include "orange/detail/LogicUtils.hh"
 
 #include "OrangeData.hh"  // IWYU pragma: associated
 #include "OrangeInput.hh"
 #include "OrangeInputIO.json.hh"  // IWYU pragma: keep
-#include "OrangeTypes.hh"
 #include "g4org/Converter.hh"
+#include "inp/OrangePerf.hh"
 #include "univ/detail/LogicStack.hh"
 
-#include "detail/DepthCalculator.hh"
 #include "detail/RectArrayInserter.hh"
 #include "detail/UnitInserter.hh"
 #include "detail/UniverseInserter.hh"
 
 namespace celeritas
 {
+namespace
+{
+//! Mutable access to perf options for any new OrangeParams
+inp::OrangePerf& default_perf()
+{
+    static inp::OrangePerf p;
+    return p;
+}
+
+//! Loaded performance options from an environment variable if available
+std::optional<inp::OrangePerf> const& env_perf()
+{
+    static std::optional<inp::OrangePerf> const result = [] {
+        std::optional<inp::OrangePerf> p;
+        if (auto opt_filename = celeritas::getenv("ORANGE_PERF_OPTIONS");
+            !opt_filename.empty())
+        {
+            std::ifstream infile{opt_filename};
+            CELER_VALIDATE(infile,
+                           << "failed to open ORANGE performance option file "
+                              "at '"
+                           << opt_filename << "'");
+            try
+            {
+                inp::OrangePerf temp;
+                infile >> temp;
+                p = std::move(temp);
+                CELER_LOG(debug)
+                    << "Loaded ORANGE performance options: " << temp;
+            }
+            catch (std::exception const& e)
+            {
+                CELER_LOG(critical)
+                    << "Failed to load options from " << opt_filename;
+            }
+        }
+        // DEPRECATED: remove in 1.0
+        if (auto mfi = celeritas::getenv("ORANGE_MAX_FACE_INTERSECT");
+            !mfi.empty())
+        {
+            CELER_LOG(warning)
+                << "DEPRECATED option ORANGE_MAX_FACE_INTERSECT: to be "
+                   "removed in v1.0";
+            if (!p)
+            {
+                p.emplace();
+            }
+            // Erase unused "face" component of pair
+            auto pos = mfi.find_last_of(',');
+            if (pos != std::string::npos)
+            {
+                mfi.erase(0, pos);
+            }
+            auto val = std::stoi(mfi);
+            CELER_VALIDATE(val > 0, << "invalid maximum intersect count");
+            CELER_LOG(warning) << "Forcing maximum intersect to " << val;
+            p->max_intersect = val;
+        }
+        return p;
+    }();
+    return result;
+}
+
+//---------------------------------------------------------------------------//
+}  // namespace
+
+//---------------------------------------------------------------------------//
+/*!
+ * Set performance options.
+ */
+void OrangeParams::perf(PerfInput const& p)
+{
+    default_perf() = p;
+}
+
 //---------------------------------------------------------------------------//
 /*!
  * Build by loading a GDML file.
@@ -188,6 +261,13 @@ OrangeParams::OrangeParams(OrangeInput&& input, SPConstVolumes&& volumes)
         return std::get<UnitInput>(global).bbox;
     }();
 
+    // Get performance options from input JSON
+    auto perf_options = default_perf();
+    if (auto const& p = env_perf())
+    {
+        CELER_LOG(debug) << "Overriding performance options from environment";
+    }
+
     // Create host data for construction, setting tolerances first
     HostVal<OrangeParamsData> host_data;
     host_data.scalars.tol = input.tol;
@@ -243,6 +323,11 @@ OrangeParams::OrangeParams(OrangeInput&& input, SPConstVolumes&& volumes)
         << host_data.scalars.max_csg_levels
         << ", but the logic stack is limited to a depth of "
         << detail::LogicStack::capacity());
+    if (perf_options.max_intersect > 0)
+    {
+        // Override intersection maximum via user-set options
+        host_data.scalars.max_intersections = perf_options.max_intersect;
+    }
 
     // Save pointers for debug output
     host_data.scalars.host_geo_params = this;
