@@ -12,7 +12,7 @@
 
 #include "corecel/io/FileOrConsole.hh"
 #include "corecel/io/Logger.hh"
-#include "corecel/sys/ScopedMpiInit.hh"
+#include "corecel/sys/ScopedMpiSession.hh"
 #include "orange/OrangeInputIO.json.hh"  // IWYU pragma: keep
 
 #include "CliUtils.hh"
@@ -49,7 +49,7 @@ int main(int argc, char* argv[])
 {
     using namespace celeritas::app;
 
-    celeritas::ScopedMpiInit scoped_mpi(&argc, &argv);
+    celeritas::ScopedMpiSession scoped_mpi(&argc, &argv);
     if (scoped_mpi.is_world_multiprocess())
     {
         CELER_LOG(critical) << "This app cannot run in parallel";

@@ -37,7 +37,7 @@
 #include "corecel/sys/DeviceIO.json.hh"
 #include "corecel/sys/MultiExceptionHandler.hh"
 #include "corecel/sys/ScopedMem.hh"
-#include "corecel/sys/ScopedMpiInit.hh"
+#include "corecel/sys/ScopedMpiSession.hh"
 #include "corecel/sys/ScopedProfiling.hh"
 #include "corecel/sys/Stopwatch.hh"
 #include "corecel/sys/TracingSession.hh"
@@ -187,7 +187,7 @@ int main(int argc, char* argv[])
     using std::endl;
 
     // Set up MPI
-    celeritas::ScopedMpiInit scoped_mpi(&argc, &argv);
+    celeritas::ScopedMpiSession scoped_mpi(&argc, &argv);
     if (scoped_mpi.is_world_multiprocess())
     {
         CELER_LOG(critical) << "TODO: this app cannot run in parallel";

@@ -71,6 +71,9 @@ class TracingSession
     std::unique_ptr<Impl, ImplDeleter> impl_;
 };
 
+// Forward compatibility alias
+using ScopedPerfettoSession = TracingSession;
+
 //---------------------------------------------------------------------------//
 // INLINE DEFINITIONS
 //---------------------------------------------------------------------------//

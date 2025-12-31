@@ -30,7 +30,7 @@
 #include "corecel/sys/EnvironmentIO.json.hh"
 #include "corecel/sys/KernelRegistry.hh"
 #include "corecel/sys/KernelRegistryIO.json.hh"
-#include "corecel/sys/ScopedMpiInit.hh"
+#include "corecel/sys/ScopedMpiSession.hh"
 #include "corecel/sys/ScopedSignalHandler.hh"
 #include "geocel/rasterize/Image.hh"
 #include "geocel/rasterize/ImageIO.json.hh"
@@ -355,7 +355,7 @@ int main(int argc, char* argv[])
 {
     using namespace celeritas::app;
 
-    celeritas::ScopedMpiInit scoped_mpi(&argc, &argv);
+    celeritas::ScopedMpiSession scoped_mpi(&argc, &argv);
     if (scoped_mpi.is_world_multiprocess())
     {
         CELER_LOG(critical) << "This app cannot run in parallel";

@@ -20,7 +20,7 @@
 #include "corecel/sys/Environment.hh"
 #include "corecel/sys/MpiCommunicator.hh"
 #include "corecel/sys/MpiOperations.hh"
-#include "corecel/sys/ScopedMpiInit.hh"
+#include "corecel/sys/ScopedMpiSession.hh"
 
 #include "NonMasterResultPrinter.hh"
 
@@ -96,7 +96,7 @@ class DeviceSkipper final : public ::testing::EmptyTestEventListener
 //---------------------------------------------------------------------------//
 int test_main(int argc, char** argv)
 {
-    ScopedMpiInit scoped_mpi(&argc, &argv);
+    ScopedMpiSession scoped_mpi(&argc, &argv);
     auto const& comm = celeritas::comm_world();
 
     try

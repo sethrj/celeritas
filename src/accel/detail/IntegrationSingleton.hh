@@ -18,7 +18,7 @@
 namespace celeritas
 {
 //---------------------------------------------------------------------------//
-class ScopedMpiInit;
+class ScopedMpiSession;
 class SetupOptionsMessenger;
 
 namespace detail
@@ -106,7 +106,7 @@ class IntegrationSingleton
     SetupOptions options_;
     SetupOptions::VecG4PD offloaded_;
     SharedParams params_;
-    std::unique_ptr<ScopedMpiInit> scoped_mpi_;
+    std::unique_ptr<ScopedMpiSession> scoped_mpi_;
     std::unique_ptr<SetupOptionsMessenger> messenger_;
     Stopwatch get_time_;
     bool have_created_logger_{false};

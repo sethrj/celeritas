@@ -8,7 +8,7 @@
 
 #include "corecel/Assert.hh"
 
-#include "ScopedMpiInit.hh"
+#include "ScopedMpiSession.hh"
 
 namespace celeritas
 {
@@ -35,7 +35,7 @@ MpiCommunicator& global_comm_world()
  */
 MpiCommunicator MpiCommunicator::world_if_enabled()
 {
-    if (ScopedMpiInit::status() == ScopedMpiInit::Status::disabled)
+    if (ScopedMpiSession::status() == ScopedMpiSession::Status::disabled)
         return {};
 
     return MpiCommunicator::world();
@@ -51,7 +51,7 @@ MpiCommunicator::MpiCommunicator(MpiComm comm) : comm_(comm)
 {
     CELER_EXPECT(comm != detail::mpi_comm_null());
     CELER_VALIDATE(
-        ScopedMpiInit::status() == ScopedMpiInit::Status::initialized,
+        ScopedMpiSession::status() == ScopedMpiSession::Status::initialized,
         << "MPI was not initialized (needed to construct a communicator). "
            "Maybe set the environment variable CELER_DISABLE_PARALLEL=1 to "
            "disable externally?");

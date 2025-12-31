@@ -19,7 +19,7 @@
 #include "corecel/io/FileOrConsole.hh"
 #include "corecel/io/Logger.hh"
 #include "corecel/io/StringUtils.hh"
-#include "corecel/sys/ScopedMpiInit.hh"
+#include "corecel/sys/ScopedMpiSession.hh"
 #include "celeritas/ext/GeantImporter.hh"
 #include "celeritas/ext/GeantPhysicsOptions.hh"
 #include "celeritas/ext/GeantSetup.hh"
@@ -133,7 +133,7 @@ int main(int argc, char* argv[])
 {
     using namespace celeritas::app;
 
-    celeritas::ScopedMpiInit scoped_mpi(&argc, &argv);
+    celeritas::ScopedMpiSession scoped_mpi(&argc, &argv);
     if (scoped_mpi.is_world_multiprocess())
     {
         CELER_LOG(critical) << "This app cannot run in parallel";

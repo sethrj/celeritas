@@ -12,7 +12,7 @@
 #include "corecel/Assert.hh"
 #include "corecel/Macros.hh"
 #include "corecel/io/Logger.hh"
-#include "corecel/sys/ScopedMpiInit.hh"
+#include "corecel/sys/ScopedMpiSession.hh"
 #include "geocel/GeantUtils.hh"
 
 #include "LoggerImpl.hh"
@@ -336,7 +336,7 @@ IntegrationSingleton::IntegrationSingleton()
 {
     CELER_TRY_HANDLE(
         {
-            scoped_mpi_ = std::make_unique<ScopedMpiInit>();
+            scoped_mpi_ = std::make_unique<ScopedMpiSession>();
             messenger_ = std::make_unique<SetupOptionsMessenger>(&options_);
             this->update_logger();
         },

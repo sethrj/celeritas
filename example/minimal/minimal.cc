@@ -11,7 +11,7 @@
 #include <corecel/io/Logger.hh>
 #include <corecel/math/Quantity.hh>
 #include <corecel/sys/Device.hh>
-#include <corecel/sys/ScopedMpiInit.hh>
+#include <corecel/sys/ScopedMpiSession.hh>
 
 using celeritas::ParticleParams;
 using celeritas::PDGNumber;
@@ -49,7 +49,7 @@ std::shared_ptr<ParticleParams> make_particles()
 int main(int argc, char* argv[])
 {
     // Initialize MPI
-    celeritas::ScopedMpiInit scoped_mpi(&argc, &argv);
+    celeritas::ScopedMpiSession scoped_mpi(&argc, &argv);
 
     // Initialize GPU
     celeritas::activate_device();

@@ -97,7 +97,7 @@ into Geant4 applications.
   also be modified by C++ code before construction.
 - If run in an MPI-aware application, the first call to the Celeritas loggers
   must be *after* MPI is initialized (either via Celeritas'
-  :cpp:class:`celeritas::ScopedMpiInit` or directly through ``MPI_Init``).
+  :cpp:class:`celeritas::ScopedMpiSession` or directly through ``MPI_Init``).
 
 Additionally, Celeritas "local" data structures must be initialized *on the
 Geant4 thread* that uses them. This is necessary only because hit

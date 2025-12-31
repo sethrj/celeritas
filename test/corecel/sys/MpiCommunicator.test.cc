@@ -8,7 +8,7 @@
 
 #include "corecel/cont/Span.hh"
 #include "corecel/sys/MpiOperations.hh"
-#include "corecel/sys/ScopedMpiInit.hh"
+#include "corecel/sys/ScopedMpiSession.hh"
 
 #include "celeritas_test.hh"
 

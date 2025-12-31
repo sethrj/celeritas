@@ -2,9 +2,9 @@
 // Copyright Celeritas contributors: see top-level COPYRIGHT file for details
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
-//! \file corecel/sys/ScopedMpiInit.cc
+//! \file corecel/sys/ScopedMpiSession.cc
 //---------------------------------------------------------------------------//
-#include "ScopedMpiInit.hh"
+#include "ScopedMpiSession.hh"
 
 #include <iostream>
 #include <string>
@@ -25,8 +25,8 @@
 namespace celeritas
 {
 //---------------------------------------------------------------------------//
-ScopedMpiInit::Status ScopedMpiInit::status_
-    = ScopedMpiInit::Status::uninitialized;
+ScopedMpiSession::Status ScopedMpiSession::status_
+    = ScopedMpiSession::Status::uninitialized;
 
 //---------------------------------------------------------------------------//
 /*!
@@ -35,11 +35,11 @@ ScopedMpiInit::Status ScopedMpiInit::status_
  * OpenMPI does not modify or access these, but other implementations might
  * potentially.
  */
-ScopedMpiInit::ScopedMpiInit(int* argc, char*** argv)
+ScopedMpiSession::ScopedMpiSession(int* argc, char*** argv)
 {
     CELER_EXPECT((argc == nullptr) == (argv == nullptr));
 
-    switch (ScopedMpiInit::status())
+    switch (ScopedMpiSession::status())
     {
         case Status::disabled: {
             if constexpr (CELERITAS_USE_MPI)
@@ -60,7 +60,7 @@ ScopedMpiInit::ScopedMpiInit(int* argc, char*** argv)
         }
         case Status::initialized: {
             CELER_LOG(warning)
-                << R"(MPI was initialized before calling ScopedMpiInit)";
+                << R"(MPI was initialized before calling ScopedMpiSession)";
             break;
         }
     }
@@ -71,7 +71,7 @@ ScopedMpiInit::ScopedMpiInit(int* argc, char*** argv)
 /*!
  * Call MPI finalize on destruction.
  */
-ScopedMpiInit::~ScopedMpiInit()
+ScopedMpiSession::~ScopedMpiSession()
 {
     if (do_finalize_)
     {
@@ -100,7 +100,7 @@ ScopedMpiInit::~ScopedMpiInit()
  * NOTE: This function *cannot* call the CELER_LOG macros because those macros
  * query the status.
  */
-auto ScopedMpiInit::status() -> Status
+auto ScopedMpiSession::status() -> Status
 {
     if (!CELERITAS_USE_MPI)
     {
@@ -132,7 +132,7 @@ auto ScopedMpiInit::status() -> Status
  * This is a shortcut for <code>comm_world().size() > 1</code> meant primarily
  * for applications. Linking against MPI is not required to use it.
  */
-bool ScopedMpiInit::is_world_multiprocess() const
+bool ScopedMpiSession::is_world_multiprocess() const
 {
     if (status_ == Status::disabled)
         return false;

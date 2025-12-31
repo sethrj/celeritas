@@ -13,7 +13,7 @@
 #include "corecel/io/detail/NullLoggerMessage.hh"
 #include "corecel/sys/Environment.hh"
 #include "corecel/sys/MpiCommunicator.hh"
-#include "corecel/sys/ScopedMpiInit.hh"
+#include "corecel/sys/ScopedMpiSession.hh"
 #include "corecel/sys/Stopwatch.hh"
 
 #include "celeritas_test.hh"
@@ -50,7 +50,7 @@ class LoggerTest : public Test
   protected:
     void SetUp() override
     {
-        if (ScopedMpiInit::status() != ScopedMpiInit::Status::disabled)
+        if (ScopedMpiSession::status() != ScopedMpiSession::Status::disabled)
         {
             comm_self = MpiCommunicator::self();
             comm_world = MpiCommunicator::world();

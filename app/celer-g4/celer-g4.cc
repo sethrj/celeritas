@@ -42,7 +42,7 @@
 #include "corecel/io/StringUtils.hh"
 #include "corecel/sys/Environment.hh"
 #include "corecel/sys/ScopedMem.hh"
-#include "corecel/sys/ScopedMpiInit.hh"
+#include "corecel/sys/ScopedMpiSession.hh"
 #include "corecel/sys/ScopedProfiling.hh"
 #include "corecel/sys/TracingSession.hh"
 #include "corecel/sys/TypeDemangler.hh"
@@ -219,9 +219,9 @@ void run(std::string_view filename, std::shared_ptr<SharedParams> params)
  */
 int main(int argc, char* argv[])
 {
-    using celeritas::ScopedMpiInit;
+    using celeritas::ScopedMpiSession;
 
-    ScopedMpiInit scoped_mpi(&argc, &argv);
+    ScopedMpiSession scoped_mpi(&argc, &argv);
 
     if (scoped_mpi.is_world_multiprocess())
     {

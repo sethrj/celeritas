@@ -68,7 +68,7 @@ Environment variables
 MPI support
 ^^^^^^^^^^^
 
-.. doxygenclass:: celeritas::ScopedMpiInit
+.. doxygenclass:: celeritas::ScopedMpiSession
 .. doxygenclass:: celeritas::MpiCommunicator
 
 Performance profiling

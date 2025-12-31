@@ -15,7 +15,7 @@ namespace celeritas
 /*!
  * Wrap an MPI communicator.
  *
- * This class uses \c ScopedMpiInit to determine whether MPI is available
+ * This class uses \c ScopedMpiSession to determine whether MPI is available
  * and enabled. As many instances as desired can be created, but Celeritas by
  * default will share the instance returned by \c comm_world , which defaults
  * to \c MPI_COMM_WORLD if MPI has been initialized, or a "self" comm if it has
