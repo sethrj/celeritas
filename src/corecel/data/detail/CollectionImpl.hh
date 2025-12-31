@@ -191,6 +191,15 @@ struct CollectionStorageValidator<Ownership::value>
 };
 
 //---------------------------------------------------------------------------//
+inline void validate_mapped_memory_support(Device const& d)
+{
+    CELER_VALIDATE(d, << "cannot use mapped memory: no device enabled");
+    CELER_VALIDATE(d.can_map_host_memory(),
+                   << "device " << d.device_id().get()
+                   << " doesn't support unified addressing");
+}
+
+//---------------------------------------------------------------------------//
 /*!
  * Copy assign a collection via its storage.
  */
@@ -205,9 +214,7 @@ void copy_collection(S& src, CollectionStorage<T, DW, DM>* dst)
 
     if constexpr (DW == Ownership::value && DM == MemSpace::mapped)
     {
-        CELER_VALIDATE(celeritas::device().can_map_host_memory(),
-                       << "device " << celeritas::device().device_id()
-                       << " doesn't support unified addressing");
+        validate_mapped_memory_support(celeritas::device());
     }
 
     if constexpr (DW == Ownership::value && DM == SM)

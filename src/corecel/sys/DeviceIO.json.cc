@@ -11,6 +11,8 @@
 #include "corecel/Config.hh"
 #include "corecel/DeviceRuntimeApi.hh"
 
+#include "corecel/io/JsonUtils.json.hh"
+
 #include "Device.hh"
 
 namespace celeritas

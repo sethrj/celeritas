@@ -12,6 +12,9 @@
 namespace celeritas
 {
 //---------------------------------------------------------------------------//
+//! Unique ID for CUDA device
+using DeviceId = OpaqueId<class Device>;
+
 //! Unique ID for multithreading/multitasking
 using StreamId = OpaqueId<class Stream_>;
 

@@ -7,13 +7,14 @@
 #include "Device.hh"
 
 #include <iostream>  // IWYU pragma: keep
-#include <limits>
+#include <limits>  // IWYU pragma: keep
 #include <mutex>
 #include <utility>
 
 #include "corecel/Config.hh"
 
 #include "corecel/Macros.hh"
+#include "corecel/sys/ThreadId.hh"
 #if CELERITAS_USE_OPENMP
 #    include <omp.h>
 #endif
@@ -22,6 +23,7 @@
 
 #include "corecel/Assert.hh"
 #include "corecel/Macros.hh"
+#include "corecel/OpaqueIdIO.hh"  // IWYU pragma: keep
 #include "corecel/io/Logger.hh"
 #include "corecel/io/ScopedTimeLog.hh"
 
@@ -73,7 +75,8 @@ Device& global_device()
         // Check that CUDA and Celeritas device IDs are consistent
         int cur_id = -1;
         CELER_DEVICE_API_CALL(GetDevice(&cur_id));
-        CELER_ASSERT(cur_id == device.device_id());
+        CELER_ASSERT(cur_id >= 0
+                     && id_cast<DeviceId>(cur_id) == device.device_id());
     }
 
     return device;
@@ -92,9 +95,9 @@ Device& global_device()
  * CUDA-capable device is present, and if the \c CELER_DISABLE_DEVICE
  * environment variable is not set.
  */
-int Device::num_devices()
+DeviceId::size_type Device::num_devices()
 {
-    static int const num_devices_ = [] {
+    static auto const num_devices_ = []() -> DeviceId::size_type {
         if (!CELER_USE_DEVICE)
         {
             CELER_LOG(debug)
@@ -102,6 +105,7 @@ int Device::num_devices()
             return 0;
         }
 
+        // TODO: replace below with setup::loaded_system_inp
         if (!celeritas::getenv("CELER_DISABLE_DEVICE").empty())
         {
             CELER_LOG(info)
@@ -119,7 +123,7 @@ int Device::num_devices()
         }
 
         CELER_ENSURE(result >= 0);
-        return result;
+        return static_cast<DeviceId::size_type>(result);
     }();
     return num_devices_;
 }
@@ -133,6 +137,7 @@ int Device::num_devices()
  */
 bool Device::debug()
 {
+    // TODO: delete
     static bool const result = [] {
         return getenv_flag("CELER_DEBUG_DEVICE", CELERITAS_DEBUG).value;
     }();
@@ -176,11 +181,11 @@ bool Device::async()
 /*!
  * Construct from a device ID.
  */
-Device::Device(int id) : id_{id}
+Device::Device(DeviceId id) : id_{id}
 {
-    CELER_EXPECT(id >= 0 && id < Device::num_devices());
+    CELER_EXPECT(id < Device::num_devices());
 
-    CELER_LOG_LOCAL(debug) << "Constructing device ID " << id;
+    CELER_LOG_LOCAL(debug) << "Constructing device ID " << id.get();
 
 #if CELER_USE_DEVICE
 #    if CELERITAS_USE_CUDA
@@ -262,7 +267,8 @@ Device::Device(int id) : id_{id}
         threshold = std::stoul(var);
     }
     CELER_DEVICE_API_SYMBOL(MemPool_t) mempool;
-    CELER_DEVICE_API_CALL(DeviceGetDefaultMemPool(&mempool, id_));
+    CELER_DEVICE_API_CALL(
+        DeviceGetDefaultMemPool(&mempool, static_cast<int>(id_)));
     CELER_DEVICE_API_CALL(MemPoolSetAttribute(
         mempool,
         CELER_DEVICE_API_SYMBOL(MemPoolAttrReleaseThreshold),
@@ -357,7 +363,7 @@ void activate_device(Device&& device)
     Device& d = global_device();
     CELER_VALIDATE(
         !d || d.device_id() == device.device_id(),
-        << R"(an active device is not allowed to change or deactivate during the run)");
+        << R"(cannot change or deactivate an active device after initialization)");
 
     if (!device)
         return;
@@ -407,10 +413,11 @@ void activate_device()
  */
 void activate_device(MpiCommunicator const& comm)
 {
-    int num_devices = Device::num_devices();
+    auto num_devices = Device::num_devices();
     if (num_devices > 0)
     {
-        return activate_device(Device(comm.rank() % num_devices));
+        return activate_device(
+            Device(id_cast<DeviceId>(comm.rank() % num_devices)));
     }
 }
 

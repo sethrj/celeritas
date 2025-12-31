@@ -63,7 +63,7 @@ class Device
 
   public:
     // Number of devices available on the local compute node (0 if disabled)
-    static int num_devices();
+    static DeviceId::size_type num_devices();
 
     // Whether verbose messages and error checking are enabled
     static bool debug();
@@ -77,15 +77,15 @@ class Device
     Device() = default;
 
     // Construct from device ID
-    explicit Device(int id);
+    explicit Device(DeviceId);
 
     //// ACCESSORS ////
 
-    // Get the device ID
-    inline int device_id() const;
+    //! CUDA device ID (false if not enabled
+    DeviceId device_id() const { return id_; }
 
     //! True if device is initialized
-    explicit operator bool() const { return id_ >= 0; }
+    explicit operator bool() const { return static_cast<bool>(id_); }
 
     //! Device name
     std::string name() const { return name_; }
@@ -133,7 +133,7 @@ class Device
     //// DATA ////
 
     // Required values for default constructor
-    int id_{-1};
+    DeviceId id_;
     std::string name_{"<DISABLED>"};
 
     // Default values overridden in device-ID constructor
@@ -181,16 +181,6 @@ void set_cuda_heap_size(int limit);
 
 //---------------------------------------------------------------------------//
 // INLINE DEFINITIONS
-//---------------------------------------------------------------------------//
-/*!
- * Get the CUDA device ID, if active.
- */
-int Device::device_id() const
-{
-    CELER_EXPECT(*this);
-    return id_;
-}
-
 //---------------------------------------------------------------------------//
 /*!
  * Access a stream after creating.
