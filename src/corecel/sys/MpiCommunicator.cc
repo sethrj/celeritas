@@ -12,23 +12,6 @@
 
 namespace celeritas
 {
-namespace
-{
-//---------------------------------------------------------------------------//
-// HELPER FUNCTIONS
-//---------------------------------------------------------------------------//
-/*!
- * Share an MPI world communicator within the Celeritas process.
- */
-MpiCommunicator& global_comm_world()
-{
-    static MpiCommunicator comm{MpiCommunicator::world_if_enabled()};
-    return comm;
-}
-
-//---------------------------------------------------------------------------//
-}  // namespace
-
 //---------------------------------------------------------------------------//
 /*!
  * Construct a communicator with MPI_COMM_WORLD or null if disabled.
@@ -51,10 +34,13 @@ MpiCommunicator::MpiCommunicator(MpiComm comm) : comm_(comm)
 {
     CELER_EXPECT(comm != detail::mpi_comm_null());
     CELER_VALIDATE(
-        ScopedMpiSession::status() == ScopedMpiSession::Status::initialized,
+        ScopedMpiSession::status() != ScopedMpiSession::Status::uninitialized,
         << "MPI was not initialized (needed to construct a communicator). "
            "Maybe set the environment variable CELER_DISABLE_PARALLEL=1 to "
            "disable externally?");
+    CELER_VALIDATE(
+        ScopedMpiSession::status() != ScopedMpiSession::Status::disabled,
+        << "tried to create a non-null communicator when MPI is disabled");
 
     // Save rank and size
     CELER_MPI_CALL(MPI_Comm_rank(comm_, &rank_));
@@ -65,11 +51,15 @@ MpiCommunicator::MpiCommunicator(MpiComm comm) : comm_(comm)
 
 //---------------------------------------------------------------------------//
 /*!
- * Shared world Celeritas communicator.
+ * Shared Celeritas communicator.
+ *
+ * TODO: make mutable; make null communicator by default; require system setup:
+ * see corecel/setup/System.hh
  */
 MpiCommunicator const& comm_world()
 {
-    return global_comm_world();
+    static MpiCommunicator comm{MpiCommunicator::world_if_enabled()};
+    return comm;
 }
 
 //---------------------------------------------------------------------------//

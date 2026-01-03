@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
 //! \file corecel/sys/MpiCommunicator.hh
-//! \note Including this file requires linking against the corecel_mpi target
+//! \note Including this file requires linking against Celeritas::ExtMPI
 //---------------------------------------------------------------------------//
 #pragma once
 
@@ -26,6 +26,8 @@ namespace celeritas
  * like \c MPI_Comm_Self but will not actually use MPI calls.
  *
  * \note This does not perform any copying or freeing of MPI communiators.
+ * \todo Change int to ProcessId
+ * \todo Hide mpi linkage
  */
 class MpiCommunicator
 {

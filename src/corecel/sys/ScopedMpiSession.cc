@@ -16,11 +16,9 @@
 
 #include "corecel/Assert.hh"
 #include "corecel/Macros.hh"
-#include "corecel/io/Logger.hh"
 
 #include "Environment.hh"
 #include "MpiCommunicator.hh"
-#include "Stopwatch.hh"
 
 namespace celeritas
 {
@@ -42,25 +40,15 @@ ScopedMpiSession::ScopedMpiSession(int* argc, char*** argv)
     switch (ScopedMpiSession::status())
     {
         case Status::disabled: {
-            if constexpr (CELERITAS_USE_MPI)
-            {
-                CELER_LOG(info) << "Disabling MPI support since the "
-                                   "'CELER_DISABLE_PARALLEL' environment "
-                                   "variable is present and non-empty";
-            }
             break;
         }
         case Status::uninitialized: {
-            Stopwatch get_time;
             CELER_MPI_CALL(MPI_Init(argc, argv));
             status_ = Status::initialized;
-            CELER_LOG(debug) << "MPI initialization took " << get_time() << "s";
             do_finalize_ = true;
             break;
         }
         case Status::initialized: {
-            CELER_LOG(warning)
-                << R"(MPI was initialized before calling ScopedMpiSession)";
             break;
         }
     }
@@ -71,9 +59,9 @@ ScopedMpiSession::ScopedMpiSession(int* argc, char*** argv)
 /*!
  * Call MPI finalize on destruction.
  */
-ScopedMpiSession::~ScopedMpiSession()
+void ScopedMpiSession::MpiFinalizer::operator()(bool do_finalize) const
 {
-    if (do_finalize_)
+    if (do_finalize)
     {
         try
         {
@@ -95,20 +83,24 @@ ScopedMpiSession::~ScopedMpiSession()
 
 //---------------------------------------------------------------------------//
 /*!
+ * Manually disable MPI.
+ */
+void ScopedMpiSession::disable()
+{
+    CELER_EXPECT(status_ == Status::uninitialized);
+    status_ = Status::disabled;
+}
+
+//---------------------------------------------------------------------------//
+/*!
  * Whether MPI has been initialized or disabled.
- *
- * NOTE: This function *cannot* call the CELER_LOG macros because those macros
- * query the status.
  */
 auto ScopedMpiSession::status() -> Status
 {
-    if (!CELERITAS_USE_MPI)
-    {
-        status_ = Status::disabled;
-    }
     if (CELER_UNLIKELY(status_ == Status::uninitialized))
     {
-        if (!celeritas::getenv("CELER_DISABLE_PARALLEL").empty())
+        if (celeritas::getenv_flag("CELER_DISABLE_PARALLEL", !CELERITAS_USE_MPI)
+                .value)
         {
             // Environment variable is set: disable MPI
             status_ = Status::disabled;

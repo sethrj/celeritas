@@ -7,19 +7,25 @@
 #pragma once
 
 #include "corecel/Macros.hh"
+#include "corecel/cont/InitializedValue.hh"
 
 namespace celeritas
 {
 //---------------------------------------------------------------------------//
 /*!
- * RAII class for initializing and finalizing MPI.
+ * Enable MPI during the lifetime of this object.
  *
- * The \c CELER_DISABLE_PARALLEL environment variable can be used to turn off
- * MPI calls when built with CELERITAS_USE_MPI . \todo Change to
- * CELER_ENABLE_MPI .
+ * This RAII class calls \c MPI_Init on construction and, if MPI was
+ * not already initialized, calls \c MPI_Finalize on destruction. Move
+ * semantics can be used to hand off responsibility for finalization.
  *
  * \note Unlike the MpiCommunicator and MpiOperations class, it is not
  * necessary to link against MPI to use this class.
+ *
+ * \note This class may undergo more modification to support the use case of
+ * controlling the use of MPI manually rather than by environment variable.
+ *
+ * \todo The semantics of default construction are confusing
  */
 class ScopedMpiSession
 {
@@ -32,6 +38,9 @@ class ScopedMpiSession
         initialized = 1  //!< MPI_Init has been called somewhere
     };
 
+    // Manually disable before anyone has initialized
+    static void disable();
+
     // Whether MPI has been initialized
     static Status status();
 
@@ -42,19 +51,23 @@ class ScopedMpiSession
     //! Construct with null argc/argv when those are unavailable
     ScopedMpiSession() : ScopedMpiSession(nullptr, nullptr) {}
 
-    // Call MPI finalize on destruction
-    ~ScopedMpiSession();
+    //! Use RAII semantics
+    CELER_DEFAULT_MOVE_DELETE_COPY(ScopedMpiSession);
 
-    //!@{
-    //! Prevent copying and moving for RAII class
-    CELER_DELETE_COPY_MOVE(ScopedMpiSession);
-    //!@}
+    //! True if managing finalization
+    explicit operator bool() const { return do_finalize_; }
 
     // Shortcut for comm_world().size() > 1
     bool is_world_multiprocess() const;
 
   private:
-    bool do_finalize_{false};
+    struct MpiFinalizer
+    {
+        void operator()(bool) const;
+    };
+
+    InitializedValue<bool, MpiFinalizer> do_finalize_{false};
+
     static Status status_;
 };
 
