@@ -106,11 +106,11 @@ DeviceId::size_type Device::num_devices()
         }
 
         // TODO: replace below with setup::loaded_system_inp
-        if (!celeritas::getenv("CELER_DISABLE_DEVICE").empty())
+        if (!celeritas::getenv_flag("CELER_DISABLE_DEVICE", false).value)
         {
             CELER_LOG(info)
                 << "Disabling GPU support since the 'CELER_DISABLE_DEVICE' "
-                   "environment variable is present and non-empty";
+                   "environment flag is set";
             return 0;
         }
 
