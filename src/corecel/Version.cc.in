@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
 //! \file corecel/Version.cc
-//! \brief Celeritas version definitinos.
+//! \brief Celeritas version definitions.
 //---------------------------------------------------------------------------//
 #include "corecel/Version.hh"
 
