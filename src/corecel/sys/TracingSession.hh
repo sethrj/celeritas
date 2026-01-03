@@ -42,6 +42,8 @@ namespace celeritas
  *
  * \note Profiling is disabled unless the \c CELER_ENABLE_PROFILING environment
  * variable is set; see celeritas::ScopedProfiling.
+ *
+ * \todo Rename ScopedPerfettoSession
  */
 class TracingSession
 {
