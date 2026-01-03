@@ -12,9 +12,11 @@
 #include <nlohmann/json.hpp>
 
 #include "corecel/Assert.hh"
+#include "corecel/inp/System.hh"
 #include "corecel/io/FileOrConsole.hh"
 #include "corecel/io/Logger.hh"
 #include "corecel/io/StringUtils.hh"
+#include "corecel/setup/System.hh"
 #include "corecel/sys/Environment.hh"
 #include "celeritas/ext/RootFileManager.hh"
 #include "accel/SetupOptionsMessenger.hh"
@@ -111,15 +113,41 @@ void GlobalSetup::ReadInput(std::string const& filename)
                       << "'";
     nlohmann::json::parse(instream).get_to(input_);
 
-    if (input_.cuda_stack_size != RunInput::unspecified)
+    // Convert and set up system
+    auto loaded = setup::system([&ri = input_] {
+        inp::System s;
+
+        if (!ri.tracing_file.empty())
+        {
+            s.profiling = inp::PerfettoProfiling{ri.tracing_file};
+        }
+        s.environment = {ri.environ.begin(), ri.environ.end()};
+
+        // Apply defaults such as GPU execution
+        setup::apply_defaults(s);
+
+        if (auto* gpu = std::get_if<inp::GpuExecution>(&s.execution))
+        {
+            // Take optional stack/heap size from input
+            if (ri.cuda_stack_size != RunInput::unspecified)
+            {
+                gpu->stack_size = ri.cuda_stack_size;
+            }
+            if (ri.cuda_heap_size != RunInput::unspecified)
+            {
+                gpu->heap_size = ri.cuda_heap_size;
+            }
+        }
+
+        return s;
+    }());
+
+    if (loaded.mpi && loaded.mpi->is_world_multiprocess())
     {
-        options_->cuda_stack_size = input_.cuda_stack_size;
+        CELER_NOT_IMPLEMENTED("MPI celer-g4");
     }
-    if (input_.cuda_heap_size != RunInput::unspecified)
-    {
-        options_->cuda_heap_size = input_.cuda_heap_size;
-    }
-    celeritas::environment().merge(input_.environ);
+    mpi_ = std::move(loaded.mpi);
+    perfetto_ = std::move(loaded.perfetto);
 
     if constexpr (CELERITAS_CORE_GEO == CELERITAS_CORE_GEO_ORANGE)
     {

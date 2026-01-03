@@ -210,7 +210,7 @@ list(APPEND SOURCES
   io/JsonUtils.json.cc
   io/Label.cc
   io/LogContextException.cc
-  io/LogHandlers.cc
+  io/Logger.cc
   io/LoggerTypes.cc
   io/OutputInterface.cc
   io/OutputRegistry.cc
@@ -247,7 +247,20 @@ list(APPEND SOURCES
 # Configuration-dependent object libraries
 #-----------------------------------------------------------------------------#
 
-# All these classes depend on OpenMP if available
+# Setup code depends on many things
+celeritas_add_object_library(corecel_setup_obj
+  setup/System.cc
+)
+
+celeritas_target_link_libraries(corecel_setup_obj
+  PRIVATE Celeritas::ExtOpenMP Celeritas::ExtMPI Celeritas::ExtDeviceApi
+  nlohmann_json::nlohmann_json Celeritas::BuildFlags
+)
+list(APPEND SOURCES $<TARGET_OBJECTS:corecel_setup_obj>)
+list(APPEND PRIVATE_DEPS corecel_setup_obj)
+
+#-----------------------------------------------------------------------------#
+# OpenMP-dependent code
 celeritas_add_object_library(corecel_openmp_obj
   sys/MultiExceptionHandler.cc
 )
@@ -258,12 +271,11 @@ list(APPEND SOURCES $<TARGET_OBJECTS:corecel_openmp_obj>)
 list(APPEND PRIVATE_DEPS corecel_openmp_obj)
 
 #-----------------------------------------------------------------------------#
-
-# All these classes depend on MPI if available
+# MPI-dependent code
 celeritas_add_object_library(corecel_mpi_obj
   Assert.cc
-  io/Logger.cc
-  sys/Device.cc
+  io/LogHandlers.cc
+  sys/Device.cc # also requires device API
   sys/MpiCommunicator.cc
   sys/ScopedMpiSession.cc
 )

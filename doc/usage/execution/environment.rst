@@ -23,12 +23,12 @@ has a default value but can be overridden with any boolean value.
  ======================= ========= ==========================================
  CELER_COLOR             corecel   Flag: log with ANSI colors
  CELER_DEBUG_DEVICE      corecel   Flag: check device ID consistency
- CELER_DISABLE_DEVICE    corecel   Flag: disable CUDA/HIP support
- CELER_DISABLE_PARALLEL  corecel   Flag: disable MPI support
  CELER_DISABLE_REDIRECT  corecel   Flag: disable stream->logger redirection
  CELER_DISABLE_ROOT      corecel   Flag: disable ROOT I/O calls
  CELER_DISABLE_SIGNALS   corecel   Flag: disable signal handling
  CELER_DEVICE_ASYNC      corecel   Flag: allocate memory asynchronously
+ CELER_ENABLE_DEVICE     corecel   Flag: use CUDA/HIP execution
+ CELER_ENABLE_MPI        corecel   Flag: use MPI
  CELER_ENABLE_PROFILING  corecel   Flag: use NVTX/ROCTX profiling [#pr]_
  CELER_LOG               corecel   Set "global" logger verbosity [#lg]_
  CELER_LOG_LOCAL         corecel   Set "local" logger verbosity [#lg]_

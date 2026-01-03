@@ -6,9 +6,8 @@
 //---------------------------------------------------------------------------//
 #include "FrameworkInput.hh"
 
-#include "corecel/Version.hh"
-
 #include "corecel/io/Logger.hh"
+#include "corecel/setup/System.hh"
 #include "corecel/sys/Device.hh"
 #include "geocel/GeantGeoParams.hh"
 #include "celeritas/ext/GeantImporter.hh"
@@ -18,7 +17,6 @@
 
 #include "Import.hh"
 #include "Problem.hh"
-#include "System.hh"
 
 namespace celeritas
 {
@@ -43,7 +41,19 @@ FrameworkLoaded framework_input(inp::FrameworkInput& fi)
     FrameworkLoaded result;
 
     // Set up system
-    setup::system(fi.system);
+    try
+    {
+        setup::system(fi.system);
+    }
+    catch (RuntimeError const&)
+    {
+        CELER_LOG(critical) << "Failed to set up Celeritas: "
+                            << output_to_json(BuildOutput{}).dump(0);
+        throw;
+    }
+
+    CELER_LOG(info) << "Activated Celeritas version " << version_string
+                    << " on " << (celeritas::device() ? "GPU" : "CPU");
 
     // Load Geant4 geometry wrapper, which saves it as global
     CELER_ASSERT(celeritas::global_geant_geo().expired());

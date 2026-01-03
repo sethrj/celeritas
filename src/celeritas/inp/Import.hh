@@ -11,15 +11,12 @@
 
 #include "celeritas/ext/GeantImporter.hh"
 
-#include "System.hh"
-
 namespace celeritas
 {
 namespace inp
 {
 //---------------------------------------------------------------------------//
 struct Problem;
-struct System;
 
 //---------------------------------------------------------------------------//
 /*!
@@ -81,16 +78,6 @@ struct PhysicsFromGeantFiles
     //! Auger transition probabilities
     std::string auger_dir;
 };
-
-//---------------------------------------------------------------------------//
-/*!
- * \todo Add a class to update control and diagnostic options from an external
- * input file.
- *
- * This will be used in concert with \c FileImport : the output from another
- * code can be used as input, but overlaid with diagnostic and control/tuning
- * information.
- */
 
 //---------------------------------------------------------------------------//
 }  // namespace inp

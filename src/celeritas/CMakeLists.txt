@@ -147,7 +147,6 @@ list(APPEND SOURCES
   setup/Model.cc
   setup/Problem.cc
   setup/StandaloneInput.cc
-  setup/System.cc
   track/SimParams.cc
   track/SortTracksAction.cc
   track/TrackInitParams.cc

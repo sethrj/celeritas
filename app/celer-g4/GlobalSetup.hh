@@ -8,12 +8,10 @@
 
 #include <memory>
 #include <string>
-#include <type_traits>
-#include <CLHEP/Units/SystemOfUnits.h>
-#include <G4ThreeVector.hh>
 
+#include "corecel/sys/ScopedMpiSession.hh"
 #include "corecel/sys/Stopwatch.hh"
-#include "geocel/g4/Convert.hh"
+#include "corecel/sys/TracingSession.hh"
 #include "accel/SetupOptions.hh"
 
 #include "RunInput.hh"
@@ -102,6 +100,8 @@ class GlobalSetup
     bool root_sd_io_{false};
 
     std::unique_ptr<G4GenericMessenger> messenger_;
+    std::unique_ptr<ScopedMpiSession> mpi_;
+    std::unique_ptr<ScopedPerfettoSession> perfetto_;
 };
 
 //---------------------------------------------------------------------------//

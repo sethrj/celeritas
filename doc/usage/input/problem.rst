@@ -63,16 +63,3 @@ configuration options:
 
 .. celerstruct:: inp::UniformBoxDistribution
 .. celerstruct:: inp::IsotropicDistribution
-
-
-.. _inp_system:
-
-System
-------
-
-Some low-level system options, such as enabling GPU, are set up once per program
-execution. They are not loaded by the :cpp:struct:`Problem` definition but
-are used by the standalone/framework inputs.
-
-.. celerstruct:: inp::System
-.. celerstruct:: inp::Device

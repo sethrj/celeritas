@@ -5,7 +5,6 @@
 //! \file celer-g4/celer-g4.cc
 //---------------------------------------------------------------------------//
 
-#include <algorithm>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
@@ -29,22 +28,17 @@
 
 #include <nlohmann/json.hpp>
 
-#include "corecel/Config.hh"
 #include "corecel/Version.hh"
 
 #include "corecel/Assert.hh"
-#include "corecel/Macros.hh"
 #include "corecel/io/ExceptionOutput.hh"
 #include "corecel/io/Logger.hh"
 #include "corecel/io/OutputRegistry.hh"
 #include "corecel/io/ScopedTimeAndRedirect.hh"
 #include "corecel/io/ScopedTimeLog.hh"
 #include "corecel/io/StringUtils.hh"
-#include "corecel/sys/Environment.hh"
 #include "corecel/sys/ScopedMem.hh"
-#include "corecel/sys/ScopedMpiSession.hh"
 #include "corecel/sys/ScopedProfiling.hh"
-#include "corecel/sys/TracingSession.hh"
 #include "corecel/sys/TypeDemangler.hh"
 #include "geocel/GeantUtils.hh"
 #include "geocel/ScopedGeantExceptionHandler.hh"
@@ -58,7 +52,6 @@
 #include "ActionInitialization.hh"
 #include "DetectorConstruction.hh"
 #include "GlobalSetup.hh"
-#include "LogHandlers.hh"
 #include "RunInputIO.json.hh"
 
 using namespace std::literals::string_view_literals;
@@ -94,18 +87,17 @@ void print_usage(std::string_view exec_name)
 //---------------------------------------------------------------------------//
 void run(std::string_view filename, std::shared_ptr<SharedParams> params)
 {
-    CELER_VALIDATE(filename != "--interactive",
-                   << "Interactive celer-g4 was removed in v0.6");
-
     // Disable external error handlers
     ScopedRootErrorHandler scoped_root_errors;
+
+    // Construct global setup singleton and make options available to UI
+    auto& gsetup = *GlobalSetup::Instance();
+    // Read user input and set up problem
+    gsetup.ReadInput(std::string(filename));
 
     // Set the random seed *before* the run manager is instantiated
     // (G4MTRunManager constructor uses the RNG)
     CLHEP::HepRandom::setTheSeed(0xcf39c1fa9a6e29bcul);
-
-    // Construct global setup singleton and make options available to UI
-    auto& setup = *GlobalSetup::Instance();
 
     auto run_manager = [] {
         // Run manager writes output that cannot be redirected with
@@ -134,20 +126,6 @@ void run(std::string_view filename, std::shared_ptr<SharedParams> params)
     }();
     CELER_ASSERT(run_manager);
 
-    // Read user input
-    setup.ReadInput(std::string(filename));
-
-    // Start tracing session
-    celeritas::TracingSession tracing{setup.input().tracing_file};
-
-    // Set up loggers
-    world_logger() = Logger{make_world_handler(),
-                            getenv_loglevel("CELER_LOG", LogLevel::status)};
-
-    self_logger()
-        = Logger{make_self_handler(get_geant_num_threads(*run_manager)),
-                 getenv_loglevel("CELER_LOG_LOCAL", LogLevel::warning)};
-
     // Redirect Geant4 output and exceptions through Celeritas objects
     ScopedGeantLogger scoped_logger;
     ScopedGeantExceptionHandler scoped_exceptions;
@@ -156,21 +134,22 @@ void run(std::string_view filename, std::shared_ptr<SharedParams> params)
                     << TypeDemangler<G4RunManager>{}(*run_manager);
 
     std::vector<std::string> ignore_processes = {"CoulombScat"};
-    setup.SetIgnoreProcesses(ignore_processes);
+    gsetup.SetIgnoreProcesses(ignore_processes);
 
     // Construct geometry and SD factory
     run_manager->SetUserInitialization(new DetectorConstruction{params});
 
     // Construct physics
-    if (setup.input().physics_list == PhysicsListSelection::ftfp_bert)
+    if (gsetup.input().physics_list == PhysicsListSelection::ftfp_bert)
     {
         auto pl = std::make_unique<FTFP_BERT>(/* verbosity = */ 0);
         run_manager->SetUserInitialization(pl.release());
     }
     else
     {
-        auto opts = setup.GetPhysicsOptions();
-        if (setup.input().physics_list == PhysicsListSelection::celer_ftfp_bert)
+        auto opts = gsetup.GetPhysicsOptions();
+        if (gsetup.input().physics_list
+            == PhysicsListSelection::celer_ftfp_bert)
         {
             // FTFP BERT with Celeritas EM standard physics
             auto pl = std::make_unique<celeritas::FtfpBertPhysicsList>(opts);
@@ -219,16 +198,6 @@ void run(std::string_view filename, std::shared_ptr<SharedParams> params)
  */
 int main(int argc, char* argv[])
 {
-    using celeritas::ScopedMpiSession;
-
-    ScopedMpiSession scoped_mpi(&argc, &argv);
-
-    if (scoped_mpi.is_world_multiprocess())
-    {
-        CELER_LOG(critical) << "This app cannot run with MPI parallelism.";
-        return EXIT_FAILURE;
-    }
-
     // Process input arguments
     if (argc != 2)
     {

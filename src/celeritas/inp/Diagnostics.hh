@@ -122,9 +122,6 @@ struct Diagnostics
     //! Store step/track counts
     Counters counters;
 
-    //! Write Perfetto tracing data to this filename
-    std::string perfetto_file;
-
     //! Activate slot diagnostics
     std::optional<SlotDiagnostic> slot;
 

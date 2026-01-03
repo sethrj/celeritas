@@ -8,6 +8,7 @@
 
 #include <optional>
 
+#include "corecel/inp/System.hh"
 #include "celeritas/ext/GeantPhysicsOptions.hh"
 
 #include "Events.hh"

@@ -519,7 +519,9 @@ ProblemLoaded problem(inp::Problem const& p, ImportData const& imported)
 
     //// DIAGNOSTICS ////
 
-    // TODO: timers, counters, perfetto_file
+    result.output_file = p.diagnostics.output_file;
+
+    // TODO: timers, counters
 
     if (p.diagnostics.action)
     {

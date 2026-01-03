@@ -9,6 +9,7 @@
 #include <CLHEP/Random/Random.h>
 #include <G4ParticleDefinition.hh>
 
+#include "corecel/inp/System.hh"
 #include "corecel/io/Logger.hh"
 #include "corecel/math/ArrayUtils.hh"
 #include "geocel/GeantGeoUtils.hh"
@@ -35,13 +36,13 @@ namespace
 inp::System load_system(SetupOptions const& so)
 {
     inp::System s;
-    if (celeritas::Device::num_devices())
+    if (celeritas::Device::num_devices() > 0)
     {
-        inp::Device d;
-        d.stack_size = so.cuda_stack_size;
-        d.heap_size = so.cuda_heap_size;
+        inp::GpuExecution exec;
+        exec.stack_size = so.cuda_stack_size;
+        exec.heap_size = so.cuda_heap_size;
 
-        s.device = d;
+        s.execution = exec;
     }
     return s;
 }

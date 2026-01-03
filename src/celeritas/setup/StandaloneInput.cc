@@ -11,12 +11,12 @@
 #include <variant>
 
 #include "corecel/Assert.hh"
-#include "corecel/cont/VariantUtils.hh"
 #include "corecel/io/Logger.hh"
+#include "corecel/setup/System.hh"
 #include "geocel/GeantGeoParams.hh"
 #include "geocel/inp/Model.hh"
 #include "celeritas/ext/GeantSetup.hh"
-#include "celeritas/global/CoreParams.hh"
+#include "celeritas/global/CoreParams.hh"  // IWYU pragma: keep
 #include "celeritas/inp/Control.hh"
 #include "celeritas/inp/Import.hh"
 #include "celeritas/inp/Problem.hh"
@@ -26,7 +26,6 @@
 #include "Events.hh"
 #include "Import.hh"
 #include "Problem.hh"
-#include "System.hh"
 
 namespace celeritas
 {

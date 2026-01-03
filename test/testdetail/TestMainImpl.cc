@@ -14,8 +14,10 @@
 
 #include "corecel/Macros.hh"
 #include "corecel/cont/Range.hh"
+#include "corecel/inp/System.hh"
 #include "corecel/io/ColorUtils.hh"
 #include "corecel/io/Logger.hh"
+#include "corecel/setup/System.hh"
 #include "corecel/sys/Device.hh"
 #include "corecel/sys/Environment.hh"
 #include "corecel/sys/MpiCommunicator.hh"
@@ -96,29 +98,26 @@ class DeviceSkipper final : public ::testing::EmptyTestEventListener
 //---------------------------------------------------------------------------//
 int test_main(int argc, char** argv)
 {
-    ScopedMpiSession scoped_mpi(&argc, &argv);
-    auto const& comm = celeritas::comm_world();
+    setup::SystemLoaded loaded_system;
 
     try
     {
-        // Initialize device
-        celeritas::activate_device(comm);
+        inp::System sys_inp;
+        setup::apply_defaults(sys_inp);
+        loaded_system = setup::system(sys_inp);
     }
     catch (std::exception const& e)
     {
+        auto const& comm = celeritas::comm_world();
         if (comm.rank() == 0)
         {
             cout << color_code('r') << "[  FAILED  ]" << color_code(' ')
-                 << " Device failed to initialize: " << e.what() << endl;
+                 << " Failed to initialize Celeritas: " << e.what() << endl;
         }
         return 1;
     }
 
-    if (comm.rank() == 0)
-    {
-        cout << color_code('x') << "Celeritas version " << version_string
-             << color_code(' ') << endl;
-    }
+    auto const& comm = celeritas::comm_world();
 
     // Initialize google test
     ::testing::InitGoogleTest(&argc, argv);
@@ -136,10 +135,6 @@ int test_main(int argc, char** argv)
         // node)
         listeners.Append(new NonMasterResultPrinter(comm.rank()));
     }
-
-    // Default profiling to off, not warning if CELERITAS_USE_PERFETTO
-    // (otherwise some tests will emit warnings in mid-test)
-    celeritas::getenv_flag("CELER_ENABLE_PROFILING", false);
 
     if (CELER_USE_DEVICE && !celeritas::device())
     {

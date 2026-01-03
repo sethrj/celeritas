@@ -39,6 +39,7 @@ Problems are loaded into the framework or application front end via :ref:`api_pr
    :maxdepth: 2
    :caption: Input definition
 
+   input/system.rst
    input/problem.rst
    input/model.rst
    input/physics.rst

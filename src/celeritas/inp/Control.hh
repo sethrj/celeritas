@@ -116,6 +116,8 @@ struct OpticalStateCapacity : StateCapacity
 /*!
  * When using GPU, change execution options that make it easier to debug.
  *
+ * \todo Have separate GPU/CPU timers
+ *
  * Defaults:
  * - \c sync_stream: \c false unless \c timers.diagnostics.action is \c true.
  */

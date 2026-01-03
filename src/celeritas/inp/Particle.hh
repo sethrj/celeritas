@@ -8,9 +8,7 @@
 
 #include <string>
 
-#include "corecel/Types.hh"
 #include "corecel/math/Quantity.hh"
-#include "celeritas/Types.hh"
 #include "celeritas/UnitTypes.hh"
 #include "celeritas/phys/PDGNumber.hh"
 

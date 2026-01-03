@@ -7,10 +7,10 @@
 #pragma once
 
 #include <functional>
-#include <optional>
+
+#include "corecel/inp/System.hh"
 
 #include "Import.hh"
-#include "System.hh"
 
 namespace celeritas
 {
@@ -28,8 +28,6 @@ struct OpticalProblem;
  * - Geant4 data is imported
  * - External Geant4 data files (such as EM LOW) are loaded
  * - Optional framework-defined adjustments are applied
- *
- * \todo Add an input option for kill_offload/disable
  */
 struct FrameworkInput
 {

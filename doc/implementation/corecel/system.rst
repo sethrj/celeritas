@@ -64,6 +64,7 @@ Environment variables
 .. doxygenfunction:: celeritas::environment
 .. doxygenfunction:: celeritas::getenv
 .. doxygenfunction:: celeritas::getenv_flag
+.. doxygenfunction:: celeritas::getenv_flag_lazy
 
 MPI support
 ^^^^^^^^^^^

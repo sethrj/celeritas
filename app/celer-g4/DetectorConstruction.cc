@@ -19,10 +19,8 @@
 
 #include "corecel/cont/ArrayIO.hh"
 #include "corecel/io/Logger.hh"
-#include "corecel/io/OutputRegistry.hh"
 #include "corecel/math/ArrayUtils.hh"
 #include "geocel/GeantGdmlLoader.hh"
-#include "celeritas/Quantities.hh"
 #include "celeritas/field/RZMapFieldInput.hh"
 #include "celeritas/field/RZMapFieldParams.hh"
 #include "celeritas/inp/Field.hh"

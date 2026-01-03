@@ -15,6 +15,7 @@
 
 #include "corecel/Types.hh"
 #include "corecel/cont/VariantUtils.hh"
+#include "corecel/inp/System.hh"
 #include "corecel/io/StringUtils.hh"
 #include "celeritas/inp/Control.hh"
 #include "celeritas/inp/Diagnostics.hh"
@@ -23,7 +24,6 @@
 #include "celeritas/inp/Physics.hh"
 #include "celeritas/inp/PhysicsProcess.hh"
 #include "celeritas/inp/Scoring.hh"
-#include "celeritas/inp/System.hh"
 #include "celeritas/inp/Tracking.hh"
 #include "celeritas/io/EventReader.hh"
 #include "celeritas/io/JsonEventReader.hh"
@@ -49,17 +49,23 @@ inp::System load_system(RunnerInput const& ri)
 {
     inp::System s;
 
-    s.environment = {ri.environ.begin(), ri.environ.end()};
+    if (!ri.tracing_file.empty())
+    {
+        s.profiling = inp::PerfettoProfiling{ri.tracing_file};
+    }
 
     if (ri.use_device)
     {
-        s.device = [&ri] {
-            inp::Device d;
-            d.stack_size = ri.cuda_stack_size;
-            d.heap_size = ri.cuda_heap_size;
-            return d;
+        s.execution = [&ri] {
+            inp::GpuExecution exec;
+            exec.stack_size = ri.cuda_stack_size;
+            exec.heap_size = ri.cuda_heap_size;
+            return exec;
         }();
     }
+
+    s.environment = {ri.environ.begin(), ri.environ.end()};
+
     return s;
 }
 
@@ -129,7 +135,6 @@ inp::Problem load_problem(RunnerInput const& ri)
                 return mct;
             }();
         }
-        d.perfetto_file = ri.tracing_file;
         d.timers.action = ri.action_times;
         d.timers.step = ri.write_step_times;
         d.action = ri.action_diagnostic;
