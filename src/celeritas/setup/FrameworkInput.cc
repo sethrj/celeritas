@@ -41,19 +41,8 @@ FrameworkLoaded framework_input(inp::FrameworkInput& fi)
     FrameworkLoaded result;
 
     // Set up system
-    try
-    {
-        setup::system(fi.system);
-    }
-    catch (RuntimeError const&)
-    {
-        CELER_LOG(critical) << "Failed to set up Celeritas: "
-                            << output_to_json(BuildOutput{}).dump(0);
-        throw;
-    }
-
-    CELER_LOG(info) << "Activated Celeritas version " << version_string
-                    << " on " << (celeritas::device() ? "GPU" : "CPU");
+    setup::apply_defaults(fi.system);
+    setup::system(fi.system);
 
     // Load Geant4 geometry wrapper, which saves it as global
     CELER_ASSERT(celeritas::global_geant_geo().expired());

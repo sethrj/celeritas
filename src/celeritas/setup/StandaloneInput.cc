@@ -38,6 +38,7 @@ namespace setup
 StandaloneLoaded standalone_input(inp::StandaloneInput& si)
 {
     // Set up system
+    setup::apply_defaults(si.system);
     setup::system(si.system);
 
     // Load problem
