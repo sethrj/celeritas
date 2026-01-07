@@ -15,17 +15,12 @@ namespace celeritas
 /*!
  * Enable MPI during the lifetime of this object.
  *
- * This RAII class calls \c MPI_Init on construction and, if MPI was
+ * This RAII class calls \c MPI_Init on construction with args and, if MPI was
  * not already initialized, calls \c MPI_Finalize on destruction. Move
  * semantics can be used to hand off responsibility for finalization.
  *
  * \note Unlike the MpiCommunicator and MpiOperations class, it is not
  * necessary to link against MPI to use this class.
- *
- * \note This class may undergo more modification to support the use case of
- * controlling the use of MPI manually rather than by environment variable.
- *
- * \todo The semantics of default construction are confusing
  */
 class ScopedMpiSession
 {
@@ -33,25 +28,35 @@ class ScopedMpiSession
     //! Status of initialization
     enum class Status
     {
-        disabled = -1,  //!< Not compiled *or* disabled via environment
-        uninitialized = 0,  //!< MPI_Init has not been called anywhere
-        initialized = 1  //!< MPI_Init has been called somewhere
+        disabled,  //!< Not compiled *or* disabled via environment
+        unknown,  //!< MPI support is compiled in but not yet activated
+        uninitialized,  //!< MPI_Init has not been called anywhere
+        initialized,  //!< MPI_Init has been called somewhere
     };
 
-    // Manually disable before anyone has initialized
-    static void disable();
+    // Get whether MPI should be enabled based on environment
+    static bool default_from_env();
 
     // Whether MPI has been initialized
-    static Status status();
+    static Status status() { return status_; }
+
+    // Update MPI status by calling MPI_Initialized
+    static void check_status();
+
+    // Manually disable if no one has initialized
+    static void disable();
+
+    // Initialize without access to argc/argv
+    static ScopedMpiSession without_argv();
 
   public:
     // Construct with argc/argv references
     ScopedMpiSession(int* argc, char*** argv);
 
-    //! Construct with null argc/argv when those are unavailable
-    ScopedMpiSession() : ScopedMpiSession(nullptr, nullptr) {}
+    // Construct without managing MPI
+    ScopedMpiSession() = default;
 
-    //! Use RAII semantics
+    // Use RAII semantics to hand off responsibility for finalizing
     CELER_DEFAULT_MOVE_DELETE_COPY(ScopedMpiSession);
 
     //! True if managing finalization

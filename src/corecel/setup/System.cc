@@ -227,6 +227,29 @@ auto& configured_system_uptr()
 //---------------------------------------------------------------------------//
 // DEFAULTS
 //---------------------------------------------------------------------------//
+//! Set MPI initialization based on environment variables
+bool get_default_mpi()
+{
+    auto use_mpi = getenv_flag("CELER_ENABLE_MPI", CELERITAS_USE_MPI);
+    if (use_mpi.defaulted)
+    {
+        // Check deprecated flag
+        auto inverse_flag
+            = getenv_flag("CELER_DISABLE_PARALLEL", !use_mpi.value);
+        if (!inverse_flag.defaulted)
+        {
+            // Deprecated flag is set
+            CELER_LOG(warning) << "Deprecated environment variable "
+                                  "`CELER_DISABLE_PARALLEL`: use "
+                                  "`CELER_ENABLE_MPI=0`";
+            // Set opposite of flag
+            use_mpi.value = !inverse_flag.value;
+        }
+    }
+    return use_mpi.value;
+}
+
+//---------------------------------------------------------------------------//
 /*!
  * Set logger defaults based on environment variables.
  */
@@ -257,23 +280,18 @@ void apply_defaults(inp::System& sys)
     // Set MPI default based on environment
     if (std::holds_alternative<DefaultMpi>(sys.mpi))
     {
-        auto use_mpi = getenv_flag("CELER_ENABLE_MPI", CELERITAS_USE_MPI);
-        if (use_mpi.defaulted)
+        switch (ScopedMpiSession::status())
         {
-            // Check deprecated flag
-            auto inverse_flag
-                = getenv_flag("CELER_DISABLE_PARALLEL", !use_mpi.value);
-            if (!inverse_flag.defaulted)
-            {
-                // Deprecated flag is set
-                CELER_LOG(warning) << "Deprecated environment variable "
-                                      "`CELER_DISABLE_PARALLEL`: use "
-                                      "`CELER_ENABLE_MPI=0`";
-                // Set opposite of flag
-                use_mpi.value = !inverse_flag.value;
-            }
-        }
-        set_conditionally<EnableMpi, DisableMpi>(sys.mpi, use_mpi.value);
+            case ScopedMpiSession::Status::disabled:
+                sys.mpi.emplace<DisableMpi>();
+                break;
+            case ScopedMpiSession::Status::initialized:
+                sys.mpi.emplace<EnableMpi>();
+                break;
+            case ScopedMpiSession::Status::uninitialized:
+                set_conditionally<EnableMpi, DisableMpi>(sys.mpi,
+                                                         get_default_mpi());
+        };
     }
 
     // Set execution default

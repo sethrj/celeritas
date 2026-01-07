@@ -24,11 +24,29 @@ namespace celeritas
 {
 //---------------------------------------------------------------------------//
 ScopedMpiSession::Status ScopedMpiSession::status_
-    = ScopedMpiSession::Status::uninitialized;
+    = (CELERITAS_USE_MPI ? ScopedMpiSession::Status::unknown
+                         : ScopedMpiSession::Status::disabled);
 
 //---------------------------------------------------------------------------//
 /*!
- * Construct with argc/argv references.
+ * Create a scoped MPI session without argc/argv references.
+ *
+ * OpenMPI does not modify or access these, but other implementations might
+ * potentially. MPI-2 and above allow nullptr, but we provide a program name
+ * so that \c MPI_Info_env will have a non-empty \c command field.
+ */
+ScopedMpiSession ScopedMpiSession::without_argv()
+{
+    static char const program_name[] = "celeritas";
+    char* argv[] = {const_cast<char*>(program_name)};
+    int argc = std::size(argv);
+    char** argv_ptr = std::begin(argv);
+    return ScopedMpiSession(&argc, &argv_ptr);
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Construct with argc/argv references, initializing MPI if applicable.
  *
  * OpenMPI does not modify or access these, but other implementations might
  * potentially.
@@ -37,22 +55,20 @@ ScopedMpiSession::ScopedMpiSession(int* argc, char*** argv)
 {
     CELER_EXPECT((argc == nullptr) == (argv == nullptr));
 
-    switch (ScopedMpiSession::status())
+    if (status_ == Status::unknown)
     {
-        case Status::disabled: {
-            break;
-        }
-        case Status::uninitialized: {
-            CELER_MPI_CALL(MPI_Init(argc, argv));
-            status_ = Status::initialized;
-            do_finalize_ = true;
-            break;
-        }
-        case Status::initialized: {
-            break;
-        }
+        this->check_status();
     }
-    CELER_ENSURE(status_ != Status::uninitialized);
+
+    if (status_ == Status::uninitialized)
+    {
+        CELER_MPI_CALL(MPI_Init(argc, argv));
+        status_ = Status::initialized;
+        do_finalize_ = true;
+    }
+
+    CELER_ENSURE(status_ != Status::uninitialized
+                 && status_ != Status::unknown);
 }
 
 //---------------------------------------------------------------------------//
@@ -84,10 +100,13 @@ void ScopedMpiSession::MpiFinalizer::operator()(bool do_finalize) const
 //---------------------------------------------------------------------------//
 /*!
  * Manually disable MPI.
+ *
+ * This is called by setup::system
  */
 void ScopedMpiSession::disable()
 {
-    CELER_EXPECT(status_ == Status::uninitialized);
+    CELER_VALIDATE(status_ == Status::initialized,
+                   << "cannot disable MPI after it was already initialized");
     status_ = Status::disabled;
 }
 
@@ -95,26 +114,16 @@ void ScopedMpiSession::disable()
 /*!
  * Whether MPI has been initialized or disabled.
  */
-auto ScopedMpiSession::status() -> Status
+void ScopedMpiSession::check_status()
 {
-    if (CELER_UNLIKELY(status_ == Status::uninitialized))
+    if (status_ == Status::unknown)
     {
-        if (celeritas::getenv_flag("CELER_DISABLE_PARALLEL", !CELERITAS_USE_MPI)
-                .value)
-        {
-            // Environment variable is set: disable MPI
-            status_ = Status::disabled;
-        }
-        else
-        {
-            // Allow for the case where another application has already
-            // initialized MPI.
-            int result = -1;
-            CELER_MPI_CALL(MPI_Initialized(&result));
-            status_ = result ? Status::initialized : Status::uninitialized;
-        }
+        // Allow for the case where another application has already
+        // initialized MPI.
+        int result = -1;
+        CELER_MPI_CALL(MPI_Initialized(&result));
+        status_ = result ? Status::initialized : Status::uninitialized;
     }
-    return status_;
 }
 
 //---------------------------------------------------------------------------//

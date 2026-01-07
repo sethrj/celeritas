@@ -25,6 +25,9 @@ namespace inp
 /*!
  * Automatically choose whether to use MPI or not.
  *
+ * It is allowed for MPI to be enabled before setup (possibly using
+ * ScopedMpiSession).
+ *
  * The system checks the \c CELER_ENABLE_MPI environment variable. If not set,
  * it defaults to whether MPI was enabled at compile time (\c
  * CELERITAS_USE_MPI). The deprecated \c CELER_DISABLE_PARALLEL environment
@@ -40,7 +43,7 @@ struct DisableMpi
 //! Enable MPI
 struct EnableMpi
 {
-    // TODO: add external communicator etc.
+    // TODO: add external communicator, or argv/argc?
 };
 
 //! Choose whether to use MPI for parallel execution
