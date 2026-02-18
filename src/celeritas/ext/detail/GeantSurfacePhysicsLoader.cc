@@ -256,12 +256,17 @@ void GeantSurfacePhysicsLoader::operator()(SurfaceId sid)
 //---------------------------------------------------------------------------//
 /*!
  * Check that properties for unimplemented capabilities are not present.
+ *
+ * Note that presently "rindex and groupvel" are only volume properties and
+ * should be moved to the target material. In the future we will create an
+ * interstitial material if they're present.
  */
 void GeantSurfacePhysicsLoader::check_unimplemented_properties(
     GeantSurfacePhysicsHelper const& helper) const
 {
     inp::Grid temp;
-    for (std::string name : {"TRANSMITTANCE", "EFFICIENCY"})
+    for (std::string name :
+         {"TRANSMITTANCE", "EFFICIENCY", "RINDEX", "GROUPVEL"})
     {
         // Check if the property exists on the surface
         if (helper.get_property(&temp, name))

@@ -33,9 +33,15 @@ GeantSurfacePhysicsHelper::GeantSurfacePhysicsHelper(SurfaceId sid) : sid_(sid)
     auto* g4surf_prop = g4log_surf->GetSurfaceProperty();
     CELER_ASSERT(g4surf_prop);
     surface_ = dynamic_cast<G4OpticalSurface*>(g4surf_prop);
-    CELER_ASSERT(surface_);
+    if (!surface_)
+    {
+        CELER_LOG(warning) << "Surface '" << g4surf_prop->GetName()
+                           << "' is not an optical surface";
+        return;
+    }
+    // Note: surface definition might only have model/finish and *not* a table
+    // so mpt_ may be null
     mpt_ = surface_->GetMaterialPropertiesTable();
-    CELER_ASSERT(mpt_);
 }
 
 //---------------------------------------------------------------------------//
@@ -62,6 +68,12 @@ G4OpticalSurface const& GeantSurfacePhysicsHelper::surface() const
 bool GeantSurfacePhysicsHelper::get_property(inp::Grid* dst,
                                              std::string const& name) const
 {
+    if (!mpt_)
+    {
+        // No properties at all
+        return false;
+    }
+
     GeantMaterialPropertyGetter get_property{*mpt_};
     auto loaded
         = get_property(dst, name, {ImportUnits::mev, ImportUnits::unitless});

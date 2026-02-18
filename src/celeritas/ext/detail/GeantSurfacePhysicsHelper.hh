@@ -43,8 +43,8 @@ class GeantSurfacePhysicsHelper
 
   private:
     SurfaceId sid_;
-    G4OpticalSurface const* surface_;
-    G4MaterialPropertiesTable const* mpt_;
+    G4OpticalSurface const* surface_{nullptr};
+    G4MaterialPropertiesTable const* mpt_{nullptr};
 };
 
 //---------------------------------------------------------------------------//
