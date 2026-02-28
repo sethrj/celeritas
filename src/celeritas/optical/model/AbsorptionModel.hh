@@ -30,8 +30,10 @@ class AbsorptionModel final : public Model
     // Create a model builder for absorption
     static ModelBuilder make_builder(SPConstImported);
 
-    // Construct with imported data
-    AbsorptionModel(ActionId id, SPConstImported imported);
+    // Construct with imported data and build MFP tables
+    AbsorptionModel(ActionId id,
+                    SPConstImported imported,
+                    MfpBuilder& mfp_builder);
 
     // Build the mean free paths for this model
     void build_mfps(OptMatId mat, MfpBuilder&) const final;

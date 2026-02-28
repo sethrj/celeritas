@@ -7,6 +7,7 @@
 #include "AbsorptionModel.hh"
 
 #include "corecel/Assert.hh"
+#include "corecel/cont/Range.hh"
 #include "celeritas/optical/CoreParams.hh"
 #include "celeritas/optical/CoreState.hh"
 #include "celeritas/optical/InteractionApplier.hh"
@@ -27,8 +28,8 @@ namespace optical
 auto AbsorptionModel::make_builder(SPConstImported imported) -> ModelBuilder
 {
     CELER_EXPECT(imported);
-    return [i = std::move(imported)](ActionId id) {
-        return std::make_shared<AbsorptionModel>(id, i);
+    return [i = std::move(imported)](ActionId id, MfpBuilder& mfp_builder) {
+        return std::make_shared<AbsorptionModel>(id, i, mfp_builder);
     };
 }
 
@@ -36,10 +37,16 @@ auto AbsorptionModel::make_builder(SPConstImported imported) -> ModelBuilder
 /*!
  * Construct the model from imported data.
  */
-AbsorptionModel::AbsorptionModel(ActionId id, SPConstImported imported)
+AbsorptionModel::AbsorptionModel(ActionId id,
+                                 SPConstImported imported,
+                                 MfpBuilder& mfp_builder)
     : Model(id, "absorption", "interact by optical absorption")
     , imported_(ImportModelClass::absorption, imported)
 {
+    for (auto mat : range(OptMatId{imported_.num_materials()}))
+    {
+        build_mfps(mat, mfp_builder);
+    }
 }
 
 //---------------------------------------------------------------------------//

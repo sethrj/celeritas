@@ -60,7 +60,7 @@ class ModelImporter
 
     //!@{
     //! \name User builder type aliases
-    using ModelBuilder = std::function<std::shared_ptr<Model>(ActionId)>;
+    using ModelBuilder = Model::ModelBuilder;
     //!@}
 
   public:

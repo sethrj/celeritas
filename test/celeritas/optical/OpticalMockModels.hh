@@ -11,6 +11,7 @@
 #include <numeric>
 #include <vector>
 
+#include "corecel/cont/Range.hh"
 #include "celeritas/optical/MfpBuilder.hh"
 #include "celeritas/optical/Model.hh"
 
@@ -110,9 +111,16 @@ class MockModel : public Model
  */
 struct MockModelBuilder
 {
-    std::shared_ptr<Model> operator()(ActionId id) const
+    OptMatId::size_type num_materials{0};
+
+    std::shared_ptr<Model> operator()(ActionId id, MfpBuilder& builder) const
     {
-        return std::make_shared<MockModel>(id);
+        auto model = std::make_shared<MockModel>(id);
+        for (auto mat : range(OptMatId{num_materials}))
+        {
+            model->build_mfps(mat, builder);
+        }
+        return model;
     }
 };
 

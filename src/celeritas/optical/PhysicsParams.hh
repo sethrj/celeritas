@@ -92,8 +92,8 @@ class PhysicsParams final : public ParamsDataInterface<PhysicsParamsData>
     //!@{
     //! \name Data construction helper functions
     VecModels build_models(VecModelBuilders const& model_builders,
-                           ActionRegistry& action_reg) const;
-    void build_mfps(MaterialParams const& mats, HostValue& data) const;
+                           ActionRegistry& action_reg,
+                           HostValue& data) const;
     //!@}
 };
 

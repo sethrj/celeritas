@@ -54,8 +54,10 @@ class RayleighModelTest : public OpticalMockTestBase
     std::shared_ptr<RayleighModel const> create_model()
     {
         auto models = ImportedModels::from_import(this->imported_data());
+        OwningGridAccessor storage;
+        auto builder = storage.create_mfp_builder();
         return std::make_shared<RayleighModel const>(
-            ActionId{0}, models, RayleighModel::Input{});
+            ActionId{0}, models, RayleighModel::Input{}, builder);
     }
 };
 

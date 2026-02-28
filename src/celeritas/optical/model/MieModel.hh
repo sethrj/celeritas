@@ -45,8 +45,11 @@ class MieModel final : public Model
     // Create a model builder from imported data
     static ModelBuilder make_builder(SPConstImported imported, Input input);
 
-    // Construct with mie scattering input data
-    MieModel(ActionId id, SPConstImported imported, Input input);
+    // Construct with mie scattering input data and build MFP tables
+    MieModel(ActionId id,
+             SPConstImported imported,
+             Input input,
+             MfpBuilder& mfp_builder);
 
     // Build the mean free paths for this model
     void build_mfps(OptMatId mat, MfpBuilder& build) const final;

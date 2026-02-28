@@ -53,8 +53,11 @@ class RayleighModel : public Model
     // Create a model builder from imported data and material parameters
     static ModelBuilder make_builder(SPConstImported, Input);
 
-    // Construct with imported data and imported material parameters
-    RayleighModel(ActionId id, SPConstImported imported, Input input);
+    // Construct with imported data, material parameters, and build MFP tables
+    RayleighModel(ActionId id,
+                  SPConstImported imported,
+                  Input input,
+                  MfpBuilder& mfp_builder);
 
     // Build the mean free paths for this model
     void build_mfps(OptMatId, MfpBuilder&) const final;

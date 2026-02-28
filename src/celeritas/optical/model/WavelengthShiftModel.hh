@@ -46,8 +46,8 @@ class WavelengthShiftModel : public Model
     // Create a model builder from imported data
     static ModelBuilder make_builder(SPConstImported, Input);
 
-    // Construct with WLS input data
-    WavelengthShiftModel(ActionId, SPConstImported, Input);
+    // Construct with WLS input data and build MFP tables
+    WavelengthShiftModel(ActionId, SPConstImported, Input, MfpBuilder&);
 
     // Build the mean free paths for this model
     void build_mfps(OptMatId, MfpBuilder&) const final;

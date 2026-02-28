@@ -31,8 +31,9 @@ class Model : public OpticalStepActionInterface, public ConcreteAction
     //!@{
     //! \name Type aliases
 
-    //! Function to build optical models with a given action id
-    using ModelBuilder = std::function<std::shared_ptr<Model>(ActionId)>;
+    //! Function to build optical models with a given action id and MFP builder
+    using ModelBuilder
+        = std::function<std::shared_ptr<Model>(ActionId, MfpBuilder&)>;
     //!@}
 
   public:

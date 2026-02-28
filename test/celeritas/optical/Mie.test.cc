@@ -51,7 +51,10 @@ class MieTest : public InteractorHostBase, public OpticalMockTestBase
         }
 
         auto models = ImportedModels::from_import(data);
-        model_ = std::make_shared<MieModel const>(ActionId{0}, models, input);
+        OwningGridAccessor storage;
+        auto builder = storage.create_mfp_builder();
+        model_ = std::make_shared<MieModel const>(
+            ActionId{0}, models, input, builder);
         data_ = model_->host_ref();
     }
 

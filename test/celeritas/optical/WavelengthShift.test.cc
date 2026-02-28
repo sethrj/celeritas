@@ -15,6 +15,7 @@
 
 #include "InteractorHostTestBase.hh"
 #include "OpticalMockTestBase.hh"
+#include "ValidationUtils.hh"
 #include "celeritas_test.hh"
 
 namespace celeritas
@@ -48,8 +49,10 @@ class WavelengthShiftTest : public InteractorHostBase,
             input.data[opt_mat_id.get()] = wls;
         }
         auto models = ImportedModels::from_import(data);
+        OwningGridAccessor storage;
+        auto builder = storage.create_mfp_builder();
         model_ = std::make_shared<WavelengthShiftModel const>(
-            ActionId{0}, models, input);
+            ActionId{0}, models, input, builder);
         data_ = model_->host_ref();
     }
 

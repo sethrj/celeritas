@@ -37,7 +37,10 @@ class AbsorptionModelTest : public OpticalMockTestBase
     std::shared_ptr<AbsorptionModel const> create_model()
     {
         auto models = ImportedModels::from_import(this->imported_data());
-        return std::make_shared<AbsorptionModel const>(ActionId{0}, models);
+        OwningGridAccessor storage;
+        auto builder = storage.create_mfp_builder();
+        return std::make_shared<AbsorptionModel const>(
+            ActionId{0}, models, builder);
     }
 };
 

@@ -52,19 +52,24 @@ PhysicsParams::from_import(ImportData const& io,
 /*!
  * Construct from imported and shared data.
  *
- * The following models are first constructed:
+ * The following actions are first registered:
  *  - "discrete-select": sample models by XS for discrete interactions
  *
- * Optical models provided by the model builders input are then constructed and
- * registered in the action registry. Finally, scalar data and MFP tables are
- * constructed on the physics storage data.
+ * Optical models provided by the model builders input are then constructed,
+ * registered in the action registry, and their MFP tables are built
+ * concurrently during construction.
  */
 PhysicsParams::PhysicsParams(Input input)
 {
     CELER_EXPECT(input.materials);
     CELER_EXPECT(input.action_registry);
 
-    // Create and register actions
+    // Construct data with known scalars
+    HostValue data;
+    data.scalars.num_materials = input.materials->num_materials();
+    data.scalars.first_model_action = ActionId{1};
+
+    // Create and register actions; build models and MFP tables concurrently
     {
         auto& action_reg = *input.action_registry;
 
@@ -73,17 +78,11 @@ PhysicsParams::PhysicsParams(Input input)
             = std::make_shared<DiscreteSelectAction>(action_reg.next_id());
         action_reg.insert(discrete_select_);
 
-        // Build models
-        models_ = this->build_models(input.model_builders, action_reg);
+        // Build models (MFP tables are built during model construction)
+        models_ = this->build_models(input.model_builders, action_reg, data);
     }
 
-    // Construct data
-    HostValue data;
     data.scalars.num_models = models_.size();
-    data.scalars.num_materials = input.materials->num_materials();
-    data.scalars.first_model_action = ActionId{1};
-
-    this->build_mfps(*input.materials, data);
 
     CELER_ENSURE(data);
 
@@ -92,10 +91,12 @@ PhysicsParams::PhysicsParams(Input input)
 
 //---------------------------------------------------------------------------//
 /*!
- * Construct optical models and register them in the given registry.
+ * Construct optical models, register them in the given registry, and build
+ * their MFP tables into the provided data storage.
  */
 auto PhysicsParams::build_models(VecModelBuilders const& model_builders,
-                                 ActionRegistry& action_reg) const -> VecModels
+                                 ActionRegistry& action_reg,
+                                 HostValue& data) const -> VecModels
 {
     VecModels models;
     models.reserve(model_builders.size());
@@ -105,35 +106,18 @@ auto PhysicsParams::build_models(VecModelBuilders const& model_builders,
         CELER_ASSERT(build_model);
 
         auto action_id = action_reg.next_id();
-        SPConstModel model = build_model(action_id);
+        MfpBuilder mfp_builder(&data.reals, &data.grids);
+        SPConstModel model = build_model(action_id, mfp_builder);
         CELER_ASSERT(model);
         CELER_ASSERT(model->action_id() == action_id);
+        CELER_ASSERT(mfp_builder.grid_ids().size()
+                     == data.scalars.num_materials);
 
         action_reg.insert(model);
         models.push_back(std::move(model));
     }
 
     return models;
-}
-
-//---------------------------------------------------------------------------//
-/*!
- * Build MFP tables for each model in the host data.
- */
-void PhysicsParams::build_mfps(MaterialParams const& mats, HostValue& data) const
-{
-    for (auto const& model : models_)
-    {
-        // Build all MFP tables for the model
-        MfpBuilder builder(&data.reals, &data.grids);
-        for (auto opt_mat : range(OptMatId{mats.num_materials()}))
-        {
-            model->build_mfps(opt_mat, builder);
-        }
-
-        // Build the MFP table from the grid IDs
-        CELER_ASSERT(builder.grid_ids().size() == mats.num_materials());
-    }
 }
 
 //---------------------------------------------------------------------------//

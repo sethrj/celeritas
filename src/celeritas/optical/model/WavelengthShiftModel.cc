@@ -8,6 +8,7 @@
 
 #include <vector>
 
+#include "corecel/cont/Range.hh"
 #include "corecel/data/CollectionBuilder.hh"
 #include "corecel/io/EnumStringMapper.hh"
 #include "corecel/math/PdfUtils.hh"
@@ -36,8 +37,9 @@ auto WavelengthShiftModel::make_builder(SPConstImported imported, Input input)
 {
     CELER_EXPECT(imported);
     return [imported = std::move(imported),
-            input = std::move(input)](ActionId id) {
-        return std::make_shared<WavelengthShiftModel>(id, imported, input);
+            input = std::move(input)](ActionId id, MfpBuilder& mfp_builder) {
+        return std::make_shared<WavelengthShiftModel>(
+            id, imported, input, mfp_builder);
     };
 }
 
@@ -47,7 +49,8 @@ auto WavelengthShiftModel::make_builder(SPConstImported imported, Input input)
  */
 WavelengthShiftModel::WavelengthShiftModel(ActionId id,
                                            SPConstImported imported,
-                                           Input input)
+                                           Input input,
+                                           MfpBuilder& mfp_builder)
     : Model(id, to_cstring(input.model), "interact by WLS")
     , imported_(input.model, std::move(imported))
 {
@@ -99,6 +102,11 @@ WavelengthShiftModel::WavelengthShiftModel(ActionId id,
 
     data_ = ParamsDataStore<WavelengthShiftData>{std::move(data)};
     CELER_ENSURE(data_);
+
+    for (auto mat : range(OptMatId{imported_.num_materials()}))
+    {
+        build_mfps(mat, mfp_builder);
+    }
 }
 
 //---------------------------------------------------------------------------//

@@ -7,6 +7,7 @@
 #include "RayleighModel.hh"
 
 #include "corecel/Assert.hh"
+#include "corecel/cont/Range.hh"
 #include "corecel/io/Logger.hh"
 #include "celeritas/io/ImportOpticalMaterial.hh"
 #include "celeritas/mat/MaterialParams.hh"
@@ -36,8 +37,9 @@ auto RayleighModel::make_builder(SPConstImported imported, Input input)
 {
     CELER_EXPECT(imported);
     return [imported = std::move(imported),
-            input = std::move(input)](ActionId id) {
-        return std::make_shared<RayleighModel>(id, imported, input);
+            input = std::move(input)](ActionId id, MfpBuilder& mfp_builder) {
+        return std::make_shared<RayleighModel>(
+            id, imported, input, mfp_builder);
     };
 }
 
@@ -48,7 +50,10 @@ auto RayleighModel::make_builder(SPConstImported imported, Input input)
  * Uses \c RayleighMfpCalculator to calculate missing imported MFPs from
  * material parameters, if available.
  */
-RayleighModel::RayleighModel(ActionId id, SPConstImported imported, Input input)
+RayleighModel::RayleighModel(ActionId id,
+                             SPConstImported imported,
+                             Input input,
+                             MfpBuilder& mfp_builder)
     : Model(id, "optical-rayleigh", "interact by optical Rayleigh")
     , imported_(ImportModelClass::rayleigh, std::move(imported))
     , input_(std::move(input))
@@ -56,6 +61,11 @@ RayleighModel::RayleighModel(ActionId id, SPConstImported imported, Input input)
     CELER_EXPECT(!input_
                  || input_.materials->num_materials()
                         == imported_.num_materials());
+
+    for (auto mat : range(OptMatId{imported_.num_materials()}))
+    {
+        build_mfps(mat, mfp_builder);
+    }
 }
 
 //---------------------------------------------------------------------------//

@@ -44,9 +44,10 @@ class OpticalPhysicsTest : public OpticalMockTestBase
     {
         PhysicsParams::Input input;
 
+        auto const num_mats = this->num_optical_materials();
         for ([[maybe_unused]] auto i : range(num_models))
         {
-            input.model_builders.push_back(MockModelBuilder{});
+            input.model_builders.push_back(MockModelBuilder{num_mats});
         }
 
         input.materials = this->optical_material();

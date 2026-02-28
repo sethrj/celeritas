@@ -10,6 +10,7 @@
 
 #include "corecel/Assert.hh"
 #include "corecel/Types.hh"
+#include "corecel/cont/Range.hh"
 #include "corecel/data/CollectionBuilder.hh"
 #include "corecel/inp/Grid.hh"
 #include "corecel/io/Logger.hh"
@@ -36,8 +37,8 @@ auto MieModel::make_builder(SPConstImported imported, Input input)
 {
     CELER_EXPECT(imported);
     return [imported = std::move(imported),
-            input = std::move(input)](ActionId id) {
-        return std::make_shared<MieModel>(id, imported, input);
+            input = std::move(input)](ActionId id, MfpBuilder& mfp_builder) {
+        return std::make_shared<MieModel>(id, imported, input, mfp_builder);
     };
 }
 
@@ -45,7 +46,10 @@ auto MieModel::make_builder(SPConstImported imported, Input input)
 /*!
  * Construct the model from imported data and imported material parameters.
  */
-MieModel::MieModel(ActionId id, SPConstImported imported, Input input)
+MieModel::MieModel(ActionId id,
+                   SPConstImported imported,
+                   Input input,
+                   MfpBuilder& mfp_builder)
     : Model(id, "optical-mie", "interact by optical Mie scattering")
     , imported_(ImportModelClass::mie, std::move(imported))
 {
@@ -64,6 +68,11 @@ MieModel::MieModel(ActionId id, SPConstImported imported, Input input)
 
     data_ = ParamsDataStore<MieData>{std::move(data)};
     CELER_ENSURE(data_);
+
+    for (auto mat : range(OptMatId{imported_.num_materials()}))
+    {
+        build_mfps(mat, mfp_builder);
+    }
 }
 
 //---------------------------------------------------------------------------//
