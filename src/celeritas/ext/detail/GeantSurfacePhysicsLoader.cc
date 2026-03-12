@@ -6,7 +6,6 @@
 //---------------------------------------------------------------------------//
 #include "GeantSurfacePhysicsLoader.hh"
 
-#include <functional>
 #include <G4LogicalSurface.hh>
 #include <G4OpticalSurface.hh>
 #include <G4Version.hh>
@@ -14,6 +13,8 @@
 #include "corecel/Assert.hh"
 #include "corecel/inp/Grid.hh"
 #include "corecel/io/Logger.hh"
+
+#include "GeantSurfacePhysicsHelper.hh"
 
 using G4ST = G4SurfaceType;
 using G4OSF = G4OpticalSurfaceFinish;
@@ -217,9 +218,16 @@ void GeantSurfacePhysicsLoader::operator()(SurfaceId sid)
 {
     CELER_EXPECT(sid);
 
+    GeantSurfacePhysicsHelper helper(sid);
+    if (!helper)
+    {
+        CELER_LOG(warning) << "Surface " << sid.get()
+                           << " has no optical surface properties";
+        return;
+    }
+
     models_.materials.push_back({});
 
-    GeantSurfacePhysicsHelper helper(sid);
     auto const& surf = helper.surface();
     auto const model = surf.GetModel();
     try
@@ -239,9 +247,10 @@ void GeantSurfacePhysicsLoader::operator()(SurfaceId sid)
     }
     catch (std::exception const& e)
     {
-        CELER_LOG(error) << "Failed to load " << to_cstring(surf.GetFinish())
-                         << " " << to_cstring(surf.GetType()) << " surface "
-                         << surf.GetName() << " with model '"
+        CELER_LOG(error) << "Failed to load surface " << helper << " with "
+                         << to_cstring(surf.GetFinish()) << "/"
+                         << to_cstring(surf.GetType())
+                         << " finish/type and model '"
                          << to_cstring(surf.GetModel()) << "'";
         throw;
     }
