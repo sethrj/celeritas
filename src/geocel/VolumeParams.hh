@@ -6,6 +6,7 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
+#include <iosfwd>
 #include <memory>
 
 #include "corecel/Macros.hh"
@@ -131,6 +132,12 @@ class VolumeParams final : public ParamsDataInterface<VolumeParamsData>
     VolInstMap vi_labels_;
     ParamsDataStore<VolumeParamsData> data_;
 };
+
+//---------------------------------------------------------------------------//
+// FREE FUNCTIONS
+//---------------------------------------------------------------------------//
+// Write volume hierarchy to a stream (defined in IO.json.cc)
+std::ostream& operator<<(std::ostream& os, VolumeParams const& vp);
 
 //---------------------------------------------------------------------------//
 // HACKY GLOBAL VARIABLES DURING REFACTORING
