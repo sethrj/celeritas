@@ -79,16 +79,25 @@ void to_json(nlohmann::json& j, VolumeParams const& vp)
 }
 
 //---------------------------------------------------------------------------//
+// Helper to write the volume hierarchy to a stream.
+std::ostream& operator<<(std::ostream& os, VolumeParams const& vp)
+{
+    nlohmann::json j = vp;
+    os << j.dump(0);
+    return os;
+}
+
+namespace inp
+{
+//---------------------------------------------------------------------------//
 /*!
  * Read volume hierarchy data from JSON.
  *
  * See \c to_json for the expected format.  \c GeoMatId assignments are not
  * serialised and will be left null on construction.
  */
-void from_json(nlohmann::json const& j, VolumeParams& vp)
+void from_json(nlohmann::json const& j, inp::Volumes& in)
 {
-    inp::Volumes in;
-
     // Volume labels
     for (auto const& lj : j.at("volumes"))
     {
@@ -133,27 +142,17 @@ void from_json(nlohmann::json const& j, VolumeParams& vp)
     {
         j_vids[vi_idx].get_to(in.volume_instances[vi_idx].volume);
     }
-
-    vp = VolumeParams{in};
 }
 
 //---------------------------------------------------------------------------//
 // Helper to read the volume hierarchy from a stream.
-std::istream& operator>>(std::istream& is, VolumeParams& vp)
+std::istream& operator>>(std::istream& is, Volumes& vols)
 {
     auto j = nlohmann::json::parse(is);
-    j.get_to(vp);
+    j.get_to(vols);
     return is;
 }
 
 //---------------------------------------------------------------------------//
-// Helper to write the volume hierarchy to a stream.
-std::ostream& operator<<(std::ostream& os, VolumeParams const& vp)
-{
-    nlohmann::json j = vp;
-    os << j.dump(0);
-    return os;
-}
-
-//---------------------------------------------------------------------------//
+}  // namespace inp
 }  // namespace celeritas

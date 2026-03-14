@@ -374,6 +374,18 @@ TEST_F(MultiLevelTest, visit)
     }
 }
 
+TEST_F(MultiLevelTest, unique_instance)
+{
+    // Check offsets
+    auto const& vols = this->volumes();
+
+    constexpr auto all = AllItems<VolumeUniqueInstanceId>{};
+    auto offsets = id_to_int(vols.host_ref().unique_instance_offsets[all]);
+    EXPECT_EQ(vols.num_volume_instances(), offsets.size());
+    static int const expected_offsets[] = {0, 1, 2, 0, 4, 5, 9, 0, 1, 2, 13, 0};
+    EXPECT_VEC_EQ(expected_offsets, offsets);
+}
+
 //---------------------------------------------------------------------------//
 }  // namespace test
 }  // namespace celeritas
