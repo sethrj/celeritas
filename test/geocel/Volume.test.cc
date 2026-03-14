@@ -389,7 +389,7 @@ TEST_F(MultiLevelTest, io)
 [],
 []
 ],
-"instance_volume_ids": [ 0, 0, 1, 2, 0, 2, 2, 5, 5, 6, 4, 3 ],
+"instance_to_volume": [ 0, 0, 1, 2, 0, 2, 2, 5, 5, 6, 4, 3 ],
 "volume_instances": [ "boxsph1@0", "boxsph2@0", "boxtri@0", "topbox1", "topsph1", "topbox2", "topbox3", "boxsph1@1", "boxsph2@1", "boxtri@1", "topbox4", "world_PV" ],
 "volumes": [ "sph", "tri", "box", "world", "box_refl", "sph_refl", "tri_refl" ],
 "world": 3

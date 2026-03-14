@@ -29,7 +29,7 @@ namespace celeritas
  * - \c world : integer VolumeId of the root, or null if empty
  * - \c children : array of arrays; \c children[v] lists the VolumeInstanceId
  *   integers of the direct children placed inside volume \c v
- * - \c instance_volume_ids : array; \c instance_volume_ids[vi] is the integer
+ * - \c instance_to_volume : array; \c instance_to_volume[vi] is the integer
  *   VolumeId that instance \c vi instantiates, or null if \c vi is a null
  *   instance
  */
@@ -75,7 +75,7 @@ void to_json(nlohmann::json& j, VolumeParams const& vp)
         {"volume_instances", std::move(j_vis)},
         {"world", vp.world()},
         {"children", std::move(j_children)},
-        {"instance_volume_ids", std::move(j_vids)},
+        {"instance_to_volume", std::move(j_vids)},
     };
 }
 

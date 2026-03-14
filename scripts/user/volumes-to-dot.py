@@ -30,7 +30,7 @@ def escape(s: str) -> str:
     return s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
 
 
-def render(data: dict, out):
+def render(data: dict, out, print_ids: bool = False):
     volumes = data["volumes"]  # list of label strings
     vis = data["volume_instances"]  # list of label strings (may be empty)
     world = data["world"]  # int or null
@@ -49,7 +49,12 @@ def render(data: dict, out):
 
     # Volume nodes (logical)
     for v_idx, label in enumerate(volumes):
-        lbl = escape(label) if label else f"v{v_idx}"
+        lbl = escape(label) if label else ""
+        if print_ids:
+            id_str = f"V{{{v_idx}}}"
+            lbl = f"{lbl}\\n{id_str}" if lbl else id_str
+        elif not lbl:
+            lbl = f"v{v_idx}"
         w(f'  v{v_idx} [label="{lbl}"]\n')
 
     w("\n")
@@ -60,7 +65,12 @@ def render(data: dict, out):
             if child_v is None:
                 continue
             vi_label = vis[vi_idx] if vi_idx < len(vis) else ""
-            edge_lbl = f' [label="{escape(vi_label)}"]' if vi_label else ""
+            if print_ids:
+                id_str = f"VI{{{vi_idx}}}"
+                vi_label = f"{escape(vi_label)}\\n{id_str}" if vi_label else id_str
+            elif vi_label:
+                vi_label = escape(vi_label)
+            edge_lbl = f' [label="{vi_label}"]' if vi_label else ""
             w(f"  v{v_idx} -> v{child_v}{edge_lbl}\n")
 
     w("}\n")
@@ -74,6 +84,12 @@ def main():
     parser.add_argument(
         "-o", "--output", default=None, help="Output filename (default: stdout)"
     )
+    parser.add_argument(
+        "--ids",
+        action="store_true",
+        default=False,
+        help="Append V{NNN}/VI{MMM} IDs to volume/instance labels",
+    )
     args = parser.parse_args()
 
     if args.input == "-":
@@ -84,9 +100,9 @@ def main():
 
     if args.output:
         with open(args.output, "w") as f:
-            render(data, f)
+            render(data, f, print_ids=args.ids)
     else:
-        render(data, sys.stdout)
+        render(data, sys.stdout, print_ids=args.ids)
 
 
 if __name__ == "__main__":
