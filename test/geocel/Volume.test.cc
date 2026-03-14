@@ -9,10 +9,12 @@
 
 #include "corecel/OpaqueIdUtils.hh"
 #include "corecel/cont/LabelIdMultiMapUtils.hh"
+#include "corecel/io/Label.hh"
 #include "corecel/io/StreamUtils.hh"
 #include "geocel/Types.hh"
 #include "geocel/VolumeParams.hh"
 #include "geocel/VolumeToString.hh"
+#include "geocel/VolumeUniqueInstanceAccumulator.hh"
 #include "geocel/VolumeVisitor.hh"
 
 #include "TestMacros.hh"
@@ -407,6 +409,52 @@ TEST_F(MultiLevelTest, unique_instance)
     EXPECT_EQ(vols.num_volume_instances(), offsets.size());
     static int const expected_offsets[] = {0, 1, 2, 0, 4, 5, 9, 0, 1, 2, 13, 0};
     EXPECT_VEC_EQ(expected_offsets, offsets);
+}
+
+TEST_F(MultiLevelTest, unique_instance_accumulator)
+{
+    // vi indices (from JSON):
+    //  0:boxsph1@0→sph, 1:boxsph2@0→sph, 2:boxtri@0→tri,
+    //  3:topbox1→box,   4:topsph1→sph,   5:topbox2→box, 6:topbox3→box,
+    //  7:boxsph1@1→sph_refl, 8:boxsph2@1→sph_refl, 9:boxtri@1→tri_refl,
+    //  10:topbox4→box_refl, 11:world_PV→world
+    auto const& vols = this->volumes();
+    VolumeUniqueInstanceAccumulator acc{vols.host_ref()};
+    auto const& vi_labels = vols.volume_instance_labels();
+
+    auto world_pv = vi_labels.find_unique("world_PV");
+    auto topbox1 = vi_labels.find_unique("topbox1");
+    auto topsph1 = vi_labels.find_unique("topsph1");
+    auto topbox4 = vi_labels.find_unique("topbox4");
+    auto boxsph1_0 = vi_labels.find_exact(Label::from_separator("boxsph1@0"));
+    auto boxsph1_1 = vi_labels.find_exact(Label::from_separator("boxsph1@1"));
+    auto boxtri_1 = vi_labels.find_exact(Label::from_separator("boxtri@1"));
+
+    // Path [world_PV] → uid 1
+    VolumeUniqueInstanceId uid{0};
+    EXPECT_EQ(VolumeUniqueInstanceId{1}, uid = acc(uid, world_pv));
+
+    // Path [world_PV, topbox1] → uid 2  (box)
+    EXPECT_EQ(VolumeUniqueInstanceId{2}, uid = acc(uid, topbox1));
+
+    // Path [world_PV, topbox1, boxsph1@0] → uid 3  (sph)
+    EXPECT_EQ(VolumeUniqueInstanceId{3}, uid = acc(uid, boxsph1_0));
+
+    // Path [world_PV, topsph1] → uid 6  (sph directly under world)
+    uid = acc(VolumeUniqueInstanceId{0}, world_pv);
+    EXPECT_EQ(VolumeUniqueInstanceId{6}, uid = acc(uid, topsph1));
+
+    // Path [world_PV, topbox4] → uid 15  (box_refl)
+    uid = acc(VolumeUniqueInstanceId{0}, world_pv);
+    EXPECT_EQ(VolumeUniqueInstanceId{15}, uid = acc(uid, topbox4));
+
+    // Path [world_PV, topbox4, boxsph1@1] → uid 16  (sph_refl)
+    EXPECT_EQ(VolumeUniqueInstanceId{16}, uid = acc(uid, boxsph1_1));
+
+    // Path [world_PV, topbox4, boxtri@1] → uid 18  (tri_refl, last)
+    uid = acc(VolumeUniqueInstanceId{0}, world_pv);
+    uid = acc(uid, topbox4);
+    EXPECT_EQ(VolumeUniqueInstanceId{18}, uid = acc(uid, boxtri_1));
 }
 
 //---------------------------------------------------------------------------//

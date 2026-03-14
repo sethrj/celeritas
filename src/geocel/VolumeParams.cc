@@ -61,13 +61,14 @@ int calc_num_volume_levels(HostVal<VolumeParamsData> const& params)
 
 //---------------------------------------------------------------------------//
 /*!
- * Compute the number of descendant unique-instance paths for each volume.
+ * Compute the number of unique paths ending at any node in each subtree.
  *
- * For a leaf volume V (no children) this equals 1. For an inner volume,
- *   num_descendants(V) = 1 + Σ num_descendants(volume(vi)) for vi in
- *   V.children.
- * Computed bottom-up via iterative post-order DFS so that shared sub-volumes
- * (DAG diamonds) are only evaluated once.
+ * For a volume V, this equals 1 (the path ending at V itself) plus the sum of
+ * the counts for each child volume:
+ *   num_desc(V) = 1 + Σ num_desc(volume(vi)) for vi in V.children.
+ * The leading 1 accounts for the path that terminates exactly at V without
+ * descending further.  Computed bottom-up via iterative post-order DFS so
+ * that shared sub-volumes (DAG diamonds) are evaluated only once.
  */
 std::vector<ull_int>
 calc_num_descendants(HostVal<VolumeParamsData> const& params)
