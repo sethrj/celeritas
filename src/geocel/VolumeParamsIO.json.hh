@@ -22,14 +22,4 @@ void to_json(nlohmann::json& j, VolumeParams const& vp);
 // Write volume hierarchy to a stream
 std::ostream& operator<<(std::ostream& os, VolumeParams const& vp);
 
-namespace inp
-{
-//---------------------------------------------------------------------------//
-// Read volume hierarchy from JSON
-void from_json(nlohmann::json const& j, Volumes& vp);
-// Read volume hierarchy input from a stream
-std::istream& operator>>(std::istream& is, Volumes& vols);
-
-//---------------------------------------------------------------------------//
-}  // namespace inp
 }  // namespace celeritas
