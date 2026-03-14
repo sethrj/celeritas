@@ -60,6 +60,17 @@ struct VolumeParamsData
     VolInstItems<VolumeId> volume_ids;
     //! Flat backing storage for per-volume parent and child instance lists
     Items<VolumeInstanceId> vi_storage;
+    /*!
+     * Pre-computed unique-instance offset for each volume instance.
+     *
+     * For a volume instance \c vi at position \c k in its parent volume's
+     * children list, this is the sum of \c num_descendants(volume(vj)) for
+     * all preceding siblings \c vj (i.e., positions 0..k-1) in that list.
+     * Summing the offsets over a root-to-leaf path, plus the count of
+     * non-null volume-instance IDs in the path, gives the
+     * \c VolumeUniqueInstanceId for that path.
+     */
+    VolInstItems<VolumeUniqueInstanceId> unique_instance_offsets;
 
     //! Root volume of the geometry graph
     VolumeId world;
@@ -74,10 +85,12 @@ struct VolumeParamsData
         if (volumes.empty())
         {
             // Valid empty state (e.g., for testing or ORANGE debugging)
-            return volume_ids.empty() && vi_storage.empty() && !world
+            return volume_ids.empty() && vi_storage.empty()
+                   && unique_instance_offsets.empty() && !world
                    && num_volume_levels == 0;
         }
-        return static_cast<bool>(world);
+        return static_cast<bool>(world)
+               && unique_instance_offsets.size() == volume_ids.size();
     }
 
     //! Assign from another set of data
@@ -88,6 +101,7 @@ struct VolumeParamsData
         volumes = other.volumes;
         volume_ids = other.volume_ids;
         vi_storage = other.vi_storage;
+        unique_instance_offsets = other.unique_instance_offsets;
         world = other.world;
         num_volume_levels = other.num_volume_levels;
         CELER_ENSURE(*this);
