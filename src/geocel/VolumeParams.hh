@@ -90,6 +90,9 @@ class VolumeParams final : public ParamsDataInterface<VolumeParamsData>
     //! Depth of the volume DAG (a world without children is 1)
     inline vol_level_uint num_volume_levels() const;
 
+    //! Total number of unique root-to-node paths
+    inline VolumeUniqueInstanceId::size_type num_unique_instances() const;
+
     //! Number of volumes
     VolumeId::size_type num_volumes() const { return v_labels_.size(); }
 
@@ -161,6 +164,16 @@ std::weak_ptr<VolumeParams const> const& global_volumes();
 auto VolumeParams::num_volume_levels() const -> vol_level_uint
 {
     return data_.host_ref().num_volume_levels;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Total number of unique root-to-node paths (= num_desc of the world volume).
+ */
+auto VolumeParams::num_unique_instances() const
+    -> VolumeUniqueInstanceId::size_type
+{
+    return data_.host_ref().num_unique_instances;
 }
 
 //---------------------------------------------------------------------------//

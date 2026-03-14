@@ -14,9 +14,9 @@
 #include "corecel/io/StreamUtils.hh"
 #include "geocel/Types.hh"
 #include "geocel/VolumeParams.hh"
+#include "geocel/VolumePathAccumulator.hh"
 #include "geocel/VolumePathFinder.hh"
 #include "geocel/VolumeToString.hh"
-#include "geocel/VolumeUniqueInstanceAccumulator.hh"
 #include "geocel/VolumeVisitor.hh"
 
 #include "TestMacros.hh"
@@ -421,7 +421,7 @@ TEST_F(MultiLevelTest, unique_instance_accumulator)
     //  7:boxsph1@1→sph_refl, 8:boxsph2@1→sph_refl, 9:boxtri@1→tri_refl,
     //  10:topbox4→box_refl, 11:world_PV→world
     auto const& vols = this->volumes();
-    VolumeUniqueInstanceAccumulator acc{vols.host_ref()};
+    VolumePathAccumulator acc{vols.host_ref()};
     auto const& vi_labels = vols.volume_instance_labels();
 
     auto world_pv = vi_labels.find_unique("world_PV");
@@ -483,6 +483,26 @@ TEST_F(MultiLevelTest, offset)
 }
 
 //---------------------------------------------------------------------------//
+TEST_F(MultiLevelTest, path_round_trip)
+{
+    auto const& vols = this->volumes();
+    std::vector<VolumeInstanceId> buf(vols.num_volume_levels());
+    VolumePathFinder find_path{vols.host_ref(), make_span(buf)};
+    VolumePathAccumulator acc{vols.host_ref()};
+
+    for (auto uid : range(VolumeUniqueInstanceId{vols.num_unique_instances()}))
+    {
+        auto path = find_path(uid);
+        VolumeUniqueInstanceId result{0};
+        for (VolumeInstanceId vi : path)
+        {
+            result = acc(result, vi);
+        }
+        EXPECT_EQ(uid, result) << "round-trip failed for uid=" << uid.get();
+    }
+}
+
+//---------------------------------------------------------------------------//
 TEST_F(MultiLevelTest, path_finder)
 {
     auto const& vols = this->volumes();
@@ -492,7 +512,7 @@ TEST_F(MultiLevelTest, path_finder)
     auto path_str = [&vols](Span<VolumeInstanceId const> path) {
         return to_string(
             join(path.begin(), path.end(), '/', [&vols](VolumeInstanceId vi) {
-                return vols.volume_instance_labels().at(vi).name;
+                return to_string(vols.volume_instance_labels().at(vi));
             }));
     };
 
@@ -500,15 +520,15 @@ TEST_F(MultiLevelTest, path_finder)
     EXPECT_EQ("world_PV", path_str(find_path(VolumeUniqueInstanceId{1})));
     EXPECT_EQ("world_PV/topbox1",
               path_str(find_path(VolumeUniqueInstanceId{2})));
-    EXPECT_EQ("world_PV/topbox1/boxsph1",
+    EXPECT_EQ("world_PV/topbox1/boxsph1@0",
               path_str(find_path(VolumeUniqueInstanceId{3})));
     EXPECT_EQ("world_PV/topsph1",
               path_str(find_path(VolumeUniqueInstanceId{6})));
     EXPECT_EQ("world_PV/topbox4",
               path_str(find_path(VolumeUniqueInstanceId{15})));
-    EXPECT_EQ("world_PV/topbox4/boxsph1",
+    EXPECT_EQ("world_PV/topbox4/boxsph1@1",
               path_str(find_path(VolumeUniqueInstanceId{16})));
-    EXPECT_EQ("world_PV/topbox4/boxtri",
+    EXPECT_EQ("world_PV/topbox4/boxtri@1",
               path_str(find_path(VolumeUniqueInstanceId{18})));
 }
 

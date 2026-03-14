@@ -21,7 +21,7 @@ namespace celeritas
  *
  * Each \c VolumeUniqueInstanceId uniquely identifies a root-to-node path
  * (i.e., a Geant4 "touchable") in the volume DAG.  This class performs the
- * inverse of \c VolumeUniqueInstanceAccumulator: given an ID it fills a
+ * inverse of \c VolumePathAccumulator: given an ID it fills a
  * caller-supplied scratch buffer with the \c VolumeInstanceId sequence and
  * returns a (possibly shorter) span of the result.
  *

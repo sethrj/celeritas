@@ -286,6 +286,8 @@ VolumeParams::VolumeParams(inp::Volumes const& in)
         {
             offsets_builder.push_back(VolumeUniqueInstanceId{off});
         }
+        host_data.num_unique_instances
+            = host_data.world ? num_desc[host_data.world.unchecked_get()] : 0;
     }
 
     CELER_ENSURE(host_data);
