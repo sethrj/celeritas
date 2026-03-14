@@ -112,6 +112,10 @@ class VolumeParams final : public ParamsDataInterface<VolumeParamsData>
     // interface)
     inline VolumeId volume(VolumeInstanceId vi_id) const;
 
+    // Get the raw unique-instance offset for a volume instance
+    inline VolumeUniqueInstanceId::size_type
+    offset(VolumeInstanceId vi_id) const;
+
     //!@{
     //! \deprecated Use \c get instead
     [[deprecated]] inline SpanVolInst parents(VolumeId v_id) const;
@@ -194,6 +198,20 @@ VolumeId VolumeParams::volume(VolumeInstanceId vi_id) const
 {
     CELER_EXPECT(vi_id < this->host_ref().volume_ids.size());
     return this->host_ref().volume_ids[vi_id];
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Get the precomputed unique-instance offset for a volume instance.
+ *
+ * This is the sum of \c num_desc(volume(vj)) for all preceding sibling
+ * instances in the same parent volume's children list.
+ */
+auto VolumeParams::offset(VolumeInstanceId vi_id) const
+    -> VolumeUniqueInstanceId::size_type
+{
+    CELER_EXPECT(vi_id < this->host_ref().unique_instance_offsets.size());
+    return this->host_ref().unique_instance_offsets[vi_id].unchecked_get();
 }
 
 //---------------------------------------------------------------------------//

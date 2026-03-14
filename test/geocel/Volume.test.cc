@@ -13,6 +13,7 @@
 #include "corecel/io/StreamUtils.hh"
 #include "geocel/Types.hh"
 #include "geocel/VolumeParams.hh"
+#include "geocel/VolumePathFinder.hh"
 #include "geocel/VolumeToString.hh"
 #include "geocel/VolumeUniqueInstanceAccumulator.hh"
 #include "geocel/VolumeVisitor.hh"
@@ -455,6 +456,93 @@ TEST_F(MultiLevelTest, unique_instance_accumulator)
     uid = acc(VolumeUniqueInstanceId{0}, world_pv);
     uid = acc(uid, topbox4);
     EXPECT_EQ(VolumeUniqueInstanceId{18}, uid = acc(uid, boxtri_1));
+}
+
+//---------------------------------------------------------------------------//
+TEST_F(MultiLevelTest, offset)
+{
+    auto const& vols = this->volumes();
+    auto const& vi_labels = vols.volume_instance_labels();
+
+    // First child of any volume always has offset 0
+    auto world_pv = vi_labels.find_unique("world_PV");
+    EXPECT_EQ(0u, vols.offset(world_pv));
+    auto topbox1 = vi_labels.find_unique("topbox1");
+    EXPECT_EQ(0u, vols.offset(topbox1));
+
+    // topsph1 follows topbox1 whose subtree has num_desc = 4
+    // (box itself + boxsph1@0, boxsph2@0, boxtri@0)
+    auto topsph1 = vi_labels.find_unique("topsph1");
+    EXPECT_EQ(4u, vols.offset(topsph1));
+
+    // topbox4 follows topbox1+topsph1+topbox2+topbox3; each sph/tri leaf
+    // contributes 1, each box contributes 4 → 4+1+4+4 = 13
+    auto topbox4 = vi_labels.find_unique("topbox4");
+    EXPECT_EQ(13u, vols.offset(topbox4));
+}
+
+//---------------------------------------------------------------------------//
+TEST_F(MultiLevelTest, path_finder)
+{
+    auto const& vols = this->volumes();
+    std::vector<VolumeInstanceId> buf(vols.num_volume_levels());
+    VolumePathFinder find_path{vols.host_ref(), make_span(buf)};
+
+    auto const& vi_labels = vols.volume_instance_labels();
+    auto world_pv = vi_labels.find_unique("world_PV");
+    auto topbox1 = vi_labels.find_unique("topbox1");
+    auto topbox4 = vi_labels.find_unique("topbox4");
+    auto topsph1 = vi_labels.find_unique("topsph1");
+    auto boxsph1_0 = vi_labels.find_exact(Label::from_separator("boxsph1@0"));
+    auto boxsph1_1 = vi_labels.find_exact(Label::from_separator("boxsph1@1"));
+    auto boxtri_1 = vi_labels.find_exact(Label::from_separator("boxtri@1"));
+
+    // uid 0 → empty path (world, no enclosing instance)
+    EXPECT_EQ(0u, find_path(VolumeUniqueInstanceId{0}).size());
+
+    // uid 1 → [world_PV]
+    auto path = find_path(VolumeUniqueInstanceId{1});
+    ASSERT_EQ(1u, path.size());
+    EXPECT_EQ(world_pv, path[0]);
+
+    // uid 2 → [world_PV, topbox1]
+    path = find_path(VolumeUniqueInstanceId{2});
+    ASSERT_EQ(2u, path.size());
+    EXPECT_EQ(world_pv, path[0]);
+    EXPECT_EQ(topbox1, path[1]);
+
+    // uid 3 → [world_PV, topbox1, boxsph1@0]
+    path = find_path(VolumeUniqueInstanceId{3});
+    ASSERT_EQ(3u, path.size());
+    EXPECT_EQ(world_pv, path[0]);
+    EXPECT_EQ(topbox1, path[1]);
+    EXPECT_EQ(boxsph1_0, path[2]);
+
+    // uid 6 → [world_PV, topsph1]
+    path = find_path(VolumeUniqueInstanceId{6});
+    ASSERT_EQ(2u, path.size());
+    EXPECT_EQ(world_pv, path[0]);
+    EXPECT_EQ(topsph1, path[1]);
+
+    // uid 15 → [world_PV, topbox4]
+    path = find_path(VolumeUniqueInstanceId{15});
+    ASSERT_EQ(2u, path.size());
+    EXPECT_EQ(world_pv, path[0]);
+    EXPECT_EQ(topbox4, path[1]);
+
+    // uid 16 → [world_PV, topbox4, boxsph1@1]
+    path = find_path(VolumeUniqueInstanceId{16});
+    ASSERT_EQ(3u, path.size());
+    EXPECT_EQ(world_pv, path[0]);
+    EXPECT_EQ(topbox4, path[1]);
+    EXPECT_EQ(boxsph1_1, path[2]);
+
+    // uid 18 → [world_PV, topbox4, boxtri@1]  (last leaf)
+    path = find_path(VolumeUniqueInstanceId{18});
+    ASSERT_EQ(3u, path.size());
+    EXPECT_EQ(world_pv, path[0]);
+    EXPECT_EQ(topbox4, path[1]);
+    EXPECT_EQ(boxtri_1, path[2]);
 }
 
 //---------------------------------------------------------------------------//
