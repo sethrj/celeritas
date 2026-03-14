@@ -9,6 +9,7 @@
 
 #include "corecel/OpaqueIdUtils.hh"
 #include "corecel/cont/LabelIdMultiMapUtils.hh"
+#include "corecel/io/Join.hh"
 #include "corecel/io/Label.hh"
 #include "corecel/io/StreamUtils.hh"
 #include "geocel/Types.hh"
@@ -488,61 +489,27 @@ TEST_F(MultiLevelTest, path_finder)
     std::vector<VolumeInstanceId> buf(vols.num_volume_levels());
     VolumePathFinder find_path{vols.host_ref(), make_span(buf)};
 
-    auto const& vi_labels = vols.volume_instance_labels();
-    auto world_pv = vi_labels.find_unique("world_PV");
-    auto topbox1 = vi_labels.find_unique("topbox1");
-    auto topbox4 = vi_labels.find_unique("topbox4");
-    auto topsph1 = vi_labels.find_unique("topsph1");
-    auto boxsph1_0 = vi_labels.find_exact(Label::from_separator("boxsph1@0"));
-    auto boxsph1_1 = vi_labels.find_exact(Label::from_separator("boxsph1@1"));
-    auto boxtri_1 = vi_labels.find_exact(Label::from_separator("boxtri@1"));
+    auto path_str = [&vols](Span<VolumeInstanceId const> path) {
+        return to_string(
+            join(path.begin(), path.end(), '/', [&vols](VolumeInstanceId vi) {
+                return vols.volume_instance_labels().at(vi).name;
+            }));
+    };
 
-    // uid 0 → empty path (world, no enclosing instance)
-    EXPECT_EQ(0u, find_path(VolumeUniqueInstanceId{0}).size());
-
-    // uid 1 → [world_PV]
-    auto path = find_path(VolumeUniqueInstanceId{1});
-    ASSERT_EQ(1u, path.size());
-    EXPECT_EQ(world_pv, path[0]);
-
-    // uid 2 → [world_PV, topbox1]
-    path = find_path(VolumeUniqueInstanceId{2});
-    ASSERT_EQ(2u, path.size());
-    EXPECT_EQ(world_pv, path[0]);
-    EXPECT_EQ(topbox1, path[1]);
-
-    // uid 3 → [world_PV, topbox1, boxsph1@0]
-    path = find_path(VolumeUniqueInstanceId{3});
-    ASSERT_EQ(3u, path.size());
-    EXPECT_EQ(world_pv, path[0]);
-    EXPECT_EQ(topbox1, path[1]);
-    EXPECT_EQ(boxsph1_0, path[2]);
-
-    // uid 6 → [world_PV, topsph1]
-    path = find_path(VolumeUniqueInstanceId{6});
-    ASSERT_EQ(2u, path.size());
-    EXPECT_EQ(world_pv, path[0]);
-    EXPECT_EQ(topsph1, path[1]);
-
-    // uid 15 → [world_PV, topbox4]
-    path = find_path(VolumeUniqueInstanceId{15});
-    ASSERT_EQ(2u, path.size());
-    EXPECT_EQ(world_pv, path[0]);
-    EXPECT_EQ(topbox4, path[1]);
-
-    // uid 16 → [world_PV, topbox4, boxsph1@1]
-    path = find_path(VolumeUniqueInstanceId{16});
-    ASSERT_EQ(3u, path.size());
-    EXPECT_EQ(world_pv, path[0]);
-    EXPECT_EQ(topbox4, path[1]);
-    EXPECT_EQ(boxsph1_1, path[2]);
-
-    // uid 18 → [world_PV, topbox4, boxtri@1]  (last leaf)
-    path = find_path(VolumeUniqueInstanceId{18});
-    ASSERT_EQ(3u, path.size());
-    EXPECT_EQ(world_pv, path[0]);
-    EXPECT_EQ(topbox4, path[1]);
-    EXPECT_EQ(boxtri_1, path[2]);
+    EXPECT_EQ("", path_str(find_path(VolumeUniqueInstanceId{0})));
+    EXPECT_EQ("world_PV", path_str(find_path(VolumeUniqueInstanceId{1})));
+    EXPECT_EQ("world_PV/topbox1",
+              path_str(find_path(VolumeUniqueInstanceId{2})));
+    EXPECT_EQ("world_PV/topbox1/boxsph1",
+              path_str(find_path(VolumeUniqueInstanceId{3})));
+    EXPECT_EQ("world_PV/topsph1",
+              path_str(find_path(VolumeUniqueInstanceId{6})));
+    EXPECT_EQ("world_PV/topbox4",
+              path_str(find_path(VolumeUniqueInstanceId{15})));
+    EXPECT_EQ("world_PV/topbox4/boxsph1",
+              path_str(find_path(VolumeUniqueInstanceId{16})));
+    EXPECT_EQ("world_PV/topbox4/boxtri",
+              path_str(find_path(VolumeUniqueInstanceId{18})));
 }
 
 //---------------------------------------------------------------------------//
