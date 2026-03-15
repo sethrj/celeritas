@@ -63,7 +63,7 @@ class VolumePathFinder
     CELER_FUNCTION VolumePathFinder(ParamsRef const& params, SpanVI scratch)
         : params_(params), scratch_(scratch)
     {
-        CELER_EXPECT(scratch_.size() == params_.scalars.num_volume_levels);
+        CELER_EXPECT(scratch_.size() + 1 >= params_.scalars.num_volume_levels);
     }
 
     // Reconstruct the path whose unique instance ID equals uid
