@@ -49,9 +49,15 @@ int calc_num_volume_levels(HostVal<VolumeParamsData> const& params)
     CELER_EXPECT(params.scalars.world);
     int max_level{0};
 
+    std::vector<bool> visited(params.volumes.size(), false);
     VolumeVisitor visit_vol{VolumeDataAccessor<Ownership::value>{params}};
     visit_vol(
-        [&max_level](VolumeId, int level) {
+        [&max_level, &visited](VolumeId v, int level) {
+            if (visited[v.unchecked_get()])
+            {
+                return false;
+            }
+            visited[v.unchecked_get()] = true;
             CELER_ASSERT(level >= 0);
             max_level = std::max(max_level, level);
             return true;
@@ -81,8 +87,6 @@ calc_num_descendants(HostVal<VolumeParamsData> const& params)
     std::vector<std::pair<VolumeId, bool>> stack;
     if (params.scalars.world)
     {
-        CELER_LOG(debug) << "calc_num_descendants: starting DFS from world v"
-                         << params.scalars.world.unchecked_get();
         stack.push_back({params.scalars.world, false});
     }
 
@@ -94,9 +98,6 @@ calc_num_descendants(HostVal<VolumeParamsData> const& params)
         if (num_desc[v.unchecked_get()] != 0)
         {
             // Already computed; reachable via multiple ancestor paths (DAG)
-            CELER_LOG(debug)
-                << "  v" << v.unchecked_get() << ": already computed ("
-                << num_desc[v.unchecked_get()] << "), skipping";
             continue;
         }
         if (expanded)
@@ -109,8 +110,6 @@ calc_num_descendants(HostVal<VolumeParamsData> const& params)
                 n += num_desc[params.volume_ids[vi].unchecked_get()];
             }
             num_desc[v.unchecked_get()] = n;
-            CELER_LOG(debug)
-                << "  v" << v.unchecked_get() << ": num_desc = " << n;
         }
         else
         {
@@ -123,23 +122,12 @@ calc_num_descendants(HostVal<VolumeParamsData> const& params)
                 VolumeId child = params.volume_ids[vi];
                 if (num_desc[child.unchecked_get()] == 0)
                 {
-                    CELER_LOG(debug)
-                        << "  v" << v.unchecked_get() << ": pushing child v"
-                        << child.unchecked_get() << " via vi"
-                        << vi.unchecked_get();
                     stack.push_back({child, false});
                 }
             }
         }
     }
 
-    if (params.scalars.world)
-    {
-        CELER_LOG(debug) << "calc_num_descendants: world v"
-                         << params.scalars.world.unchecked_get()
-                         << " -> num_desc = "
-                         << num_desc[params.scalars.world.unchecked_get()];
-    }
     return num_desc;
 }
 

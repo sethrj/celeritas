@@ -196,6 +196,12 @@ std::shared_ptr<VolumeParams> StressVolumeTestBase::build_volumes() const
         {
             v.children.push_back(VolumeInstanceId{d * num_children_ + c});
         }
+        // For high enough levels, also add one instance of level d+2
+        if (d + 2 < num_levels_)
+        {
+            v.children.push_back(
+                VolumeInstanceId{(num_levels_ - 1) * num_children_ + d});
+        }
         in.volumes.push_back(std::move(v));
     }
     {
@@ -219,6 +225,15 @@ std::shared_ptr<VolumeParams> StressVolumeTestBase::build_volumes() const
             vi.volume = VolumeId{d};
             in.volume_instances.push_back(std::move(vi));
         }
+    }
+
+    // One skip-level instance per eligible depth: A->C, B->D, etc.
+    for (auto d : range(num_levels_ - 2))
+    {
+        VolumeInstance vi;
+        vi.label = Label{depth_label(d) + "->" + depth_label(d + 2), "0"};
+        vi.volume = VolumeId{d + 2};
+        in.volume_instances.push_back(std::move(vi));
     }
 
     in.world = VolumeId{0};

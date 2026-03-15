@@ -543,23 +543,30 @@ using StressTest = StressVolumeTestBase;
 TEST_F(StressTest, params)
 {
     auto const& vols = this->volumes();
-    // depth=4, num_children=3: 4 volumes, 9 VIs, 4 levels
+    cout << vols.num_volume_levels() << " levels, " << vols.num_volumes()
+         << " volumes, " << vols.num_volume_instances() << " instances, "
+         << vols.num_unique_instances() << " unique instances" << endl;
+
     EXPECT_EQ(num_levels_, vols.num_volumes());
-    EXPECT_EQ((num_levels_ - 1) * num_children_, vols.num_volume_instances());
+    EXPECT_EQ((num_levels_ - 1) * num_children_ + (num_levels_ - 2),
+              vols.num_volume_instances());
     EXPECT_EQ(num_levels_, vols.num_volume_levels());
     // Stress tree has no world-enclosing instance
     EXPECT_EQ(VolumeInstanceId{}, vols.world_instance());
 
-    // num_unique_instances = num_desc(world):
-    //   leaf:   1
-    //   level2: 1 + 3*1  = 4
-    //   level1: 1 + 3*4  = 13
-    //   world:  1 + 3*13 = 40
+    // f[leaf]=1; f[n-2]=k+1 (no skip at penultimate level);
+    // f[d] = 1 + k*f[d+1] + f[d+2] for d <= n-3 (skip child adds f[d+2])
     VolumeUniqueInstanceId::size_type expected{1};
-    for ([[maybe_unused]] auto d : range(num_levels_ - 1))
+    ASSERT_GE(num_levels_, 2);
+    VolumeUniqueInstanceId::size_type f1{1};
+    VolumeUniqueInstanceId::size_type f0{num_children_ + 1};
+    for ([[maybe_unused]] auto i : range(num_levels_ - 2))
     {
-        expected += 1 + (num_children_ - 1) * expected;
+        auto f_new = 1 + num_children_ * f0 + f1;
+        f1 = f0;
+        f0 = f_new;
     }
+    expected = f0;
     EXPECT_EQ(expected, vols.num_unique_instances());
 }
 
