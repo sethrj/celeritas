@@ -53,7 +53,7 @@ class SpanSynthetic:
             # Out of bounds
             return None
         if not self.valobj.IsValid():
-            print(f"Value is bad")
+            print("Value is bad")
             # Value is bad?
             return None
         return self._dataobj.CreateChildAtOffset(

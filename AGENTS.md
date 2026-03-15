@@ -28,7 +28,9 @@ the work at each to-do). Ideally:
 ```bash
 git add <files>
 pre-commit run        # Auto-formats code
-git commit -m "Message" --trailer "Assisted-by: GitHub Copilot (<model-name>)"
+git commit --trailer "Assisted-by: GitHub Copilot (<model-name>)" -F - <<'EOF'
+...
+EOF
 ```
 
 ## Architecture
@@ -90,7 +92,7 @@ Collection<Foo, Ownership::const_reference, MemSpace::device> device_foos;  // V
 
 Key types:
 - `Collection<T>`: GPU-compatible array with ownership semantics
-- `OpaqueId<T>`: Type-safe index (not raw int)
+- `OpaqueId<T>`: Type-safe index (not raw int), can be incremented and compared with unsigned ints
 - `Span<T>`: Non-owning array view
 - `Array<T, N>`: Fixed-size stack array
 
