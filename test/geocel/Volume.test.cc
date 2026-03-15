@@ -5,7 +5,10 @@
 //! \file geocel/Volume.test.cc
 //! Test VolumeParams and related utilities
 //---------------------------------------------------------------------------//
+#include <fstream>
 #include <unordered_map>
+
+#include "celeritas_test_config.h"
 
 #include "corecel/OpaqueIdUtils.hh"
 #include "corecel/cont/LabelIdMultiMapUtils.hh"
@@ -530,6 +533,60 @@ TEST_F(MultiLevelTest, path_finder)
               path_str(find_path(VolumeUniqueInstanceId{16})));
     EXPECT_EQ("world_PV/topbox4/boxtri@1",
               path_str(find_path(VolumeUniqueInstanceId{18})));
+}
+
+//---------------------------------------------------------------------------//
+using StressTest = StressVolumeTestBase;
+
+TEST_F(StressTest, params)
+{
+    auto const& vols = this->volumes();
+    // depth=4, num_children=3: 4 volumes, 9 VIs, 4 levels
+    EXPECT_EQ(num_levels_, vols.num_volumes());
+    EXPECT_EQ((num_levels_ - 1) * num_children_, vols.num_volume_instances());
+    EXPECT_EQ(num_levels_, vols.num_volume_levels());
+
+    // num_unique_instances = num_desc(world):
+    //   leaf:   1
+    //   level2: 1 + 3*1  = 4
+    //   level1: 1 + 3*4  = 13
+    //   world:  1 + 3*13 = 40
+    VolumeUniqueInstanceId::size_type expected{1};
+    for ([[maybe_unused]] auto d : range(num_levels_ - 1))
+    {
+        expected += 1 + (num_children_ - 1) * expected;
+    }
+    EXPECT_EQ(expected, vols.num_unique_instances());
+}
+
+TEST_F(StressTest, io)
+{
+    auto filename = this->make_unique_filename(".json");
+    std::string script{celeritas_source_dir};
+    script += "/scripts/user/volumes-to-dot.py";
+
+    std::ofstream{filename} << this->volumes();
+    cout << script << " --ids " << filename << " | dot -Tpdf -o "
+         << "stress-" << num_levels_ << '-' << num_children_ << ".pdf";
+}
+
+TEST_F(StressTest, path_round_trip)
+{
+    auto const& vols = this->volumes();
+    std::vector<VolumeInstanceId> buf(vols.num_volume_levels());
+    VolumePathFinder find_path{vols.host_ref(), make_span(buf)};
+    VolumePathAccumulator acc{vols.host_ref()};
+
+    for (auto uid : range(VolumeUniqueInstanceId{vols.num_unique_instances()}))
+    {
+        auto path = find_path(uid);
+        VolumeUniqueInstanceId result{0};
+        for (VolumeInstanceId vi : path)
+        {
+            result = acc(result, vi);
+        }
+        EXPECT_EQ(uid, result) << "round-trip failed for uid=" << uid.get();
+    }
 }
 
 //---------------------------------------------------------------------------//

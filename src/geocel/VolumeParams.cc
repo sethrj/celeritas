@@ -11,6 +11,7 @@
 #include "corecel/data/CollectionBuilder.hh"
 #include "corecel/data/ParamsDataStore.hh"
 #include "corecel/io/Logger.hh"
+#include "geocel/Types.hh"
 
 #include "VolumeVisitor.hh"
 #include "inp/Model.hh"
@@ -224,16 +225,19 @@ VolumeParams::VolumeParams(inp::Volumes const& in)
     // Aggregate parents: scan all volume instances and record which volumes
     // each instance belongs to
     std::vector<std::vector<VolumeInstanceId>> parent_lists(num_volumes);
-    for (auto vi_idx : range(num_volume_instances))
+    for (auto vi : range(VolumeInstanceId{num_volume_instances}))
     {
-        auto const& vol_inst = in.volume_instances[vi_idx];
-        if (!vol_inst)
+        auto const& vi_inp = in.volume_instances[vi.get()];
+        if (!vi_inp)
         {
             continue;
         }
-        CELER_EXPECT(vol_inst.volume < num_volumes);
-        parent_lists[vol_inst.volume.unchecked_get()].push_back(
-            VolumeInstanceId{vi_idx});
+        CELER_VALIDATE(vi_inp.volume < num_volumes,
+                       << "assigned volume (" << vi_inp.volume
+                       << ") is out of range (" << num_volumes
+                       << ") for volume instance " << vi_inp.volume << "='"
+                       << vi_labels_.at(vi) << "'");
+        parent_lists[vi_inp.volume.unchecked_get()].push_back(vi);
     }
 
     // Build host data
