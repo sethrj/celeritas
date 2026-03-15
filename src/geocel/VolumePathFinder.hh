@@ -25,16 +25,17 @@ namespace celeritas
  * caller-supplied scratch buffer with the \c VolumeInstanceId sequence and
  * returns a (possibly shorter) span of the result.
  *
- * The algorithm descends from the world volume level by level.  At each
- * level it scans the current volume's children to find the unique child whose
- * subtree contains the remaining UID, exploiting the fact that sibling offsets
- * are strictly increasing.  The cost is \f$O(D \cdot C)\f$ where \f$D\f$ is
- * the path depth and \f$C\f$ is the maximum number of children of any volume.
+ * \c VolumeUniqueInstanceId{0} always denotes the world volume itself
+ * (empty path), and \c VolumeUniqueInstanceId{} (null/invalid) is rejected
+ * with a precondition failure.  The valid range is
+ * \f$[0,\, \text{num\_unique\_instances})\f$.
  *
- * When the world volume has an explicit enclosing instance (e.g. a
- * \c world_PV wrapper), the search starts from those parent instances.  When
- * the world is a true root with no enclosing instance the search starts
- * directly from the world's children.
+ * The algorithm descends from the world volume level by level, always seeding
+ * from the world's direct children.  At each level it scans the current
+ * volume's children to find the unique child whose subtree contains the
+ * remaining UID, exploiting the fact that sibling offsets are strictly
+ * increasing.  The cost is \f$O(D \cdot C)\f$ where \f$D\f$ is the path
+ * depth and \f$C\f$ is the maximum number of children of any volume.
  *
  * The scratch buffer must be at least \c num_volume_levels long (the
  * maximum possible path depth).  Successive calls reuse the same buffer, so
@@ -80,24 +81,23 @@ class VolumePathFinder
  * Reconstruct the path whose unique instance ID equals \c uid.
  *
  * Returns an empty span for UID 0 (the world volume, before any instance is
- * entered).  Otherwise writes the path starting from the world's enclosing
- * instance (or the world's first child when no enclosing instance exists)
- * down to the node identified by \c uid, and returns a sub-span of the
- * scratch buffer containing exactly those entries.
+ * entered).  Otherwise writes the sequence of \c VolumeInstanceId values
+ * from the world's first child down to the node identified by \c uid, and
+ * returns a sub-span of the scratch buffer containing exactly those entries.
  */
 CELER_FUNCTION auto
 VolumePathFinder::operator()(VolumeUniqueInstanceId uid) const -> SpanVI
 {
-    CELER_EXPECT(uid);
+    CELER_EXPECT(uid < VolumeUniqueInstanceId{params_.num_unique_instances});
     using size_type = VolumeUniqueInstanceId::size_type;
 
     size_type remaining = uid.unchecked_get();
-    // Start from the world's parent instances if present (e.g. a world_PV
-    // wrapper), or from the world's direct children when the world is a true
-    // root with no enclosing instance.
-    VolumeView world_view{params_, params_.world};
-    auto parents = world_view.parents().empty() ? world_view.children()
-                                                : world_view.parents();
+    // uid{0} = world itself: empty path
+    if (remaining == 0)
+        return scratch_.first(0);
+
+    // Always seed from world's direct children
+    auto parents = VolumeView{params_, params_.world}.children();
     VolumeLevelId::size_type depth = 0;
 
     while (remaining > 0)

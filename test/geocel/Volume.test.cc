@@ -427,7 +427,6 @@ TEST_F(MultiLevelTest, unique_instance_accumulator)
     VolumePathAccumulator acc{vols.host_ref()};
     auto const& vi_labels = vols.volume_instance_labels();
 
-    auto world_pv = vi_labels.find_unique("world_PV");
     auto topbox1 = vi_labels.find_unique("topbox1");
     auto topsph1 = vi_labels.find_unique("topsph1");
     auto topbox4 = vi_labels.find_unique("topbox4");
@@ -435,31 +434,28 @@ TEST_F(MultiLevelTest, unique_instance_accumulator)
     auto boxsph1_1 = vi_labels.find_exact(Label::from_separator("boxsph1@1"));
     auto boxtri_1 = vi_labels.find_exact(Label::from_separator("boxtri@1"));
 
-    // Path [world_PV] → uid 1
+    // Accumulation always starts from uid{0} = world (empty path)
+    // Path [topbox1] → uid 1  (box)
     VolumeUniqueInstanceId uid{0};
-    EXPECT_EQ(VolumeUniqueInstanceId{1}, uid = acc(uid, world_pv));
+    EXPECT_EQ(VolumeUniqueInstanceId{1}, uid = acc(uid, topbox1));
 
-    // Path [world_PV, topbox1] → uid 2  (box)
-    EXPECT_EQ(VolumeUniqueInstanceId{2}, uid = acc(uid, topbox1));
+    // Path [topbox1, boxsph1@0] → uid 2  (sph)
+    EXPECT_EQ(VolumeUniqueInstanceId{2}, uid = acc(uid, boxsph1_0));
 
-    // Path [world_PV, topbox1, boxsph1@0] → uid 3  (sph)
-    EXPECT_EQ(VolumeUniqueInstanceId{3}, uid = acc(uid, boxsph1_0));
+    // Path [topsph1] → uid 5  (sph directly under world)
+    EXPECT_EQ(VolumeUniqueInstanceId{5},
+              uid = acc(VolumeUniqueInstanceId{0}, topsph1));
 
-    // Path [world_PV, topsph1] → uid 6  (sph directly under world)
-    uid = acc(VolumeUniqueInstanceId{0}, world_pv);
-    EXPECT_EQ(VolumeUniqueInstanceId{6}, uid = acc(uid, topsph1));
+    // Path [topbox4] → uid 14  (box_refl)
+    uid = acc(VolumeUniqueInstanceId{0}, topbox4);
+    EXPECT_EQ(VolumeUniqueInstanceId{14}, uid);
 
-    // Path [world_PV, topbox4] → uid 15  (box_refl)
-    uid = acc(VolumeUniqueInstanceId{0}, world_pv);
-    EXPECT_EQ(VolumeUniqueInstanceId{15}, uid = acc(uid, topbox4));
+    // Path [topbox4, boxsph1@1] → uid 15  (sph_refl)
+    EXPECT_EQ(VolumeUniqueInstanceId{15}, uid = acc(uid, boxsph1_1));
 
-    // Path [world_PV, topbox4, boxsph1@1] → uid 16  (sph_refl)
-    EXPECT_EQ(VolumeUniqueInstanceId{16}, uid = acc(uid, boxsph1_1));
-
-    // Path [world_PV, topbox4, boxtri@1] → uid 18  (tri_refl, last)
-    uid = acc(VolumeUniqueInstanceId{0}, world_pv);
-    uid = acc(uid, topbox4);
-    EXPECT_EQ(VolumeUniqueInstanceId{18}, uid = acc(uid, boxtri_1));
+    // Path [topbox4, boxtri@1] → uid 17  (tri_refl, last)
+    uid = acc(VolumeUniqueInstanceId{0}, topbox4);
+    EXPECT_EQ(VolumeUniqueInstanceId{17}, uid = acc(uid, boxtri_1));
 }
 
 //---------------------------------------------------------------------------//
@@ -519,20 +515,20 @@ TEST_F(MultiLevelTest, path_finder)
             }));
     };
 
+    if (CELERITAS_DEBUG)
+    {
+        EXPECT_THROW(find_path(VolumeUniqueInstanceId{}), DebugError);
+    }
     EXPECT_EQ("", path_str(find_path(VolumeUniqueInstanceId{0})));
-    EXPECT_EQ("world_PV", path_str(find_path(VolumeUniqueInstanceId{1})));
-    EXPECT_EQ("world_PV/topbox1",
+    EXPECT_EQ("topbox1", path_str(find_path(VolumeUniqueInstanceId{1})));
+    EXPECT_EQ("topbox1/boxsph1@0",
               path_str(find_path(VolumeUniqueInstanceId{2})));
-    EXPECT_EQ("world_PV/topbox1/boxsph1@0",
-              path_str(find_path(VolumeUniqueInstanceId{3})));
-    EXPECT_EQ("world_PV/topsph1",
-              path_str(find_path(VolumeUniqueInstanceId{6})));
-    EXPECT_EQ("world_PV/topbox4",
+    EXPECT_EQ("topsph1", path_str(find_path(VolumeUniqueInstanceId{5})));
+    EXPECT_EQ("topbox4", path_str(find_path(VolumeUniqueInstanceId{14})));
+    EXPECT_EQ("topbox4/boxsph1@1",
               path_str(find_path(VolumeUniqueInstanceId{15})));
-    EXPECT_EQ("world_PV/topbox4/boxsph1@1",
-              path_str(find_path(VolumeUniqueInstanceId{16})));
-    EXPECT_EQ("world_PV/topbox4/boxtri@1",
-              path_str(find_path(VolumeUniqueInstanceId{18})));
+    EXPECT_EQ("topbox4/boxtri@1",
+              path_str(find_path(VolumeUniqueInstanceId{17})));
 }
 
 //---------------------------------------------------------------------------//
