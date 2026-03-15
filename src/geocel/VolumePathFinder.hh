@@ -63,7 +63,7 @@ class VolumePathFinder
     CELER_FUNCTION VolumePathFinder(ParamsRef const& params, SpanVI scratch)
         : params_(params), scratch_(scratch)
     {
-        CELER_EXPECT(scratch_.size() == params_.num_volume_levels);
+        CELER_EXPECT(scratch_.size() == params_.scalars.num_volume_levels);
     }
 
     // Reconstruct the path whose unique instance ID equals uid
@@ -88,7 +88,8 @@ class VolumePathFinder
 CELER_FUNCTION auto
 VolumePathFinder::operator()(VolumeUniqueInstanceId uid) const -> SpanVI
 {
-    CELER_EXPECT(uid < VolumeUniqueInstanceId{params_.num_unique_instances});
+    CELER_EXPECT(
+        uid < VolumeUniqueInstanceId{params_.scalars.num_unique_instances});
     using size_type = VolumeUniqueInstanceId::size_type;
 
     size_type remaining = uid.unchecked_get();
@@ -97,7 +98,7 @@ VolumePathFinder::operator()(VolumeUniqueInstanceId uid) const -> SpanVI
         return scratch_.first(0);
 
     // Always seed from world's direct children
-    auto parents = VolumeView{params_, params_.world}.children();
+    auto parents = VolumeView{params_, params_.scalars.world}.children();
     VolumeLevelId::size_type depth = 0;
 
     while (remaining > 0)

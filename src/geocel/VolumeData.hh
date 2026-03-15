@@ -32,6 +32,29 @@ struct VolumeRecord
 
 //---------------------------------------------------------------------------//
 /*!
+ * Scalar values for the volume hierarchy graph.
+ */
+struct VolumeParamsScalars
+{
+    //! Root volume of the geometry graph
+    VolumeId world;
+    //! Enclosing instance of the world volume (null if world is a true root)
+    VolumeInstanceId world_instance;
+    //! Depth of the volume graph (1 for a world with no children)
+    VolumeLevelId::size_type num_volume_levels{0};
+    //! Total number of unique root-to-node paths (= num_desc of world volume)
+    VolumeUniqueInstanceId::size_type num_unique_instances{0};
+
+    //! True if scalars are in a consistent populated state
+    explicit CELER_FUNCTION operator bool() const
+    {
+        return num_volume_levels > 0 && num_unique_instances > 0
+               && static_cast<bool>(world);
+    }
+};
+
+//---------------------------------------------------------------------------//
+/*!
  * Persistent data for the volume hierarchy graph.
  *
  * This stores the volume DAG (directed acyclic graph) in Collection-based
@@ -74,12 +97,8 @@ struct VolumeParamsData
      */
     VolInstItems<VolumeUniqueInstanceId> unique_instance_offsets;
 
-    //! Root volume of the geometry graph
-    VolumeId world;
-    //! Depth of the volume graph (1 for a world with no children)
-    VolumeLevelId::size_type num_volume_levels{0};
-    //! Total number of unique root-to-node paths (= num_desc of world volume)
-    VolumeUniqueInstanceId::size_type num_unique_instances{0};
+    //! Scalar values (world ID, world instance, depths, etc.)
+    VolumeParamsScalars scalars;
 
     //// METHODS ////
 
@@ -90,10 +109,9 @@ struct VolumeParamsData
         {
             // Valid empty state (e.g., for testing or ORANGE debugging)
             return volume_ids.empty() && vi_storage.empty()
-                   && unique_instance_offsets.empty() && !world
-                   && num_volume_levels == 0 && num_unique_instances == 0;
+                   && unique_instance_offsets.empty() && !scalars;
         }
-        return static_cast<bool>(world)
+        return static_cast<bool>(scalars)
                && unique_instance_offsets.size() == volume_ids.size();
     }
 
@@ -106,9 +124,7 @@ struct VolumeParamsData
         volume_ids = other.volume_ids;
         vi_storage = other.vi_storage;
         unique_instance_offsets = other.unique_instance_offsets;
-        world = other.world;
-        num_volume_levels = other.num_volume_levels;
-        num_unique_instances = other.num_unique_instances;
+        scalars = other.scalars;
         CELER_ENSURE(*this);
         return *this;
     }

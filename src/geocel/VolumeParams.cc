@@ -46,7 +46,7 @@ struct VolumeDataAccessor
 //---------------------------------------------------------------------------//
 int calc_num_volume_levels(HostVal<VolumeParamsData> const& params)
 {
-    CELER_EXPECT(params.world);
+    CELER_EXPECT(params.scalars.world);
     int max_level{0};
 
     VolumeVisitor visit_vol{VolumeDataAccessor<Ownership::value>{params}};
@@ -56,7 +56,7 @@ int calc_num_volume_levels(HostVal<VolumeParamsData> const& params)
             max_level = std::max(max_level, level);
             return true;
         },
-        params.world);
+        params.scalars.world);
     return max_level + 1;
 }
 
@@ -79,9 +79,9 @@ calc_num_descendants(HostVal<VolumeParamsData> const& params)
 
     // Iterative post-order DFS: pair (volume, fully_expanded)
     std::vector<std::pair<VolumeId, bool>> stack;
-    if (params.world)
+    if (params.scalars.world)
     {
-        stack.push_back({params.world, false});
+        stack.push_back({params.scalars.world, false});
     }
 
     while (!stack.empty())
@@ -274,12 +274,23 @@ VolumeParams::VolumeParams(inp::Volumes const& in)
 
     // Set scalars
     CELER_EXPECT(!in.world || in.world < in.volumes.size());
-    host_data.world = in.world;
+    host_data.scalars.world = in.world;
+
+    // Set world_instance: the enclosing instance of the world volume, if any
+    if (in.world)
+    {
+        auto world_parents
+            = host_data.vi_storage[host_data.volumes[in.world].parents];
+        if (!world_parents.empty())
+        {
+            host_data.scalars.world_instance = world_parents.front();
+        }
+    }
 
     // Calculate depth via VolumeVisitor
     if (in.world)
     {
-        host_data.num_volume_levels = calc_num_volume_levels(host_data);
+        host_data.scalars.num_volume_levels = calc_num_volume_levels(host_data);
     }
 
     // Precompute unique-instance offsets
@@ -290,8 +301,10 @@ VolumeParams::VolumeParams(inp::Volumes const& in)
         {
             offsets_builder.push_back(VolumeUniqueInstanceId{off});
         }
-        host_data.num_unique_instances
-            = host_data.world ? num_desc[host_data.world.unchecked_get()] : 0;
+        host_data.scalars.num_unique_instances
+            = host_data.scalars.world
+                  ? num_desc[host_data.scalars.world.unchecked_get()]
+                  : 0;
     }
 
     CELER_ENSURE(host_data);
