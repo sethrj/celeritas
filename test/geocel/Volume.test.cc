@@ -115,6 +115,7 @@ TEST_F(NoVolumeTest, params)
     EXPECT_TRUE(params.empty());
     EXPECT_EQ(0, params.num_volumes());
     EXPECT_EQ(VolumeId{}, params.world());
+    EXPECT_EQ(VolumeInstanceId{}, params.world_instance());
     EXPECT_EQ(0, params.num_volume_levels());
 }
 
@@ -142,6 +143,7 @@ TEST_F(SingleVolumeTest, params)
     EXPECT_EQ(1, params.num_volumes());
     EXPECT_EQ(0, params.num_volume_instances());
     EXPECT_EQ(VolumeId{0}, params.world());
+    EXPECT_EQ(VolumeInstanceId{}, params.world_instance());
     EXPECT_EQ(1, params.num_volume_levels());
     EXPECT_EQ(1, params.volume_labels().size());
     EXPECT_EQ(0, params.volume_instance_labels().size());
@@ -409,6 +411,10 @@ TEST_F(MultiLevelTest, unique_instance)
     // Check offsets
     auto const& vols = this->volumes();
 
+    // world_PV (vi 11) is the enclosing instance of the world volume
+    auto world_pv = vols.volume_instance_labels().find_unique("world_PV");
+    EXPECT_EQ(world_pv, vols.world_instance());
+
     constexpr auto all = AllItems<VolumeUniqueInstanceId>{};
     auto offsets = id_to_int(vols.host_ref().unique_instance_offsets[all]);
     EXPECT_EQ(vols.num_volume_instances(), offsets.size());
@@ -541,6 +547,8 @@ TEST_F(StressTest, params)
     EXPECT_EQ(num_levels_, vols.num_volumes());
     EXPECT_EQ((num_levels_ - 1) * num_children_, vols.num_volume_instances());
     EXPECT_EQ(num_levels_, vols.num_volume_levels());
+    // Stress tree has no world-enclosing instance
+    EXPECT_EQ(VolumeInstanceId{}, vols.world_instance());
 
     // num_unique_instances = num_desc(world):
     //   leaf:   1
