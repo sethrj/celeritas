@@ -86,21 +86,21 @@ VolumePathFinder::operator()(VolumeUniqueInstanceId uid) const -> SpanVI
 
     size_type remaining = uid.unchecked_get();
     // Start from the parents of the world volume (typically just world_PV)
-    auto current_vis = VolumeView{params_, params_.world}.parents();
-    size_type depth = 0;
+    auto parents = VolumeView{params_, params_.world}.parents();
+    VolumeLevelId::size_type depth = 0;
 
     while (remaining > 0)
     {
         CELER_ASSERT(depth < scratch_.size());
-        CELER_ASSERT(!current_vis.empty());
+        CELER_ASSERT(!parents.empty());
 
         // Sibling offsets are a strict prefix sum (offset[vi_0] = 0 always
         // satisfies the condition when remaining >= 1).  Scan forward to find
         // the last child whose offset is still less than remaining.
         VolumeInstanceId chosen{};
-        for (VolumeInstanceId vi : current_vis)
+        for (VolumeInstanceId vi : parents)
         {
-            if (params_.unique_instance_offsets[vi].unchecked_get() < remaining)
+            if (params_.unique_instance_offsets[vi] < remaining)
                 chosen = vi;
             else
                 break;
@@ -110,8 +110,7 @@ VolumePathFinder::operator()(VolumeUniqueInstanceId uid) const -> SpanVI
         scratch_[depth++] = chosen;
         remaining -= params_.unique_instance_offsets[chosen].unchecked_get()
                      + size_type{1};
-        current_vis
-            = VolumeView{params_, params_.volume_ids[chosen]}.children();
+        parents = VolumeView{params_, params_.volume_ids[chosen]}.children();
     }
 
     return scratch_.first(depth);
