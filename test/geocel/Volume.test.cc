@@ -415,9 +415,8 @@ TEST_F(MultiLevelTest, unique_instance)
     auto world_pv = vols.volume_instance_labels().find_unique("world_PV");
     EXPECT_EQ(world_pv, vols.world_instance());
 
-    constexpr auto all = AllItems<VolumeUniqueInstanceId>{};
-    auto offsets = id_to_int(vols.host_ref().unique_instance_offsets[all]);
-    EXPECT_EQ(vols.num_volume_instances(), offsets.size());
+    constexpr auto all = AllItems<VolumeUniqueInstanceId::size_type>{};
+    auto offsets = vols.host_ref().unique_instance_offsets[all];
     static int const expected_offsets[] = {0, 1, 2, 0, 4, 5, 9, 0, 1, 2, 13, 0};
     EXPECT_VEC_EQ(expected_offsets, offsets);
 }

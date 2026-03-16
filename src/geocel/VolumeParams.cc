@@ -305,7 +305,7 @@ VolumeParams::VolumeParams(inp::Volumes const& in)
         auto const num_desc = calc_num_descendants(host_data);
         for (ull_int off : calc_unique_instance_offsets(host_data, num_desc))
         {
-            offsets_builder.push_back(VolumeUniqueInstanceId{off});
+            offsets_builder.push_back(off);
         }
         host_data.scalars.num_unique_instances
             = host_data.scalars.world

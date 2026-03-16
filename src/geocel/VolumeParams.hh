@@ -233,7 +233,7 @@ auto VolumeParams::offset(VolumeInstanceId vi_id) const
     -> VolumeUniqueInstanceId::size_type
 {
     CELER_EXPECT(vi_id < this->host_ref().unique_instance_offsets.size());
-    return this->host_ref().unique_instance_offsets[vi_id].unchecked_get();
+    return this->host_ref().unique_instance_offsets[vi_id];
 }
 
 //---------------------------------------------------------------------------//

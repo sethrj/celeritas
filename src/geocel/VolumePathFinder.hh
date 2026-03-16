@@ -36,7 +36,7 @@ namespace celeritas
  * from the world's direct children.  At each level it scans the current
  * volume's children to find the unique child whose subtree contains the
  * remaining UID, exploiting the fact that sibling offsets are strictly
- * increasing.  The cost is \f$O(D \cdot C)\f$ where \f$D\f$ is the path
+ * increasing.  The cost is \f$O(D \log C)\f$ where \f$D\f$ is the path
  * depth and \f$C\f$ is the maximum number of children of any volume.
  *
  * The scratch buffer must be at least \c num_volume_levels - 1 long (the
@@ -91,17 +91,16 @@ class VolumePathFinder
 CELER_FUNCTION auto
 VolumePathFinder::operator()(VolumeUniqueInstanceId uid) const -> SpanVI
 {
-    CELER_EXPECT(
-        uid < VolumeUniqueInstanceId{params_.scalars.num_unique_instances});
+    CELER_EXPECT(uid < params_.scalars.num_unique_instances);
     using size_type = VolumeUniqueInstanceId::size_type;
 
-    size_type remaining = uid.unchecked_get();
+    size_type offset = uid.unchecked_get();
 
     // Always seed from world's direct children
     auto parents = VolumeView{params_, params_.scalars.world}.children();
     VolumeLevelId::size_type depth = 0;
 
-    while (remaining > 0)
+    while (offset > 0)
     {
         CELER_ASSERT(depth < scratch_.size());
         CELER_ASSERT(!parents.empty());
@@ -109,19 +108,15 @@ VolumePathFinder::operator()(VolumeUniqueInstanceId uid) const -> SpanVI
         // Sibling offsets are strictly increasing prefix sums; use
         // upper_bound to find the first child whose offset exceeds
         // remaining-1, then step back one to get the chosen child.
-        auto comp = [this](VolumeUniqueInstanceId val, VolumeInstanceId vi) {
+        auto comp = [this](size_type val, VolumeInstanceId vi) {
             return val < params_.unique_instance_offsets[vi];
         };
-        auto it = upper_bound(parents.begin(),
-                              parents.end(),
-                              VolumeUniqueInstanceId{remaining - 1},
-                              comp);
+        auto it = upper_bound(parents.begin(), parents.end(), offset - 1, comp);
         CELER_ASSERT(it != parents.begin());
         VolumeInstanceId chosen = *--it;
 
         scratch_[depth++] = chosen;
-        remaining -= params_.unique_instance_offsets[chosen].unchecked_get()
-                     + size_type{1};
+        offset -= params_.unique_instance_offsets[chosen] + size_type{1};
         parents = VolumeView{params_, params_.volume_ids[chosen]}.children();
     }
 

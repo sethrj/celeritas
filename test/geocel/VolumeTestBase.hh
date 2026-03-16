@@ -127,8 +127,8 @@ class MultiLevelVolumeTestBase : public virtual VolumeTestBase
 class StressVolumeTestBase : public virtual VolumeTestBase
 {
   public:
-    static constexpr unsigned int num_levels_{8};
-    static constexpr unsigned int num_children_{4};
+    static constexpr unsigned int num_levels_{3};
+    static constexpr unsigned int num_children_{1024};
 
   protected:
     std::shared_ptr<VolumeParams> build_volumes() const override;

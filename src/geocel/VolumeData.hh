@@ -88,7 +88,7 @@ struct VolumeParamsData
     //! Flat backing storage for per-volume parent and child instance lists
     Items<VolumeInstanceId> vi_storage;
     //! Pre-computed per-sibling offset (see \c VolumePathAccumulator)
-    VolInstItems<VolumeUniqueInstanceId> unique_instance_offsets;
+    VolInstItems<VolumeUniqueInstanceId::size_type> unique_instance_offsets;
 
     //! Scalar values (world ID, world instance, depths, etc.)
     VolumeParamsScalars scalars;
