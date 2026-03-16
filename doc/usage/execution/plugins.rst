@@ -14,12 +14,12 @@ LArSoft for DUNE
 ----------------
 
 LArSoft is an integral component of the DUNE simulation framework. Celeritas
-builds a tool to process optical photons from scintillation. It requires a
-soon-to-be-merged fork_ of LArSoft that refactors the scintillation-to-detector
-response calculation to allow Monte Carlo optical tracking as an alternative to
-the current map-based method.
-
-.. _fork: https://github.com/nuRiceLab/larsim
+builds the ``PDFullSimCeler`` module to process optical photons from
+scintillation. It requires ROOT input file with ``art::Event``
+``sim::SimEnergyDeposit``object data from the ``IonAndScint`` producer, exactly
+as the current ``PDFastSimPAR`` module in LArSoft. The ``PDFullSimCeler`` module
+enables replacing the map-based method for generating the
+scintillation-to-detector response by a full Monte Carlo optical tracking.
 
 Building Celeritas as a LArSoft extension requires the whole larsoft toolchain,
 available on Fermilab's ``scisoftbuild01``. The environment script at
@@ -27,8 +27,8 @@ available on Fermilab's ``scisoftbuild01``. The environment script at
 ``apptatiner_fermilab`` function that launches the container needed to build
 and run.
 
-Once inside the apptainer, initialize the UPS packaging system and load LArSoft and DUNE
-components:
+Once inside the apptainer, initialize the UPS packaging system and load LArSoft
+and DUNE components:
 
 .. sourcecode::
 
@@ -57,6 +57,26 @@ Then you should be able to include Celeritas components.
 
    # Use Celeritas full sim configuration
    physics.producers.PDFastSim: @local::dunefd_pdfullsim_cpu
+
+
+LArSoft example FHiCLs and analyzer module
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following FHiCL files are available for generating optical simulation
+samples and analyzing the generated detector response.
+
+- ``dune10kt_ionandscint.fcl``: A FHiCL file to generate the ``IonAndScint``
+  data products needed for the optical simulation.
+- ``dune10kt_opticalsim.fcl``: A FHiCL file to run the optical simulation,
+  either with ``PDFastSimPAR``, or Celeritas (via ``PDFullSimCeler``).
+
+``PDSimAna`` module
+"""""""""""""""""""
+
+The resulting output from ``dune10kt_opticalsim.fcl`` can be analyzed with the
+``PDSimAna`` module, which reads ``OpdetBacktrackerRecord`` data products to
+produce analysis plots. The FHiCL file ``PDSimAna.fcl`` configures the module,
+and ``PDSimAna_run.fcl`` sets up the output file and execution.
 
 DD4HEP
 ------
