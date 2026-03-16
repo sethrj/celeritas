@@ -106,12 +106,12 @@ VolumePathFinder::operator()(VolumeUniqueInstanceId uid) const -> SpanVI
         CELER_ASSERT(!parents.empty());
 
         // Sibling offsets are strictly increasing prefix sums; use
-        // upper_bound to find the first child whose offset exceeds
-        // remaining-1, then step back one to get the chosen child.
-        auto comp = [this](size_type val, VolumeInstanceId vi) {
-            return val < params_.unique_instance_offsets[vi];
+        // lower_bound to find the first child whose offset >= offset,
+        // then step back one to get the chosen child.
+        auto comp = [this](VolumeInstanceId vi, size_type val) {
+            return params_.unique_instance_offsets[vi] < val;
         };
-        auto it = upper_bound(parents.begin(), parents.end(), offset - 1, comp);
+        auto it = lower_bound(parents.begin(), parents.end(), offset, comp);
         CELER_ASSERT(it != parents.begin());
         VolumeInstanceId chosen = *--it;
 
