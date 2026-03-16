@@ -15,8 +15,7 @@ namespace celeritas
 {
 //---------------------------------------------------------------------------//
 /*!
- * Incrementally compute the \c VolumeUniqueInstanceId for a path in the
- * volume hierarchy.
+ * Incrementally compute the unique ID of a path in the volume hierarchy.
  *
  * Each \c VolumeUniqueInstanceId uniquely identifies a root-to-node path
  * (i.e., a Geant4 "touchable") in the volume DAG.  This class computes the ID
@@ -31,14 +30,14 @@ namespace celeritas
  *   \text{uid} = \sum_{i=0}^{k} \bigl(\text{offset}[vi_i] + 1\bigr).
  * \f]
  * The empty path (the world volume itself, with no enclosing instance) maps
- * to ID 0.
+ * to ID 0 (see \c world_unique_instance ).
  *
  * \code
-   VolumePathAccumulator acc{params.host_ref()};
-   VolumeUniqueInstanceId uid{0};
-   for (VolumeInstanceId vi : path_from_root)
+   VolumePathAccumulator accum{params.host_ref()};
+   VolumeUniqueInstanceId uid = world_unique_instance;
+   for (VolumeInstanceId vi : path_below_world)
    {
-       uid = acc(uid, vi);  // unique ID for the node reached via this step
+       uid = accum(uid, vi);  // unique ID for the node reached via this step
    }
  * \endcode
  */

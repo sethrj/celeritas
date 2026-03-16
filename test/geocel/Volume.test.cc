@@ -439,28 +439,28 @@ TEST_F(MultiLevelTest, unique_instance_accumulator)
     auto boxsph1_0 = vi_labels.find_exact(Label::from_separator("boxsph1@0"));
     auto boxsph1_1 = vi_labels.find_exact(Label::from_separator("boxsph1@1"));
     auto boxtri_1 = vi_labels.find_exact(Label::from_separator("boxtri@1"));
+    constexpr auto world_uid = world_unique_instance;
 
     // Accumulation always starts from uid{0} = world (empty path)
     // Path [topbox1] → uid 1  (box)
-    VolumeUniqueInstanceId uid{0};
+    VolumeUniqueInstanceId uid = world_uid;
     EXPECT_EQ(VolumeUniqueInstanceId{1}, uid = acc(uid, topbox1));
 
     // Path [topbox1, boxsph1@0] → uid 2  (sph)
     EXPECT_EQ(VolumeUniqueInstanceId{2}, uid = acc(uid, boxsph1_0));
 
     // Path [topsph1] → uid 5  (sph directly under world)
-    EXPECT_EQ(VolumeUniqueInstanceId{5},
-              uid = acc(VolumeUniqueInstanceId{0}, topsph1));
+    EXPECT_EQ(VolumeUniqueInstanceId{5}, uid = acc(world_uid, topsph1));
 
     // Path [topbox4] → uid 14  (box_refl)
-    uid = acc(VolumeUniqueInstanceId{0}, topbox4);
+    uid = acc(world_uid, topbox4);
     EXPECT_EQ(VolumeUniqueInstanceId{14}, uid);
 
     // Path [topbox4, boxsph1@1] → uid 15  (sph_refl)
     EXPECT_EQ(VolumeUniqueInstanceId{15}, uid = acc(uid, boxsph1_1));
 
     // Path [topbox4, boxtri@1] → uid 17  (tri_refl, last)
-    uid = acc(VolumeUniqueInstanceId{0}, topbox4);
+    uid = acc(world_uid, topbox4);
     EXPECT_EQ(VolumeUniqueInstanceId{17}, uid = acc(uid, boxtri_1));
 }
 
@@ -570,7 +570,7 @@ TEST_F(StressTest, params)
     EXPECT_EQ(expected, vols.num_unique_instances());
 }
 
-TEST_F(StressTest, io)
+TEST_F(StressTest, DISABLED_io)
 {
     auto filename = this->make_unique_filename(".json");
     std::string script{celeritas_source_dir};

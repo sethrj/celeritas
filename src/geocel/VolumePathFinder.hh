@@ -25,7 +25,8 @@ namespace celeritas
  * caller-supplied scratch buffer with the \c VolumeInstanceId sequence and
  * returns a (possibly shorter) span of the result.
  *
- * \c VolumeUniqueInstanceId{0} always denotes the world volume itself
+ * \c VolumeUniqueInstanceId{0} (or \c world_unique_instance ) always denotes
+ the world volume itself
  * (empty path), and \c VolumeUniqueInstanceId{} (null/invalid) is rejected
  * with a precondition failure.  The valid range is
  * \f$[0,\, \text{num\_unique\_instances})\f$.
@@ -37,7 +38,7 @@ namespace celeritas
  * increasing.  The cost is \f$O(D \cdot C)\f$ where \f$D\f$ is the path
  * depth and \f$C\f$ is the maximum number of children of any volume.
  *
- * The scratch buffer must be at least \c num_volume_levels long (the
+ * The scratch buffer must be at least \c num_volume_levels - 1 long (the
  * maximum possible path depth).  Successive calls reuse the same buffer, so
  * callers must consume the returned span before the next call.
  *

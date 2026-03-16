@@ -14,6 +14,10 @@
 namespace celeritas
 {
 //---------------------------------------------------------------------------//
+//! Unique instance ID of the "world" volume (root of the volume graph)
+inline constexpr VolumeUniqueInstanceId world_unique_instance{0};
+
+//---------------------------------------------------------------------------//
 /*!
  * Per-volume data: material assignment and parent/child instance edges.
  *
