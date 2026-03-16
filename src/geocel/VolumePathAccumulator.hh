@@ -23,8 +23,11 @@ namespace celeritas
  * each \c VolumeInstanceId encountered while descending from the world volume,
  * passing the current accumulated ID and receiving the updated one.
  *
- * The mapping relies on the \c unique_instance_offsets precomputed in
- * \c VolumeParamsData (see \c VolumeData.hh for the mathematical definition).
+ * For a volume instance \c vi at position \c k in its
+ * parent volume's children list, the offset is the sum of
+ * \c num_desc(volume(vj)) for all preceding siblings \c vj (positions
+ * 0..k-1), where \c num_desc(V) counts the total number of unique paths
+ * ending at any node in V's subtree (including V itself).
  * For a path \f$[vi_0, vi_1, \ldots, vi_k]\f$ the unique instance ID is
  * \f[
  *   \text{uid} = \sum_{i=0}^{k} \bigl(\text{offset}[vi_i] + 1\bigr).
@@ -32,6 +35,7 @@ namespace celeritas
  * The empty path (the world volume itself, with no enclosing instance) maps
  * to ID 0 (see \c world_unique_instance ).
  *
+ * \par Example:
  * \code
    VolumePathAccumulator accum{params.host_ref()};
    VolumeUniqueInstanceId uid = world_unique_instance;
@@ -40,6 +44,9 @@ namespace celeritas
        uid = accum(uid, vi);  // unique ID for the node reached via this step
    }
  * \endcode
+ *
+ * \internal The mapping relies on \c unique_instance_offsets precomputed in
+ * \c VolumeParamsData.
  */
 class VolumePathAccumulator
 {

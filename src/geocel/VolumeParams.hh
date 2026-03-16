@@ -39,8 +39,10 @@ struct Volumes;
  * state. The \em root of the graph is the world volume, and the \em level of a
  * volume in the path is the distance to the root: zero for the root volume,
  * one for its direct child, etc. The maximum value of the level in any path is
- * one less than \c num_volume_levels : an array of \c VolumeId with that size
- * can represent any path.
+ * one less than \c num_volume_levels : an array of \c VolumeInstanceId with
+ * that size can represent any path. (When explicitly constructing this array,
+ * we omit the world volume since it is implicit.) The total number of paths to
+ * any node in the geometry is \c num_unique_instances .
  *
  * In conjunction with \c GeantGeoParams, this class allows conversion between
  * the Celeritas geometry implementation and the Geant4 geometry navigation.

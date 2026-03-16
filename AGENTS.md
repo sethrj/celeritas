@@ -15,6 +15,8 @@ Celeritas is a GPU-accelerated HEP detector physics library for HL-LHC, integrat
 cmake -B build -G Ninja && cd build && ninja && ctest
 ```
 
+Run tests directly without any `CELER_LOG=...` prefix.
+
 ### When to Commit
 
 **Always** commit after agentic, multi-step work (and you *may* commit during

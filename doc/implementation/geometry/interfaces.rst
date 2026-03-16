@@ -13,9 +13,12 @@ Volume hierarchy
 
 .. doxygenclass:: celeritas::VolumeParams
 
+.. doxygenclass:: celeritas::VolumeView
+
 Conversion between a "navigation path"/"touchable history" and
 :cpp:type:`celeritas::VolumeUniqueInstanceId` can be done on host or device.
 
+.. doxygenvariable:: celeritas::world_unique_instance
 .. doxygenclass:: celeritas::VolumePathAccumulator
 .. doxygenclass:: celeritas::VolumePathFinder
 

@@ -9,6 +9,7 @@
 #include "corecel/Assert.hh"
 #include "corecel/Macros.hh"
 #include "corecel/cont/Span.hh"
+#include "corecel/math/Algorithms.hh"
 
 #include "VolumeData.hh"
 #include "VolumeView.hh"
@@ -29,7 +30,7 @@ namespace celeritas
  the world volume itself
  * (empty path), and \c VolumeUniqueInstanceId{} (null/invalid) is rejected
  * with a precondition failure.  The valid range is
- * \f$[0,\, \text{num\_unique\_instances})\f$.
+ * \f$[0,\, N_\text{unique})\f$.
  *
  * The algorithm descends from the world volume level by level, always seeding
  * from the world's direct children.  At each level it scans the current
@@ -42,6 +43,7 @@ namespace celeritas
  * maximum possible path depth).  Successive calls reuse the same buffer, so
  * callers must consume the returned span before the next call.
  *
+ * \par Example:
  * \code
    std::vector<VolumeInstanceId> buf(params.num_volume_levels());
    VolumePathFinder find_path{params.host_ref(), make_span(buf)};
@@ -94,9 +96,6 @@ VolumePathFinder::operator()(VolumeUniqueInstanceId uid) const -> SpanVI
     using size_type = VolumeUniqueInstanceId::size_type;
 
     size_type remaining = uid.unchecked_get();
-    // uid{0} = world itself: empty path
-    if (remaining == 0)
-        return scratch_.first(0);
 
     // Always seed from world's direct children
     auto parents = VolumeView{params_, params_.scalars.world}.children();
@@ -107,18 +106,18 @@ VolumePathFinder::operator()(VolumeUniqueInstanceId uid) const -> SpanVI
         CELER_ASSERT(depth < scratch_.size());
         CELER_ASSERT(!parents.empty());
 
-        // Sibling offsets are a strict prefix sum (offset[vi_0] = 0 always
-        // satisfies the condition when remaining >= 1).  Scan forward to find
-        // the last child whose offset is still less than remaining.
-        VolumeInstanceId chosen{};
-        for (VolumeInstanceId vi : parents)
-        {
-            if (params_.unique_instance_offsets[vi] < remaining)
-                chosen = vi;
-            else
-                break;
-        }
-        CELER_ASSERT(chosen);
+        // Sibling offsets are strictly increasing prefix sums; use
+        // upper_bound to find the first child whose offset exceeds
+        // remaining-1, then step back one to get the chosen child.
+        auto comp = [this](VolumeUniqueInstanceId val, VolumeInstanceId vi) {
+            return val < params_.unique_instance_offsets[vi];
+        };
+        auto it = upper_bound(parents.begin(),
+                              parents.end(),
+                              VolumeUniqueInstanceId{remaining - 1},
+                              comp);
+        CELER_ASSERT(it != parents.begin());
+        VolumeInstanceId chosen = *--it;
 
         scratch_[depth++] = chosen;
         remaining -= params_.unique_instance_offsets[chosen].unchecked_get()

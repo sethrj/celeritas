@@ -87,18 +87,7 @@ struct VolumeParamsData
     VolInstItems<VolumeId> volume_ids;
     //! Flat backing storage for per-volume parent and child instance lists
     Items<VolumeInstanceId> vi_storage;
-    /*!
-     * Pre-computed unique-instance offset for each volume instance.
-     *
-     * For a volume instance \c vi at position \c k in its parent volume's
-     * children list, this is the sum of \c num_desc(volume(vj)) for
-     * all preceding siblings \c vj (i.e., positions 0..k-1) in that list,
-     * where \c num_desc(V) counts the total number of unique paths ending at
-     * \em any node in V's subtree (including V itself).
-     * Summing the offsets over a root-to-node path, plus the count of
-     * non-null volume-instance IDs in the path, gives the
-     * \c VolumeUniqueInstanceId for that path.
-     */
+    //! Pre-computed per-sibling offset (see \c VolumePathAccumulator)
     VolInstItems<VolumeUniqueInstanceId> unique_instance_offsets;
 
     //! Scalar values (world ID, world instance, depths, etc.)
