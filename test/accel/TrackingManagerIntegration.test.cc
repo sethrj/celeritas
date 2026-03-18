@@ -143,9 +143,57 @@ class TMITestBase : virtual public IntegrationTestBase
 };
 
 //---------------------------------------------------------------------------//
+// HELPER MIXIN
+//---------------------------------------------------------------------------//
+/*!
+ * Collect caught runtime errors rather than immediately failing.
+ */
+class CatchRuntimeErrorsMixin
+{
+  public:
+    //! Append caught exceptions in this local test rather than failing
+    bool check_runtime_errors_{false};
+
+    //! Return collected exceptions and clear the list
+    std::vector<std::string> release_exceptions()
+    {
+        std::lock_guard scoped_lock{exc_mutex_};
+        return std::exchange(exceptions_, {});
+    }
+
+  protected:
+    //! Collect a RuntimeError's message into exceptions_
+    void collect_runtime_error(RuntimeError const& e)
+    {
+        CELER_EXPECT(std::string_view(e.details().which) == "Geant4"sv);
+
+        std::lock_guard scoped_lock{exc_mutex_};
+
+        static std::regex extract_error{R"(runtime error:\s*(.+?)(?:\n|$))"};
+        std::smatch match;
+        std::string what = e.what();
+        if (std::regex_search(what, match, extract_error))
+        {
+            CELER_ASSERT(match.size() > 1);
+            exceptions_.push_back(match[1].str());
+        }
+        else
+        {
+            exceptions_.push_back(std::move(what));
+        }
+    }
+
+  private:
+    std::recursive_mutex exc_mutex_;
+    std::vector<std::string> exceptions_;
+};
+
+//---------------------------------------------------------------------------//
 // LAR SPHERE (EM only)
 //---------------------------------------------------------------------------//
-class LarSphere : public LarSphereIntegrationMixin, public TMITestBase
+class LarSphere : public LarSphereIntegrationMixin,
+                  public TMITestBase,
+                  public CatchRuntimeErrorsMixin
 {
   public:
     void BeginOfEventAction(G4Event const* event) override
@@ -186,38 +234,18 @@ class LarSphere : public LarSphereIntegrationMixin, public TMITestBase
             // Let the base class manage and fail on the caught error
             return TMITestBase::caught_g4_runtime_error(e);
         }
-        CELER_EXPECT(std::string_view(e.details().which) == "Geant4"sv);
-
-        static std::recursive_mutex exc_mutex;
-        std::lock_guard scoped_lock{exc_mutex};
-
-        static std::regex extract_error{R"(runtime error:\s*(.+?)(?:\n|$))"};
-        std::smatch match;
-        std::string what = e.what();
-        if (std::regex_search(what, match, extract_error))
-        {
-            CELER_ASSERT(match.size() > 1);
-            exceptions_.push_back(match[1].str());
-        }
-        else
-        {
-            exceptions_.push_back(std::move(what));
-        }
+        collect_runtime_error(e);
     }
 
     void TearDown() override
     {
-        if (!exceptions_.empty())
+        auto remaining = this->release_exceptions();
+        if (!remaining.empty())
         {
-            FAIL() << exceptions_.size()
+            FAIL() << remaining.size()
                    << " runtime errors were caught but not checked";
         }
     }
-
-    //! Append caught exceptions in this local test rather than failing
-    bool check_runtime_errors_{false};
-    //! Exceptions that were caught by this test suite's error handler
-    std::vector<std::string> exceptions_;
 };
 
 /*!
@@ -307,7 +335,7 @@ TEST_F(LarSphere, no_set_options)
 
     CELER_LOG(status) << "Run initialization";
     rm.Initialize();
-    EXPECT_EQ(0, exceptions_.size());
+    EXPECT_TRUE(this->release_exceptions().empty());
     CELER_LOG(status) << "Run two events";
     rm.BeamOn(2);
 
@@ -321,8 +349,7 @@ TEST_F(LarSphere, no_set_options)
         expected_exceptions.push_back(
             R"(Celeritas was not initialized properly (maybe BeginOfRunAction was not called?))");
     }
-    EXPECT_VEC_EQ(expected_exceptions, exceptions_);
-    exceptions_.clear();
+    EXPECT_VEC_EQ(expected_exceptions, this->release_exceptions());
 }
 
 //---------------------------------------------------------------------------//
