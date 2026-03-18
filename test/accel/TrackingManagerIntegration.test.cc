@@ -9,7 +9,6 @@
 #include <atomic>
 #include <functional>
 #include <mutex>
-#include <regex>
 #include <string_view>
 #include <G4RunManager.hh>
 #include <G4Threading.hh>
@@ -34,6 +33,7 @@
 #include "accel/TrackingManagerConstructor.hh"
 #include "accel/detail/IntegrationSingleton.hh"
 
+#include "CatchRuntimeErrorsMixin.hh"
 #include "IntegrationTestBase.hh"
 #include "TestMacros.hh"
 #include "celeritas_test.hh"
@@ -140,52 +140,6 @@ class TMITestBase : virtual public IntegrationTestBase
     }
 
     std::function<void()> check_during_run_;
-};
-
-//---------------------------------------------------------------------------//
-// HELPER MIXIN
-//---------------------------------------------------------------------------//
-/*!
- * Collect caught runtime errors rather than immediately failing.
- */
-class CatchRuntimeErrorsMixin
-{
-  public:
-    //! Append caught exceptions in this local test rather than failing
-    bool check_runtime_errors_{false};
-
-    //! Return collected exceptions and clear the list
-    std::vector<std::string> release_exceptions()
-    {
-        std::lock_guard scoped_lock{exc_mutex_};
-        return std::exchange(exceptions_, {});
-    }
-
-  protected:
-    //! Collect a RuntimeError's message into exceptions_
-    void collect_runtime_error(RuntimeError const& e)
-    {
-        CELER_EXPECT(std::string_view(e.details().which) == "Geant4"sv);
-
-        std::lock_guard scoped_lock{exc_mutex_};
-
-        static std::regex extract_error{R"(runtime error:\s*(.+?)(?:\n|$))"};
-        std::smatch match;
-        std::string what = e.what();
-        if (std::regex_search(what, match, extract_error))
-        {
-            CELER_ASSERT(match.size() > 1);
-            exceptions_.push_back(match[1].str());
-        }
-        else
-        {
-            exceptions_.push_back(std::move(what));
-        }
-    }
-
-  private:
-    std::recursive_mutex exc_mutex_;
-    std::vector<std::string> exceptions_;
 };
 
 //---------------------------------------------------------------------------//
