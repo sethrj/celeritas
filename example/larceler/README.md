@@ -95,7 +95,7 @@ $ lar -c dune10k_optical_1x2x6.fcl -s larg4-output.root -o fastsim-output.root
 $ lar -c dune10k_optical_celeritas_1x2x6.fcl -s larg4-output.root -o celeritas-output.root
 ```
 
-- Celeritas geometry requires correct optical material information and correct `SensDet` data assigned to the Arapucas (see e.g. below). The updated GDML is available in 
+- Celeritas geometry requires correct optical material information and correct `SensDet` data assigned to the Arapucas (see e.g. below). The updated GDML is available in
 ```diff
 <volume name="volOpDetSensitive_0-0-0">
   <materialref ref="LAr"/>
