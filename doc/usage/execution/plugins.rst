@@ -70,8 +70,8 @@ README.md in ``example/larceler``.
 
 The result from an optical simulation can be analyzed with the ``PDSimAna``
 module, which reads ``OpdetBacktrackerRecord`` data products to produce analysis
-plots. The FHiCL file ``PDSimAna.fcl`` configures the module, and
-``pdsimana_run.fcl`` executes the job.
+plots. The FHiCL file ``pdsimana.fcl`` configures the module, and
+``pdsimana_job.fcl`` executes the module.
 
 DD4HEP
 ------
