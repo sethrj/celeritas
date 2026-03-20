@@ -62,21 +62,16 @@ Then you should be able to include Celeritas components.
 LArSoft example FHiCLs and analyzer module
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The following FHiCL files are available for generating optical simulation
-samples and analyzing the generated detector response.
-
-- ``dune10kt_ionandscint.fcl``: A FHiCL file to generate the ``IonAndScint``
-  data products needed for the optical simulation.
-- ``dune10kt_opticalsim.fcl``: A FHiCL file to run the optical simulation,
-  either with ``PDFastSimPAR``, or Celeritas (via ``PDFullSimCeler``).
+For a full workflow example (from event generation to analysis outputs), see the
+README.md in ``example/larceler``.
 
 ``PDSimAna`` module
 """""""""""""""""""
 
-The resulting output from ``dune10kt_opticalsim.fcl`` can be analyzed with the
-``PDSimAna`` module, which reads ``OpdetBacktrackerRecord`` data products to
-produce analysis plots. The FHiCL file ``PDSimAna.fcl`` configures the module,
-and ``PDSimAna_run.fcl`` sets up the output file and execution.
+The result from an optical simulation can be analyzed with the ``PDSimAna``
+module, which reads ``OpdetBacktrackerRecord`` data products to produce analysis
+plots. The FHiCL file ``PDSimAna.fcl`` configures the module, and
+``pdsimana_run.fcl`` executes the job.
 
 DD4HEP
 ------
