@@ -683,5 +683,125 @@ SetupOptions OpNoviceIntegrationMixin::make_setup_options()
 }
 
 //---------------------------------------------------------------------------//
+/*!
+ * Return null pointer for the sensitive detector
+ */
+auto OpNoviceIntegrationMixin::make_hit_callback(std::string const&)
+    -> LocalStepFunc
+{
+    return {};
+}
+
+//---------------------------------------------------------------------------//
+// TestEm3
+//---------------------------------------------------------------------------//
+/*!
+ * Create physics list: default is EM only using make_physics_input.
+ */
+auto TestEm3IntegrationMixin::make_physics_input() const -> PhysicsInput
+{
+    using MevEnergy = Quantity<units::Mev, double>;
+
+    PhysicsInput result = Base::make_physics_input();
+    result.em_bins_per_decade = 14;
+    // Increase the lower energy limit of the physics tables
+    result.min_energy = MevEnergy{0.1};
+    result.default_cutoff = 0.1 * units::centimeter;
+    return result;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Create a 100 MeV electron primary.
+ */
+auto TestEm3IntegrationMixin::make_primary_input() const -> PrimaryInput
+{
+    PrimaryInput result;
+    result.pdg = {pdg::electron()};
+    result.energy = inp::MonoenergeticDistribution{100};  // [MeV]
+    result.shape = inp::PointDistribution{
+        static_array_cast<double>(from_cm({-22, 0, 0}))};
+    result.angle = inp::MonodirectionalDistribution{{1, 0, 0}};
+    result.num_events = 2;
+    result.primaries_per_event = 1;
+    return result;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Create THREAD-LOCAL sensitive detectors for an SD name in the GDML file.
+ */
+auto TestEm3IntegrationMixin::make_hit_callback(std::string const& sd_name)
+    -> LocalStepFunc
+{
+    EXPECT_EQ("lAr", sd_name);
+    return [](StreamId, G4Step const&) { /* No-op but still adds an SD */ };
+}
+
+//---------------------------------------------------------------------------//
+// WaterSphere
+//---------------------------------------------------------------------------//
+/*!
+ * Create physics list with
+ */
+auto WaterSphereIntegrationMixin::make_physics_input() const -> PhysicsInput
+{
+    using MevEnergy = Quantity<units::Mev, double>;
+
+    PhysicsInput result = Base::make_physics_input();
+    result.em_bins_per_decade = 10;
+    result.min_energy = MevEnergy{0.01};
+    result.default_cutoff = 0.1 * units::centimeter;
+    return result;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Create many 2 MeV gamma primaries isotropically from the origin.
+ */
+auto WaterSphereIntegrationMixin::make_primary_input() const -> PrimaryInput
+{
+    PrimaryInput result;
+    result.pdg = {pdg::gamma()};
+    result.energy = inp::MonoenergeticDistribution{2};  // [MeV]
+    result.shape = inp::PointDistribution{
+        static_array_cast<double>(from_cm({0, 0, 0}))};
+    result.angle = inp::IsotropicDistribution{};
+    result.num_events = 4;
+    result.primaries_per_event = 100;
+    return result;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Create Celeritas setup options.
+ */
+SetupOptions WaterSphereIntegrationMixin::make_setup_options() const
+{
+    auto opts = Base::make_setup_options();
+    opts.max_num_tracks = 8;
+    opts.initializer_capacity = 1024 * 128;
+
+    // Use a uniform (zero) magnetic field
+    opts.make_along_step = celeritas::UniformAlongStepFactory();
+
+    // Save diagnostic file to a unique name
+    opts.output_file = this->make_unique_filename(".out.json");
+    return opts;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Create THREAD-LOCAL sensitive detectors for an SD name in the GDML file.
+ */
+auto WaterSphereIntegrationMixin::make_sens_det(StreamId,
+                                                std::string const& sd_name)
+    -> HitFunction
+{
+    EXPECT_EQ("detshell", sd_name);
+    return [this](StreamId sid, G4Step& step) { this->process_hit(sid, step); };
+}
+
+//---------------------------------------------------------------------------//
 }  // namespace test
 }  // namespace celeritas

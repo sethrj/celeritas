@@ -185,5 +185,21 @@ class OpNoviceIntegrationMixin : virtual public IntegrationTestBase
 };
 
 //---------------------------------------------------------------------------//
+//! Sphere of water with many low-energy gammas
+class WaterSphereIntegrationMixin : virtual public IntegrationTestBase
+{
+    using Base = IntegrationTestBase;
+
+  public:
+    std::string_view gdml_basename() const final { return "water-sphere"; }
+    PrimaryInput make_primary_input() const override;
+    PhysicsInput make_physics_input() const override;
+    SetupOptions make_setup_options() const override;
+    HitFunction make_sens_det(StreamId, std::string const&) override;
+
+    virtual void process_hit(StreamId, G4Step const&) = 0;
+};
+
+//---------------------------------------------------------------------------//
 }  // namespace test
 }  // namespace celeritas

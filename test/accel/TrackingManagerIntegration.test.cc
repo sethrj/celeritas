@@ -727,5 +727,34 @@ TEST_F(TestEm3, run)
 }
 
 //---------------------------------------------------------------------------//
+// WATERSPHERE
+//---------------------------------------------------------------------------//
+class WaterSphere : public WaterSphereIntegrationMixin, public TMITestBase
+{
+  public:
+    virtual void process_hit(StreamId, G4Step const&)
+    {
+        CELER_NOT_IMPLEMENTED("process_hit");
+    }
+};
+
+/*!
+ * Check that TestEm3 runs.
+ */
+TEST_F(WaterSphere, run)
+{
+    auto& rm = this->run_manager();
+    TMI::Instance().SetOptions(this->make_setup_options());
+
+    CELER_LOG(status) << "Run initialization";
+    rm.Initialize();
+
+    ASSERT_FALSE(this->HasFatalFailure());
+
+    CELER_LOG(status) << "Beam on";
+    rm.BeamOn(10);
+}
+
+//---------------------------------------------------------------------------//
 }  // namespace test
 }  // namespace celeritas
