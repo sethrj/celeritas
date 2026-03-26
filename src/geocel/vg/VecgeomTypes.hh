@@ -15,6 +15,7 @@
 
 #include "corecel/OpaqueId.hh"
 #include "corecel/Types.hh"
+#include "corecel/cont/Span.hh"
 
 #if VECGEOM_VERSION < 0x020000 && CELERITAS_VECGEOM_SURFACE
 #    error \
@@ -143,6 +144,17 @@ using VgNavState = vecgeom::NavigationState;
 
 //---------------------------------------------------------------------------//
 // CONVERSION FUNCTIONS
+//---------------------------------------------------------------------------//
+/*!
+ * Create a Vector3D from a length-3 array.
+ */
+template<class T>
+inline CELER_FUNCTION auto to_vgvector(Span<T const, 3> a)
+    -> VgVector3<T, MemSpace::native>
+{
+    return {a[0], a[1], a[2]};
+}
+
 //---------------------------------------------------------------------------//
 /*!
  * Create a Vector3D from a length-3 array.
