@@ -263,11 +263,11 @@ operator-(LdgIterator<T> const& lhs, LdgIterator<T> const& rhs) noexcept ->
 
 //---------------------------------------------------------------------------//
 /*!
- * Wrapper struct for specializing on types supported by LdgIterator.
+ * Tag for specializing on types supported by \c LdgIterator.
  *
- * For example, Span<LdgValue<T>> specialization can internally use
- * LdgIterator. Specializations should refer to LdgValue<T>::value_type to
- * force the template instantiation of LdgValue and type-check T .
+ * For example, \c Span<LdgValue<T>> specialization can internally use
+ * \c LdgIterator. Specializations should refer to \c LdgValue<T>::value_type
+ * to force the template instantiation of \c LdgValue and type-check \c T .
  */
 template<class T>
 struct LdgValue
@@ -285,9 +285,10 @@ using LdgSpan = Span<LdgValue<T>, Extent>;
 
 //---------------------------------------------------------------------------//
 /*!
- * Construct an array from a fixed-size span, removing LdgValue marker.
+ * Construct an array from a fixed-size span using optimized load.
  *
- * Note: \code to_array(Span<T,N> const&) \endcode is not reused because:
+ * \internal
+ * \code to_array(Span<T,N> const&) \endcode is not reused because:
  * 1. Using this overload reads input data using \c __ldg
  * 2. \code return to_array<T, N>(s) \endcode results in segfault (gcc 11.3).
  *    This might be a compiler bug because temporary lifetime should be

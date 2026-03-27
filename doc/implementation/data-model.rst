@@ -61,36 +61,43 @@ Storage
 
 .. doxygenpage:: collections
 
-.. doxygenenum:: celeritas::MemSpace
-   :no-link:
-.. doxygenenum:: celeritas::Ownership
-   :no-link:
+.. _opaque_id:
+
+OpaqueId
+^^^^^^^^
 
 .. doxygenclass:: celeritas::OpaqueId
 .. doxygenfunction:: celeritas::id_cast
+
+Collection and records
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. doxygenclass:: celeritas::Collection
 
 .. doxygentypedef:: celeritas::ItemId
 .. doxygentypedef:: celeritas::ItemRange
 .. doxygenclass:: celeritas::ItemMap
 
-.. doxygenclass:: celeritas::Collection
+Tags
+^^^^
+
+.. doxygenenum:: celeritas::MemSpace
+   :no-link:
+.. doxygenenum:: celeritas::Ownership
+   :no-link:
+
+Allocation and mirroring
+^^^^^^^^^^^^^^^^^^^^^^^^
+
 .. doxygenclass:: celeritas::ParamsDataStore
 .. doxygenclass:: celeritas::StateDataStore
 
+Device optimizations
+^^^^^^^^^^^^^^^^^^^^
+
+.. doxygenstruct:: celeritas::LdgValue
+
 .. doxygenfunction:: celeritas::ldg
-
-.. _api_containers:
-
-Containers
-----------
-
-These are containers and container-like objects used throughout Celeritas.
-
-.. doxygenclass:: celeritas::Array
-.. doxygenclass:: celeritas::EnumArray
-.. doxygenclass:: celeritas::Range
-.. doxygenclass:: celeritas::Span
-
 
 .. _api_auxiliary_data:
 
@@ -106,10 +113,11 @@ Users and other parts of the code can add their own shared and stream-local
 
 .. doxygenclass:: celeritas::AuxParamsInterface
 .. doxygenclass:: celeritas::AuxStateInterface
-.. doxygenclass:: celeritas::AuxParamsRegistry
-.. doxygenclass:: celeritas::AuxStateVec
+
+.. doxygenclass:: celeritas::AuxParams
 
 Auxiliary collection groups
 ---------------------------
 
-.. doxygenclass:: celeritas::AuxParams
+.. doxygenclass:: celeritas::AuxParamsRegistry
+.. doxygenclass:: celeritas::AuxStateVec

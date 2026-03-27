@@ -9,6 +9,19 @@ GPU code without the special ``--expt-relaxed-constexpr`` flag. None of these
 algorithms are thread-cooperative, so all can be used in standard Celeritas
 kernels.
 
+.. _api_containers:
+
+Containers
+^^^^^^^^^^
+
+These containers and container-like objects are used throughout Celeritas and.
+
+.. doxygenclass:: celeritas::Array
+.. doxygenclass:: celeritas::Range
+.. doxygenclass:: celeritas::Span
+
+.. doxygenclass:: celeritas::EnumArray
+
 Utilities
 ^^^^^^^^^
 

@@ -23,30 +23,59 @@ namespace celeritas
 {
 //---------------------------------------------------------------------------//
 //! Sentinel value for span of dynamic type
-constexpr std::size_t dynamic_extent = detail::dynamic_extent;
+constexpr auto dynamic_extent = detail::dynamic_extent;
 
 //---------------------------------------------------------------------------//
 /*!
- * Non-owning reference to a contiguous span of data.
+ * Non-owning device-compatible reference to a contiguous span of data.
  * \tparam T value type
  * \tparam Extent fixed size; defaults to dynamic.
  *
- * This Span class is a modified backport of the C++20 \c std::span . In
- * Celeritas, it is often used as a return value from accessing elements in a
- * \c Collection.
+ * A \c Span , like \c std::string_view , provides access to externally managed
+ * data.  In Celeritas, this class is typically used as a return result
+ * from accessing a range of elements in a \c Collection.
  *
- * Like the \ref celeritas::Array , this class is not 100% compatible
- * with the \c std::span class. The hope is that it will be complete and
- * correct for the use cases needed by Celeritas (and, as a bonus, it will be
- * device-compatible).
+ * This implementation is a \em nonconforming backport of the C++20 \c
+ * std::span. Improvements for standards compatibility are welcome as long as
+ * they retain the same behavior in device code. Important differences from
+ * the standard \c std::span include:
+ * - Supports a special marker/tag type `LdgValue<T>` which causes element
+ *   accessors and iterators to use value-semantics loads (optimized device
+ *   loads) instead of references.
+ * - Uses a restricted constructor for iterators: instead of two separate
+ *   iterator/end types, it uses only one.
+ * - Provides additional free helpers tailored to Celeritas: `make_span`
+ *   overloads for `Array<T,N>`, C arrays, and generic containers, plus
+ *   `to_array()` convenience and a host-only `operator<<` using
+ *   `StreamableContainer`.
+ * - All public methods are decorated with `CELER_CONSTEXPR_FUNCTION` for
+ *   host/device compatibility.
+ * - Some subview helpers use `CELER_EXPECT` to check for bounds validation in
+ *   debug builds.
  *
- * \c Span can be instantiated with the special marker type \c LdgValue<T> to
- * optimize constant data access in global device memory.
- * In that case, data returned
- * by \c front, \c back, \c operator[] and \c begin / \c end iterators use
- * value semantics instead of reference. The \c data accessor still returns a
- * pointer to the underlying memory and can be used to bypass using \c
- * LdgIterator .
+ * \par Synopsis
+ *
+ * Construction:
+ * - Default constructs to an empty span.
+ * - Construct from a pointer and size: `Span(pointer, size)`.
+ * - Construct from two contiguous random-access iterators: `Span(first,
+ *   last)` (non-standard convenience).
+ * - Construct from C arrays or `Array<T,N>` (fixed-size spans).
+ * - Converting constructor from a compatible `Span<U,N>` (e.g., mutable to
+ *   const element type) when extents are compatible.
+ *
+ * Data access:
+ * - Element access: `operator[]`, `front()`, `back()`.
+ * - Observers: `data()`, `size()`, `size_bytes()`, `empty()`.
+ * - Iteration: `begin()`, `end()`.
+ *
+ * Subviews and utilities:
+ * - `first<Count>()`, `first(count)`, `last<Count>()`, `last(count)`.
+ * - `subspan<Offset,Count>()` and `subspan(offset,count)` for compile-time
+ *   and runtime subviews.
+ * - Deduction guides are provided for pointer+size, iterator pairs and
+ *   C arrays; free functions `make_span(...)` and `to_array(...)` are
+ *   provided for convenience.
  */
 template<class T, std::size_t Extent = dynamic_extent>
 class Span
@@ -68,7 +97,7 @@ class Span
     //!@}
 
     //! Size (may be dynamic)
-    static constexpr std::size_t extent = Extent;
+    static constexpr size_type extent = Extent;
 
   public:
     //// CONSTRUCTION ////
@@ -98,6 +127,7 @@ class Span
         : s_(other.data(), other.size())
     {
     }
+
     CELER_DEFAULT_COPY_MOVE(Span);
     ~Span() = default;
 
@@ -145,7 +175,7 @@ class Span
         return {this->data(), Count};
     }
     CELER_CONSTEXPR_FUNCTION
-    Span<T, dynamic_extent> first(std::size_t count) const
+    Span<T, dynamic_extent> first(size_type count) const
     {
         CELER_EXPECT(count <= this->size());
         return {this->data(), count};
@@ -163,7 +193,7 @@ class Span
     }
     CELER_CONSTEXPR_FUNCTION
     Span<T, dynamic_extent>
-    subspan(std::size_t offset, std::size_t count = dynamic_extent) const
+    subspan(size_type offset, size_type count = dynamic_extent) const
     {
         CELER_EXPECT(offset + count <= this->size());
         return {this->data() + offset,
@@ -177,7 +207,7 @@ class Span
         return {this->data() + this->size() - Count, Count};
     }
     CELER_CONSTEXPR_FUNCTION
-    Span<T, dynamic_extent> last(std::size_t count) const
+    Span<T, dynamic_extent> last(size_type count) const
     {
         CELER_EXPECT(count <= this->size());
         return {this->data() + this->size() - count, count};
