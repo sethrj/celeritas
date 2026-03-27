@@ -123,13 +123,13 @@ class Span
 
     //! Construct from a span whose pointer type is implicitly convertible to
     //! ours (e.g., mutable T to const T), with compatible extent.
+    //! Note that the enable-if prevents LdgSpan->Span conversion.
     template<class U,
              std::size_t N,
-             std::enable_if_t<std::is_convertible_v<U (*)[], element_type (*)[]>
-                                  && (N == dynamic_extent
-                                      || Extent == dynamic_extent || N == Extent),
-                              int>
-             = 0>
+             std::enable_if_t<detail::is_array_convertible_v<U, element_type>
+                                  && detail::is_span_size_convertible(N, Extent),
+                              bool>
+             = true>
     CELER_CONSTEXPR_FUNCTION Span(Span<U, N> const& other)
         : s_(other.data(), other.size())
     {

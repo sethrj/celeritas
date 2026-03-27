@@ -43,10 +43,9 @@ struct SpanTraits
 /*!
  * Type aliases when data is read using __ldg.
  *
- * \c LdgValue checks that T is a
- * valid type (const arithmetic or OpaqueId). Since \c LdgIterator returns a
- * copy of the data read, we can't return a reference to the original data, we
- * need to return a copy as well.
+ * \c LdgValue checks that T is a valid type (const arithmetic or OpaqueId).
+ * Since \c LdgIterator returns a copy of the data read, we can't return a
+ * reference to the original data, we need to return a copy as well.
  */
 template<class T>
 struct SpanTraits<LdgValue<T>>
@@ -63,7 +62,20 @@ struct SpanTraits<LdgValue<T>>
 
 //---------------------------------------------------------------------------//
 //! Sentinel value for span of dynamic type
-inline constexpr std::size_t dynamic_extent = std::size_t(-1);
+inline constexpr std::size_t dynamic_extent = static_cast<std::size_t>(-1);
+
+//---------------------------------------------------------------------------//
+//! Whether two spans can be converted
+CELER_CONSTEXPR_FUNCTION bool
+is_span_size_convertible(std::size_t a, std::size_t b)
+{
+    return (a == dynamic_extent || b == dynamic_extent || a == b);
+}
+
+//! Whether one type array is convertible to another
+template<class T, class U>
+inline constexpr bool is_array_convertible_v
+    = std::is_convertible_v<T (*)[], U (*)[]>;
 
 //---------------------------------------------------------------------------//
 //! Calculate the return type for a subspan
