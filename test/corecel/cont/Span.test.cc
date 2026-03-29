@@ -132,6 +132,18 @@ TEST(SpanTest, fixed_size)
     EXPECT_EQ(local_data, ptr_span.data());
 }
 
+TEST(SpanTest, implicit_const_conversion)
+{
+    // Test that Span<int, 3> implicitly converts to Span<int const>
+    // (i.e., the converting constructor is not explicit)
+    int local_data[] = {1, 2, 3};
+    Span<int, 3> span(local_data);
+
+    Span<int const> const_span = span;
+    EXPECT_EQ(local_data, const_span.data());
+    EXPECT_EQ(3, const_span.size());
+}
+
 TEST(SpanTest, dynamic_size)
 {
     int local_data[] = {123, 456, 789};
