@@ -142,6 +142,18 @@ TEST(SpanTest, implicit_const_conversion)
     Span<int const> const_span = span;
     EXPECT_EQ(local_data, const_span.data());
     EXPECT_EQ(3, const_span.size());
+
+    // Should be able to convert back to fixed-size
+    Span<int const, 3> const_fixed_span = const_span;
+    EXPECT_EQ(local_data, const_fixed_span.data());
+    EXPECT_EQ(3, const_fixed_span.size());
+
+    // Converting dynamic to wrong size should result in assertion failure
+    if constexpr (CELERITAS_DEBUG)
+    {
+        EXPECT_THROW((Span<int const, 2>{const_span}), DebugError);
+        EXPECT_THROW((Span<int const, 4>{const_span}), DebugError);
+    }
 }
 
 TEST(SpanTest, dynamic_size)
