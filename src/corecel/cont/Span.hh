@@ -97,7 +97,7 @@ class Span
     //!@}
 
     //! Size (may be dynamic)
-    static constexpr size_type extent = Extent;
+    static constexpr std::size_t extent = Extent;
 
   public:
     //// CONSTRUCTION ////
@@ -106,12 +106,12 @@ class Span
     constexpr Span() = default;
 
     //! Construct from data and size
-    CELER_CONSTEXPR_FUNCTION Span(pointer d, size_type s) : s_(d, s) {}
+    CELER_CONSTEXPR_FUNCTION Span(pointer d, std::size_t s) : s_(d, s) {}
 
     //! Construct from two contiguous random-access iterators
     template<class Iter>
     CELER_CONSTEXPR_FUNCTION Span(Iter first, Iter last)
-        : s_(&(*first), static_cast<size_type>(last - first))
+        : s_(&(*first), static_cast<std::size_t>(last - first))
     {
     }
 
@@ -148,7 +148,7 @@ class Span
 
     //!@{
     //! \name Element access
-    CELER_CONSTEXPR_FUNCTION reference operator[](size_type i) const
+    CELER_CONSTEXPR_FUNCTION reference operator[](std::size_t i) const
     {
         return s_.data[i];
     }
@@ -166,8 +166,8 @@ class Span
     //!@{
     //! \name Observers
     CELER_CONSTEXPR_FUNCTION bool empty() const { return s_.size == 0; }
-    CELER_CONSTEXPR_FUNCTION size_type size() const { return s_.size; }
-    CELER_CONSTEXPR_FUNCTION size_type size_bytes() const
+    CELER_CONSTEXPR_FUNCTION std::size_t size() const { return s_.size; }
+    CELER_CONSTEXPR_FUNCTION std::size_t size_bytes() const
     {
         return sizeof(element_type) * s_.size;
     }
@@ -182,7 +182,7 @@ class Span
         return {this->data(), Count};
     }
     CELER_CONSTEXPR_FUNCTION
-    Span<T, dynamic_extent> first(size_type count) const
+    Span<T, dynamic_extent> first(std::size_t count) const
     {
         CELER_EXPECT(count <= this->size());
         return {this->data(), count};
@@ -200,7 +200,7 @@ class Span
     }
     CELER_CONSTEXPR_FUNCTION
     Span<T, dynamic_extent>
-    subspan(size_type offset, size_type count = dynamic_extent) const
+    subspan(std::size_t offset, std::size_t count = dynamic_extent) const
     {
         CELER_EXPECT(offset + count <= this->size());
         return {this->data() + offset,
@@ -214,7 +214,7 @@ class Span
         return {this->data() + this->size() - Count, Count};
     }
     CELER_CONSTEXPR_FUNCTION
-    Span<T, dynamic_extent> last(size_type count) const
+    Span<T, dynamic_extent> last(std::size_t count) const
     {
         CELER_EXPECT(count <= this->size());
         return {this->data() + this->size() - count, count};
