@@ -31,8 +31,8 @@ constexpr auto dynamic_extent = detail::dynamic_extent;
  * \tparam T value type
  * \tparam Extent fixed size; defaults to dynamic.
  *
- * A \c Span , like \c std::string_view , provides access to externally managed
- * data.  In Celeritas, this class is typically used as a return result
+ * A \c Span, like \c std::string_view, provides access to externally managed
+ * data. In Celeritas, this class is typically used as a return result
  * from accessing a range of elements in a \c Collection.
  *
  * This implementation is a \em nonconforming backport of the C++20 \c
@@ -52,6 +52,8 @@ constexpr auto dynamic_extent = detail::dynamic_extent;
  *   host/device compatibility.
  * - Some subview helpers use `CELER_EXPECT` to check for bounds validation in
  *   debug builds.
+ * - Dynamic-to-fixed conversion performs runtime checks when `CELERITAS_DEBUG`
+ *   is on.
  *
  * \par Synopsis
  *
@@ -121,16 +123,45 @@ class Span
     {
     }
 
-    //! Construct from a span whose pointer type is implicitly convertible to
-    //! ours (e.g., mutable T to const T), with compatible extent.
-    //! Note that the enable-if prevents LdgSpan->Span conversion.
+    /*!
+     * Construct implicitly convertible span and extent.
+     *
+     * Note that the enable-if prevents LdgSpan->Span conversion.
+     * Conversions that may require a runtime size check (dynamic-extent
+     * source to fixed-extent destination) are made explicit to avoid
+     * accidental UB, matching std::span's behavior.
+     *
+     * Implicit conversion for cases that are statically safe (e.g.,
+     * fixed->dynamic, fixed->same-fixed, or just element-type
+     * qualification changes).
+     */
     template<class U,
              std::size_t N,
              std::enable_if_t<detail::is_array_convertible_v<U, element_type>
-                                  && detail::is_span_size_convertible(N, Extent),
+                                  && detail::is_span_size_convertible(N, Extent)
+                                  && !(N == dynamic_extent
+                                       && Extent != dynamic_extent),
                               bool>
              = true>
     CELER_CONSTEXPR_FUNCTION Span(Span<U, N> const& other)
+        : s_(other.data(), other.size())
+    {
+    }
+
+    /*!
+     * Require explicit conversion from dynamic to fixed extent.
+     *
+     * Runtime ize compatibility is checked in \c detail::SpanImpl.
+     */
+    template<
+        class U,
+        std::size_t N,
+        std::enable_if_t<detail::is_array_convertible_v<U, element_type>
+                             && detail::is_span_size_convertible(N, Extent)
+                             && (N == dynamic_extent && Extent != dynamic_extent),
+                         bool>
+        = true>
+    CELER_CONSTEXPR_FUNCTION explicit Span(Span<U, N> const& other)
         : s_(other.data(), other.size())
     {
     }

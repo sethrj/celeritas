@@ -14,7 +14,7 @@ kernels.
 Containers
 ^^^^^^^^^^
 
-These containers and container-like objects are used throughout Celeritas and.
+These containers and container-like objects are used throughout Celeritas.
 
 .. doxygenclass:: celeritas::Array
 .. doxygenclass:: celeritas::Range

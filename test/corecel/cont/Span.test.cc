@@ -68,13 +68,16 @@ TEST(SpanTest, fixed_size_zero)
     EXPECT_EQ(0, const_dynamic.size());
 
     // Removing const must not be allowed
-    static_assert(!std::is_constructible_v<Span<int, 0>, Span<int const, 0>>,
-                  "const->mutable span is prohibited");
-    static_assert(!std::is_constructible_v<Span<int>, Span<int const>>,
-                  "const->mutable dynamic span is prohibited");
+    EXPECT_FALSE((std::is_constructible_v<Span<int, 0>, Span<int const, 0>>))
+        << "const->mutable span is prohibited";
+    EXPECT_FALSE((std::is_constructible_v<Span<int>, Span<int const>>))
+        << "const->mutable dynamic span is prohibited";
     // Incompatible fixed extents must not be allowed
-    static_assert(!std::is_constructible_v<Span<int, 2>, Span<int, 3>>,
-                  "fixed span with different extent is prohibited");
+    EXPECT_FALSE((std::is_constructible_v<Span<int, 2>, Span<int, 3>>))
+        << "fixed span with different extent is prohibited";
+    // LdgSpan must not be implicitly convertible to Span
+    EXPECT_FALSE((std::is_constructible_v<Span<int const>, LdgSpan<int const>>))
+        << "LdgSpan->Span conversion is prohibited";
 
     // Test pointer constructor
     Span<int, 0> ptr_span(empty_span.begin(), empty_span.end());
