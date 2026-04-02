@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "corecel/cont/Range.hh"
+#include "corecel/cont/SpanIO.json.hh"  //  IWYU pragma: keep
 #include "corecel/io/StringEnumMapper.hh"
 
 namespace celeritas

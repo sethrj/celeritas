@@ -12,6 +12,19 @@
 
 namespace celeritas
 {
+namespace detail
+{
+//---------------------------------------------------------------------------//
+/*!
+ * Write a span to a JSON file.
+ */
+template<class T>
+void to_json(nlohmann::json& j, LdgWrapper<T const> value)
+{
+    j = static_cast<T>(value);
+}
+}  // namespace detail
+
 //---------------------------------------------------------------------------//
 /*!
  * Write a span to a JSON file.
