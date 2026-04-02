@@ -65,7 +65,7 @@ class VolumeParams final : public ParamsDataInterface<VolumeParamsData>
     //! \name Type aliases
     using VolumeMap = LabelIdMultiMap<VolumeId>;
     using VolInstMap = LabelIdMultiMap<VolumeInstanceId>;
-    using SpanVolInst = Span<VolumeInstanceId const>;
+    using SpanVolInst = LdgSpan<VolumeInstanceId const>;
     //!@}
 
     //!@{
