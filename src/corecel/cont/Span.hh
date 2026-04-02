@@ -151,7 +151,7 @@ class Span
     /*!
      * Require explicit conversion from dynamic to fixed extent.
      *
-     * Runtime ize compatibility is checked in \c detail::SpanImpl.
+     * Runtime size compatibility is checked in \c detail::SpanImpl.
      */
     template<
         class U,

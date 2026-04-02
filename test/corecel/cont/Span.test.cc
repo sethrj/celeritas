@@ -146,8 +146,8 @@ TEST(SpanTest, implicit_const_conversion)
     EXPECT_EQ(local_data, const_span.data());
     EXPECT_EQ(3, const_span.size());
 
-    // Should be able to convert back to fixed-size
-    Span<int const, 3> const_fixed_span = const_span;
+    // Should be able to convert back to fixed-size explicitly
+    Span<int const, 3> const_fixed_span{const_span};
     EXPECT_EQ(local_data, const_fixed_span.data());
     EXPECT_EQ(3, const_fixed_span.size());
 
