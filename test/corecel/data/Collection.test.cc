@@ -17,7 +17,6 @@
 #include "corecel/data/DeviceVector.hh"
 #include "corecel/data/ParamsDataStore.hh"
 #include "corecel/data/Ref.hh"
-#include "corecel/sys/Device.hh"
 
 #include "Collection.test.hh"
 #include "celeritas_test.hh"

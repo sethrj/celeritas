@@ -7,8 +7,10 @@
 #pragma once
 
 #include <cstddef>
+#include <type_traits>
 
 #include "corecel/Macros.hh"
+#include "corecel/Types.hh"
 
 #include "Span.hh"
 
@@ -27,6 +29,15 @@ namespace celeritas
  */
 template<class T, std::size_t Extent = dynamic_extent>
 using LdgSpan = Span<detail::LdgWrapper<T>, Extent>;
+
+//---------------------------------------------------------------------------//
+/*!
+ * An LdgSpan when referencing device memory but simply Span on host.
+ */
+template<MemSpace M, class T, std::size_t Extent = dynamic_extent>
+using AutoLdgSpan
+    = Span<std::conditional_t<M == MemSpace::device, detail::LdgWrapper<T>, T>,
+           Extent>;
 
 //---------------------------------------------------------------------------//
 /*!

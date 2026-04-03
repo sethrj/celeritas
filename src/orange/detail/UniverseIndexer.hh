@@ -6,6 +6,7 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
+#include "corecel/Types.hh"
 #include "corecel/data/Collection.hh"
 #include "corecel/math/Algorithms.hh"
 
@@ -77,19 +78,19 @@ class UniverseIndexer
     }
 
   private:
-    using DataRef
+    using OffsetCRef
         = Collection<size_type, Ownership::const_reference, MemSpace::native>;
     using AllVals = AllItems<size_type, MemSpace::native>;
     using SizeId = OpaqueId<size_type>;
-    using SpanIter = typename DataRef::SpanConstT::const_iterator;
+    using OffsetIter = OffsetCRef::SpanConstT::const_iterator;
 
     //// DATA ////
     UniverseIndexerDataRef const& data_;
 
     //// IMPLEMENTATION METHODS ////
-    static inline CELER_FUNCTION SpanIter find_local(DataRef offsets,
-                                                     size_type id);
-    static inline CELER_FUNCTION size_type local_size(DataRef offsets,
+    static inline CELER_FUNCTION OffsetIter find_local(OffsetCRef const& offsets,
+                                                       size_type id);
+    static inline CELER_FUNCTION size_type local_size(OffsetCRef const& offsets,
                                                       UnivId uni);
 };
 
@@ -172,16 +173,16 @@ UniverseIndexer::local_volume(ImplVolumeId id) const
 /*!
  * Locate the given ID in the list of offsets.
  */
-CELER_FUNCTION UniverseIndexer::SpanIter
-UniverseIndexer::find_local(DataRef offsets, size_type id)
+CELER_FUNCTION auto UniverseIndexer::find_local(OffsetCRef const& offsets,
+                                                size_type id) -> OffsetIter
 {
     CELER_EXPECT(id < offsets[SizeId{offsets.size() - 1}]);
 
     // Use upper bound to skip past universes with zero surfaces.
-    auto iter = upper_bound(
-        offsets[AllVals{}].begin(), offsets[AllVals{}].end(), id);
+    auto view = offsets[AllVals{}];
+    auto iter = upper_bound(view.begin(), view.end(), id);
 
-    CELER_ASSERT(iter != offsets[AllVals{}].end());
+    CELER_ASSERT(iter != view.end());
     --iter;
 
     CELER_ENSURE(*iter <= id);
@@ -193,7 +194,7 @@ UniverseIndexer::find_local(DataRef offsets, size_type id)
 /*!
  * Get the number of elements in the given universe.
  */
-CELER_FUNCTION size_type UniverseIndexer::local_size(DataRef offsets,
+CELER_FUNCTION size_type UniverseIndexer::local_size(OffsetCRef const& offsets,
                                                      UnivId uni)
 {
     CELER_EXPECT(uni && uni.unchecked_get() + 1 < offsets.size());

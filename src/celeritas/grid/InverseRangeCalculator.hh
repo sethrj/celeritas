@@ -9,14 +9,13 @@
 #include <cmath>
 
 #include "corecel/Assert.hh"
+#include "corecel/Types.hh"
 #include "corecel/data/Collection.hh"
 #include "corecel/grid/Interpolator.hh"
 #include "corecel/grid/NonuniformGrid.hh"
-#include "corecel/grid/SplineInterpolator.hh"
 #include "corecel/grid/UniformGrid.hh"
 #include "corecel/grid/UniformGridData.hh"
 #include "corecel/math/Algorithms.hh"
-#include "corecel/math/Quantity.hh"
 #include "celeritas/Quantities.hh"
 
 namespace celeritas
@@ -49,6 +48,7 @@ class InverseRangeCalculator
     using Energy = units::MevEnergy;
     using Values
         = Collection<real_type, Ownership::const_reference, MemSpace::native>;
+
     //!@}
 
   public:
@@ -62,7 +62,7 @@ class InverseRangeCalculator
   private:
     UniformGrid log_energy_;
     NonuniformGrid<real_type> range_;
-    Span<real_type const> deriv_;
+    AutoLdgSpan<MemSpace::native, real_type const> deriv_;
 };
 
 //---------------------------------------------------------------------------//

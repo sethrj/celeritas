@@ -34,8 +34,6 @@ struct CollectionTraits
 {
     using type = T;
     using const_type = T const;
-    using reference_type = type&;
-    using const_reference_type = const_type&;
     using SpanT = Span<type>;
     using SpanConstT = Span<const_type>;
 };
@@ -45,11 +43,9 @@ template<class T, MemSpace M>
 struct CollectionTraits<T, Ownership::reference, M, void>
 {
     using type = T;
-    using const_type = T;
-    using reference_type = type&;
-    using const_reference_type = const_type&;
-    using SpanT = Span<type>;
-    using SpanConstT = Span<const_type>;
+    using const_type = T;  //!< Return type is *mutable* for reference!
+    using SpanT = Span<T>;
+    using SpanConstT = Span<T>;
 };
 
 //---------------------------------------------------------------------------//
@@ -61,8 +57,6 @@ struct CollectionTraits<T,
 {
     using type = T const;
     using const_type = T const;
-    using reference_type = type&;
-    using const_reference_type = const_type&;
     using SpanT = Span<type>;
     using SpanConstT = Span<const_type>;
 };
@@ -76,31 +70,14 @@ struct CollectionTraits<T,
 {
     using type = T const;
     using const_type = T const;
-    using reference_type = type&;
-    using const_reference_type = const_type&;
-    using SpanT = Span<type>;
-    using SpanConstT = Span<const_type>;
-};
-
-//---------------------------------------------------------------------------//
-template<class T>
-struct CollectionTraits<T,
-                        Ownership::const_reference,
-                        MemSpace::device,
-                        std::enable_if_t<is_ldg_supported_v<std::add_const_t<T>>>>
-{
-    using type = T const;
-    using const_type = T const;
-    using reference_type = type;
-    using const_reference_type = const_type;
-    using SpanT = LdgSpan<const_type>;
-    using SpanConstT = LdgSpan<const_type>;
+    using SpanT = AutoLdgSpan<M, type>;
+    using SpanConstT = AutoLdgSpan<M, const_type>;
 };
 
 //---------------------------------------------------------------------------//
 //! Memspace-dependent storage for a collection
 template<class T, Ownership W, MemSpace M>
-struct CollectionStorage
+struct CollectionImpl
 {
     using type = typename CollectionTraits<T, W, M>::SpanT;
     type data;
@@ -112,7 +89,7 @@ struct CollectionStorage
 //---------------------------------------------------------------------------//
 //! Storage implementation for managed host data
 template<class T>
-struct CollectionStorage<T, Ownership::value, MemSpace::host>
+struct CollectionImpl<T, Ownership::value, MemSpace::host>
 {
     static_assert(!std::is_same<T, bool>::value,
                   "bool is not compatible between vector and anything else");
@@ -131,7 +108,7 @@ struct CollectionStorage<T, Ownership::value, MemSpace::host>
 
 //! Storage implementation for managed device data
 template<class T>
-struct CollectionStorage<T, Ownership::value, MemSpace::device>
+struct CollectionImpl<T, Ownership::value, MemSpace::device>
 {
 #ifdef CELER_DEVICE_COMPILE
     // Use "not implemented" but __host__ __device__ decorated functions when
@@ -148,7 +125,7 @@ struct CollectionStorage<T, Ownership::value, MemSpace::device>
 
 //! Storage implementation for mapped host/device data
 template<class T>
-struct CollectionStorage<T, Ownership::value, MemSpace::mapped>
+struct CollectionImpl<T, Ownership::value, MemSpace::mapped>
 {
     static_assert(!std::is_same<T, bool>::value,
                   "bool is not compatible between vector and anything else");
@@ -194,10 +171,10 @@ struct CollectionStorageValidator<Ownership::value>
  * Copy assign a collection via its storage.
  */
 template<class S, class T, Ownership DW, MemSpace DM>
-void copy_collection(S& src, CollectionStorage<T, DW, DM>* dst)
+void copy_collection(S& src, CollectionImpl<T, DW, DM>* dst)
 {
     constexpr MemSpace SM = std::remove_const_t<S>::memspace;
-    using DstStorageT = typename CollectionStorage<T, DW, DM>::type;
+    using DstStorageT = typename CollectionImpl<T, DW, DM>::type;
 
     auto* data = src.data.data();
     size_type size = src.data.size();

@@ -9,7 +9,6 @@
 
 #include "corecel/DeviceRuntimeApi.hh"
 
-#include "corecel/sys/Device.hh"
 #include "corecel/sys/KernelParamCalculator.device.hh"
 
 namespace celeritas

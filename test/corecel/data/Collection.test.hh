@@ -116,6 +116,7 @@ class MockTrackView
         return this->mat().number_density;
     }
 
+    // NOTE: return value cannot be LdgSpan because MockElement isn't POD
     CELER_FUNCTION Span<MockElement const> elements() const
     {
         return params_.elements[this->mat().elements];
