@@ -39,7 +39,7 @@ constexpr auto dynamic_extent = detail::dynamic_extent;
  * std::span. Improvements for standards compatibility are welcome as long as
  * they retain the same behavior in device code. Important differences from
  * the standard \c std::span include:
- * - Supports a special marker/tag type `LdgValue<T>` which causes element
+ * - Supports a special marker/tag type `LdgWrapper<T>` which causes element
  *   accessors and iterators to use value-semantics loads (optimized device
  *   loads) instead of references.
  * - Uses a restricted constructor for iterators: instead of two separate
@@ -78,6 +78,9 @@ constexpr auto dynamic_extent = detail::dynamic_extent;
  * - Deduction guides are provided for pointer+size, iterator pairs and
  *   C arrays; free functions `make_span(...)` and `to_array(...)` are
  *   provided for convenience.
+ *
+ * See \c LdgSpan for a specialization optimized for on-device memory access of
+ * immutable data.
  */
 template<class T, std::size_t Extent = dynamic_extent>
 class Span

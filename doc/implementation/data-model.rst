@@ -92,12 +92,24 @@ Allocation and mirroring
 .. doxygenclass:: celeritas::ParamsDataStore
 .. doxygenclass:: celeritas::StateDataStore
 
-Device optimizations
-^^^^^^^^^^^^^^^^^^^^
+Optimized device data access
+----------------------------
 
-.. doxygenstruct:: celeritas::LdgValue
+.. doxygenpage:: ldg
 
 .. doxygenfunction:: celeritas::ldg
+
+.. _api_containers:
+
+Containers
+----------
+
+These are containers and container-like objects used throughout Celeritas.
+
+.. doxygenclass:: celeritas::Array
+.. doxygenclass:: celeritas::EnumArray
+.. doxygenclass:: celeritas::Range
+.. doxygenclass:: celeritas::Span
 
 .. _api_auxiliary_data:
 
