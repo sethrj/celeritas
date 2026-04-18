@@ -13,65 +13,51 @@ Celeritas can run as a plugin to different integrated frameworks.
 LArSoft for DUNE
 ----------------
 
-LArSoft is an integral component of the DUNE simulation framework. Celeritas
-builds the ``PDFullSimCeler`` module to process optical photons from
-scintillation. It requires ROOT input file with ``art::Event``
+LArSoft is an integral component of the DUNE simulation framework.
+Celeritas builds the ``PDFullSimCeler`` module to process optical photons from
+scintillation.
+It requires ROOT input file with ``art::Event``
 ``sim::SimEnergyDeposit``object data from the ``IonAndScint`` producer, exactly
-as the current ``PDFastSimPAR`` module in LArSoft. The ``PDFullSimCeler`` module
-enables replacing the map-based method for generating the
-scintillation-to-detector response by a full Monte Carlo optical tracking.
+as the current ``PDFastSimPAR`` module in LArSoft.
+The ``PDFullSimCeler`` module enables replacing the map-based method for
+generating the scintillation-to-detector response by a full Monte Carlo optical
+tracking.
 
-Building Celeritas as a LArSoft extension requires the whole larsoft toolchain,
-available on Fermilab's ``scisoftbuild01``. The environment script at
-``env/scisoftbuild01.sh`` can be sourced at startup to define an
-``apptatiner_fermilab`` function that launches the container needed to build
-and run.
+Once Celeritas has been installed (see :ref:`build_ups`), load the
+module/library/FHICL paths provided by Celeritas in its install directory (or
+build directory if doing development):
 
-Once inside the apptainer, initialize the UPS packaging system and load LArSoft
-and DUNE components:
+.. code::
 
-.. sourcecode::
+   $ eval $($CELER_DIR/bin/larceler-env)
+   Loaded Celeritas at $CELER_DIR
 
-   $ . /cvmfs/dune.opensciencegrid.org/products/dune/setup_dune.sh
-   Setting up larsoft UPS area... /cvmfs/larsoft.opensciencegrid.org
-   Setting up DUNE UPS area... /cvmfs/dune.opensciencegrid.org/products/dune/
-   $ setup -B dunesw v10_14_01d00 -q e26:prof
+Then you should be able to include Celeritas components including its photon
+detector replacement and analysis modules.
 
-Finally, load the module/library/FHICL paths provided by Celeritas:
+.. literalinclude:: ../../example/larceler/dune10kt_1x2x6_cpu.fcl
+   :language: none
+   :start-at: #include
 
-.. sourcecode::
+PDFullSimCeler
+""""""""""""""
 
-   $ eval $($SCRATCHDIR/build/celeritas-reldeb-orange/bin/larceler-env)
-   Loaded Celeritas at .../build/celeritas-reldeb-orange
+This "producer" module is a replacement for LArSim's PDFastSimPar.
 
-Then you should be able to include Celeritas components.
+GeoSimExporter
+""""""""""""""
 
-.. sourcecode:: none
+This analysis module exports detector geometry data and energy deposition data
+for internal testing.
 
-   #include "PDFullSimCeler.fcl"
-   #include "standard_g4_dune10kt_1x2x6.fcl"
-
-   dunefd_pdfullsim_cpu: {
-     @table::PDFullSimCeler
-   }
-
-   # Use Celeritas full sim configuration
-   physics.producers.PDFastSim: @local::dunefd_pdfullsim_cpu
-
-
-LArSoft example FHiCLs and analyzer module
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-For a full workflow example (from event generation to analysis outputs), see the
-README.md in ``example/larceler``.
-
-``PDSimAna`` module
-"""""""""""""""""""
+PDSimAna
+""""""""
 
 The result from an optical simulation can be analyzed with the ``PDSimAna``
 module, which reads ``OpdetBacktrackerRecord`` data products to produce analysis
-plots. The FHiCL file ``pdsimana.fcl`` configures the module, and
-``pdsimana_job.fcl`` executes the module.
+plots.
+The FHiCL file ``pdsimana.fcl`` configures the module, and ``pdsimana_job.fcl``
+executes the module.
 
 DD4HEP
 ------
