@@ -147,44 +147,26 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
         int ax = to_int(node.axis);
 
         // Guess the better edge to traverse first
-        auto first_edge = node.edges[Side::left];
-        auto second_edge = node.edges[Side::right];
+        bool const left_first = ray.dir[ax] >= 0;
+        Side const first = static_cast<Side>(!left_first);
+        Side const second = static_cast<Side>(left_first);
+        auto inv_dir = 1 / static_cast<fast_real_type>(ray.dir[ax]);
+        auto pos = static_cast<fast_real_type>(ray.pos[ax]);
 
-        bool skip_first
-            = (ray.dir[ax] >= 0)
-              && (ray.pos[ax] > node.edges[Side::left].bounding_plane_pos);
-        bool skip_second
-            = (ray.dir[ax] <= 0)
-              && (ray.pos[ax] < node.edges[Side::right].bounding_plane_pos);
+        fast_real_type first_isect
+            = (node.edges[first].bounding_plane_pos - pos) * inv_dir;
+        fast_real_type second_isect
+            = (node.edges[second].bounding_plane_pos - pos) * inv_dir;
 
-        if (ray.pos[ax] > node.edges[Side::right].bounding_plane_pos)
+        if (second_isect < max_search_dist)
         {
-            trivial_swap(first_edge, second_edge);
-            trivial_swap(skip_first, skip_second);
+            // Push second node so that it'll be tested after the first
+            stack.push(node.edges[second].child);
         }
-
-        // Determine if the first and second edges are hits, short circuiting
-        // with skip_* before testing bounding boxes
-        bool hit_first
-            = !skip_first
-              && this->visit_bbox(first_edge.bbox, ray, intersection.distance);
-        bool hit_second = !skip_second
-                          && this->visit_bbox(
-                              second_edge.bbox, ray, intersection.distance);
-
-        // Choose the next node on the basis of which edges are hits
-        if (hit_first && hit_second)
+        if (first_isect >= 0)
         {
-            stack.push(second_edge.child);
-            stack.push(first_edge.child);
-        }
-        else if (hit_first)
-        {
-            stack.push(first_edge.child);
-        }
-        else if (hit_second)
-        {
-            stack.push(second_edge.child);
+            // Closer edge is hit, so we're inside that half-space
+            stack.push(node.edges[first].child);
         }
     }
 

@@ -29,6 +29,7 @@ namespace test
 
 // Mock class with operator() to serve as a visit_vol functor
 // Acts as though the volume ID has a single surface with the same ID
+// Fewer hits *and* misses are better. Hit is better than miss.
 class MockIntersector
 {
   public:
@@ -344,7 +345,7 @@ TEST_F(BasicBihTest, outside_first)
         IntersectResult ref;
         ref.distance = 1;
         ref.intersect_surface = LocalSurfaceId{2};
-        ref.hit_count = {2, 2, 1};
+        ref.hit_count = {1, 1, 1};
         ref.miss_count = {1, 1, 1};
         auto result = this->get_result({pos, dir}, dist_map, infr);
         EXPECT_REF_EQ(ref, result) << result;
@@ -463,7 +464,7 @@ TEST_F(BasicBihTest, inside_first)
         IntersectResult ref;
         ref.distance = 0.1;
         ref.intersect_surface = LocalSurfaceId{1};
-        ref.hit_count = {2, 2, 1};
+        ref.hit_count = {1, 1, 1};
         ref.miss_count = {1, 1, 1};
         auto result = this->get_result({pos, dir}, dist_map, infr);
         EXPECT_REF_EQ(ref, result) << result;
@@ -478,7 +479,7 @@ TEST_F(BasicBihTest, inside_first)
         IntersectResult ref;
         ref.distance = 1;
         ref.intersect_surface = LocalSurfaceId{2};
-        ref.hit_count = {2, 2, 1};
+        ref.hit_count = {1, 1, 1};
         ref.miss_count = {1, 1, 1};
         auto result = this->get_result({pos, dir}, dist_map, infr);
         EXPECT_REF_EQ(ref, result) << result;
@@ -569,7 +570,7 @@ TEST_F(BasicBihTest, inside_first)
         IntersectResult ref;
         ref.distance = 1;
         ref.intersect_surface = LocalSurfaceId{5};
-        ref.hit_count = {3, 3, 3};
+        ref.hit_count = {2, 3, 3};
         ref.miss_count = {1, 1, 1};
         auto result = this->get_result({pos, dir}, dist_map, 3);
         EXPECT_REF_EQ(ref, result) << result;
@@ -624,7 +625,7 @@ TEST_F(BasicBihTest, not_first)
         ref.distance = 1.5;
         ref.intersect_surface = LocalSurfaceId{2};
         ref.hit_count = {1, 1, 1};
-        ref.miss_count = {3, 4, 4};
+        ref.miss_count = {4, 4, 4};
         auto result = this->get_result({pos, dir}, dist_map);
         EXPECT_REF_EQ(ref, result) << result;
     }
@@ -653,7 +654,7 @@ TEST_F(BasicBihTest, not_first)
         ref.distance = 1.5;
         ref.intersect_surface = LocalSurfaceId{2};
         ref.hit_count = {1, 1, 1};
-        ref.miss_count = {3, 4, 4};
+        ref.miss_count = {4, 4, 4};
         auto result = this->get_result({pos, dir}, dist_map, 2.1);
         EXPECT_REF_EQ(ref, result) << result;
     }
