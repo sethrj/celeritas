@@ -13,6 +13,7 @@
 #include "corecel/Macros.hh"
 #include "corecel/Types.hh"
 #include "corecel/cont/Array.hh"
+#include "corecel/data/Ldg.hh"
 #include "corecel/grid/GridTypes.hh"
 #include "corecel/math/NumericLimits.hh"
 
@@ -122,6 +123,19 @@ class BoundingBox
         return !(lhs == rhs);
     }
 
+    static CELER_CEF BoundingBox ldg(BoundingBox const* bb)
+    {
+        Array<Real3, 2> points;
+        for (int b = 0; b < 2; ++b)
+        {
+            for (int ax = 0; ax < 3; ++ax)
+            {
+                points[b][ax] = celeritas::ldg(&bb->points_[b][ax]);
+            }
+        }
+        return {std::true_type{}, points[0], points[1]};
+    }
+
   private:
     Array<Real3, 2> points_;  //!< lo/hi points
 
@@ -129,6 +143,26 @@ class BoundingBox
     CELER_CONSTEXPR_FUNCTION
     BoundingBox(std::true_type, Real3 const& lower, Real3 const& upper);
 };
+
+//---------------------------------------------------------------------------//
+/*!
+ * Support bounding box caching.
+ */
+template<class T>
+CELER_CEF BoundingBox<T> const* ldg_data(BoundingBox<T> const* ptr) noexcept
+{
+    return ptr;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Support bounding box caching.
+ */
+template<class T>
+CELER_CEF BoundingBox<T> ldg(BoundingBox<T> const* ptr) noexcept
+{
+    return BoundingBox<T>::ldg(ptr);
+}
 
 //---------------------------------------------------------------------------//
 // TYPE ALIASES

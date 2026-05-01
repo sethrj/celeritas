@@ -48,7 +48,7 @@ class BIHView
     inline CELER_FUNCTION BIHLeafNode const& leaf_node(BIHNodeId id) const;
 
     // Get the bbox for a given vol_id.
-    inline CELER_FUNCTION FastBBox const& bbox(LocalVolumeId vol_id) const;
+    inline CELER_FUNCTION FastBBox bbox(LocalVolumeId vol_id) const;
 
     // Get the vol_ids on a given leaf node
     inline CELER_FUNCTION SpanLocalVol
@@ -113,7 +113,7 @@ BIHLeafNode const& BIHView::leaf_node(BIHNodeId id) const
 /*!
  *  Get the bbox for a given local volume.
  */
-CELER_FUNCTION FastBBox const& BIHView::bbox(LocalVolumeId vol_id) const
+CELER_FUNCTION FastBBox BIHView::bbox(LocalVolumeId vol_id) const
 {
     CELER_EXPECT(vol_id < tree_.vol_bboxes.size());
     return storage_.bboxes[tree_.vol_bboxes[vol_id]];
