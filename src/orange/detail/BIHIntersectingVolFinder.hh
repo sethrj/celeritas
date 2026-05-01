@@ -201,9 +201,7 @@ BIHIntersectingVolFinder::visit_leaf(BIHLeafNode const& leaf_node,
 {
     for (auto id : view_.leaf_vol_ids(leaf_node))
     {
-        auto const& bbox = view_.bbox(id);
-
-        if (this->hits_bbox(bbox, ray, min_intersection.distance))
+        if (this->hits_bbox(view_.bbox(id), ray, min_intersection.distance))
         {
             auto intersection = visit_vol(id, min_intersection.distance);
             if (intersection)

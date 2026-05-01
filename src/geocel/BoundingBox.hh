@@ -169,16 +169,6 @@ class BoundingBox
 };
 
 //---------------------------------------------------------------------------//
-/*!
- * Support bounding box caching.
- */
-template<class T>
-CELER_CEF BoundingBox<T> const* ldg_data(BoundingBox<T> const* ptr) noexcept
-{
-    return ptr;
-}
-
-//---------------------------------------------------------------------------//
 // TYPE ALIASES
 //---------------------------------------------------------------------------//
 
