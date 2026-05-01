@@ -39,6 +39,9 @@ struct BIHInnerNode
         real_type bounding_plane_pos{};
         //! The child node connected to this edge
         BIHNodeId child;
+        //! Bbox created by clipping an inf bbox with the bounding planes
+        //! between this edge (inclusive) and the root.
+        FastBBox bbox;
     };
 
     enum class Side
@@ -93,9 +96,6 @@ struct BIHTreeRecord
     };
 
     //// DATA ////
-
-    //! All node bounding boxes managed by the BIH
-    ItemMap<BIHNodeId, FastBBoxId> node_bboxes;
 
     //! All volume bounding boxes managed by the BIH
     ItemMap<LocalVolumeId, FastBBoxId> vol_bboxes;

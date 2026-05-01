@@ -47,9 +47,6 @@ class BIHView
     // Get a leaf node for a given BIHNodeId
     inline CELER_FUNCTION BIHLeafNode const& leaf_node(BIHNodeId id) const;
 
-    // Get the bbox for a given node ID.
-    inline CELER_FUNCTION FastBBox const& bbox(BIHNodeId id) const;
-
     // Get the bbox for a given vol_id.
     inline CELER_FUNCTION FastBBox const& bbox(LocalVolumeId vol_id) const;
 
@@ -84,16 +81,6 @@ BIHView::BIHView(BIHTreeRecord const& tree, BIHView::Storage const& storage)
  *  Determine if a node is inner, i.e., not a leaf.
  */
 CELER_FUNCTION
-BIHNodeId::size_type BIHView::num_nodes() const
-{
-    return tree_.node_bboxes.size();
-}
-
-//---------------------------------------------------------------------------//
-/*!
- *  Determine if a node is inner, i.e., not a leaf.
- */
-CELER_FUNCTION
 bool BIHView::is_inner(BIHNodeId id) const
 {
     return id.unchecked_get() < tree_.inner_nodes.size();
@@ -120,16 +107,6 @@ BIHLeafNode const& BIHView::leaf_node(BIHNodeId id) const
     CELER_EXPECT(!this->is_inner(id));
     return storage_.leaf_nodes[tree_.leaf_nodes[id.unchecked_get()
                                                 - tree_.inner_nodes.size()]];
-}
-
-//---------------------------------------------------------------------------//
-/*!
- *  Get the bbox for a given BIH node (inner or outer.
- */
-CELER_FUNCTION FastBBox const& BIHView::bbox(BIHNodeId node_id) const
-{
-    CELER_EXPECT(node_id < this->num_nodes());
-    return storage_.bboxes[tree_.node_bboxes[node_id]];
 }
 
 //---------------------------------------------------------------------------//

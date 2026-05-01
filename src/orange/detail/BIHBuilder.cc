@@ -111,8 +111,6 @@ BIHBuilder::operator()(VecBBox&& bboxes,
             = inner_nodes_.insert_back(nodes.inner.begin(), nodes.inner.end());
         tree.leaf_nodes
             = leaf_nodes_.insert_back(nodes.leaf.begin(), nodes.leaf.end());
-        tree.node_bboxes = ItemMap<BIHNodeId, FastBBoxId>{
-            bboxes_.insert_back(nodes.bboxes.begin(), nodes.bboxes.end())};
     }
     else
     {
@@ -122,9 +120,6 @@ BIHBuilder::operator()(VecBBox&& bboxes,
         BIHLeafNode const empty_nodes[] = {{}};
         tree.leaf_nodes = leaf_nodes_.insert_back(std::begin(empty_nodes),
                                                   std::end(empty_nodes));
-        FastBBox const inf_bboxes[] = {FastBBox::from_infinite()};
-        tree.node_bboxes = ItemMap<BIHNodeId, FastBBoxId>{
-            bboxes_.insert_back(std::begin(inf_bboxes), std::end(inf_bboxes))};
     }
     temp_nodes_.records.clear();
     temp_nodes_.bboxes.clear();
@@ -166,7 +161,6 @@ BIHNodeId BIHBuilder::construct_nodes(VecIndices const& indices,
     ++current_depth;
     auto node_id = id_cast<BIHNodeId>(temp_nodes_.records.size());
     temp_nodes_.records.resize(*node_id + 1);
-    temp_nodes_.bboxes.resize(*node_id + 1);
 
     // Create a single leaf containing all bboxes. This lambda is used only
     // once per call to construct_tree.
@@ -200,18 +194,19 @@ BIHNodeId BIHBuilder::construct_nodes(VecIndices const& indices,
         node.axis = p.axis;
 
         // Recursively construct the left and right branches
+        // TODO: replace Side with Bound and define negation function
         for (auto side : range(Side::size_))
         {
-            // Populate bounding plane:
-            // TODO: replace Side with Bound and define flip
+            // Save bounding plane and boxes
             auto pos = p.bboxes[side].point(
                 side == Side::left ? Bound::hi : Bound::lo, p.axis);
             node.edges[side].bounding_plane_pos = pos;
+            node.edges[side].bbox = p.bboxes[side];
 
+            // Construct children
             auto child_id = this->construct_nodes(
                 p.indices[side], node_id, current_depth, tree_depth);
             node.edges[side].child = child_id;
-            temp_nodes_.bboxes[*child_id] = p.bboxes[side];
         }
 
         CELER_EXPECT(node);
@@ -292,14 +287,6 @@ auto BIHBuilder::calc_reordered_nodes() const -> ReorderedNodes
         {
             leaf_node.parent = remapped_id(leaf_node.parent);
         }
-    }
-
-    result.bboxes.resize(new_indices.size());
-    for (auto i : range(temp_nodes_.bboxes.size()))
-    {
-        auto new_id = remapped_id(id_cast<BIHNodeId>(i));
-        CELER_ASSERT(new_id < result.bboxes.size());
-        result.bboxes[*new_id] = temp_nodes_.bboxes[i];
     }
 
     return result;
