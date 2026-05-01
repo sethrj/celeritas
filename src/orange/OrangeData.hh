@@ -14,6 +14,7 @@
 #include "corecel/data/Collection.hh"
 #include "corecel/data/CollectionBuilder.hh"
 #include "corecel/sys/ThreadId.hh"
+#include "geocel/BoundingBox.hh"  // IWYU pragma: keep
 
 #include "OrangeTypes.hh"
 

@@ -7,11 +7,9 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
-#include "corecel/OpaqueId.hh"
 #include "corecel/Types.hh"
 #include "corecel/cont/EnumArray.hh"
 #include "corecel/data/Collection.hh"
-#include "geocel/BoundingBox.hh"
 
 #include "../OrangeTypes.hh"
 
