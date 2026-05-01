@@ -157,13 +157,17 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
         fast_real_type second_isect
             = (node.edges[second].bounding_plane_pos - pos) * inv_dir;
 
-        if (second_isect < max_search_dist)
+        if (second_isect < max_search_dist
+            && this->hits_bbox(
+                node.edges[second].bbox, ray, intersection.distance))
         {
             // Will hit second node: push first so that it'll be tested after
             // the current one
             stack.push(node.edges[second].child);
         }
-        if (first_isect >= 0)
+        if (first_isect >= 0
+            && this->hits_bbox(
+                node.edges[first].bbox, ray, intersection.distance))
         {
             // Closer edge is hit, so we're inside that half-space
             stack.push(node.edges[first].child);
