@@ -157,7 +157,7 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
         fast_real_type second_isect
             = (node.edges[second].bounding_plane_pos - pos) * inv_dir;
 
-        if (second_isect < max_search_dist
+        if (second_isect < intersection.distance
             && this->hits_bbox(
                 node.edges[second].bbox, ray, intersection.distance))
         {
