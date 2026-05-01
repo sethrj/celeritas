@@ -243,6 +243,50 @@ inline bool encloses(BoundingBox<T> const& big, BoundingBox<T> const& small)
 
 //---------------------------------------------------------------------------//
 /*!
+ * Return whether a bounding box is hit by a line segment.
+ *
+ \code
+     return is_inside(bbox, pos)
+           || calc_dist_to_inside(bbox, pos, dir) < min_dist;
+ * \endcode
+ */
+template<class T>
+inline CELER_FUNCTION bool inside_or_intersects(BoundingBox<T> const& bbox,
+                                                Array<T, 3> const& pos,
+                                                Array<T, 3> const& dir,
+                                                T distance)
+{
+    T max_entry = 0;
+    T min_exit = numeric_limits<T>::infinity();
+
+    // Single pass through all three axes, using the slab method to check both:
+    // (1) whether the ray starts inside the bbox, and
+    // (2) the distance to enter the bbox if outside
+    for (auto ax : range(to_int(Axis::size_)))
+    {
+        T inv_dir = 1 / T(dir[ax]);
+        T entry = (bbox.lower()[ax] - T(pos[ax])) * inv_dir;
+        T exit = (bbox.upper()[ax] - T(pos[ax])) * inv_dir;
+
+        if (entry > exit)
+        {
+            trivial_swap(entry, exit);
+        }
+
+        max_entry = celeritas::max(max_entry, entry);
+        min_exit = celeritas::min(min_exit, exit);
+    }
+
+    // Return true if:
+    // - Slabs intersect: max_entry <= min_exit
+    // AND either:
+    //   - Inside the box: max_entry <= 0, OR
+    //   - Hits within distance: max_entry < distance
+    return max_entry <= min_exit && (max_entry == 0 || max_entry < distance);
+}
+
+//---------------------------------------------------------------------------//
+/*!
  * Calculate the distance to the inside of the bbox from a pos and dir.
  *
  * The supplied position is expected to be outside of the bbox. If there is no
