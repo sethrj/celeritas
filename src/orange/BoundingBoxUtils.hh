@@ -275,8 +275,10 @@ inline CELER_FUNCTION bool inside_or_intersects(BoundingBox<T> const& bbox,
     for (auto ax : range(Axis::size_))
     {
         T inv_dir = 1 / T(dir[to_int(ax)]);
-        T entry = (bbox.point(Bound::lo, ax) - T(pos[to_int(ax)])) * inv_dir;
-        T exit = (bbox.point(Bound::hi, ax) - T(pos[to_int(ax)])) * inv_dir;
+        T entry = (ldg(&bbox.point(Bound::lo, ax)) - T(pos[to_int(ax)]))
+                  * inv_dir;
+        T exit = (ldg(&bbox.point(Bound::hi, ax)) - T(pos[to_int(ax)]))
+                 * inv_dir;
 
         if (entry > exit)
         {
