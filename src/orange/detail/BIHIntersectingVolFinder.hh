@@ -135,11 +135,6 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
     while (!stack.empty())
     {
         BIHNodeId current_node = stack.pop();
-        if (!this->hits_bbox(view_.bbox(current_node), ray, max_search_dist))
-        {
-            // No intersection with this node/leaf
-            continue;
-        }
         if (!view_.is_inner(current_node))
         {
             intersection = this->visit_leaf(
