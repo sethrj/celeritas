@@ -7,7 +7,6 @@
 #pragma once
 
 #include "corecel/cont/MiniStack.hh"
-#include "corecel/math/Algorithms.hh"
 #include "orange/OrangeTypes.hh"
 
 #include "BIHView.hh"
@@ -74,7 +73,7 @@ class BIHIntersectingVolFinder
     // Determine if the intersection with an edge/vol bbox is less than
     // min_dist
     inline CELER_FUNCTION bool
-    visit_bbox(FastBBox const& bbox, Ray ray, real_type min_dist) const;
+    hits_bbox(FastBBox const& bbox, Ray ray, real_type min_dist) const;
 
     // Calculate the current min intersection, which may/may not be on this
     // leaf
@@ -136,6 +135,11 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
     while (!stack.empty())
     {
         BIHNodeId current_node = stack.pop();
+        if (!this->hits_bbox(view_.bbox(current_node), ray, max_search_dist))
+        {
+            // No intersection with this node/leaf
+            continue;
+        }
         if (!view_.is_inner(current_node))
         {
             intersection = this->visit_leaf(
@@ -147,9 +151,9 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
         int ax = to_int(node.axis);
 
         // Guess the better edge to traverse first
-        bool const left_first = ray.dir[ax] >= 0;
-        Side const first = static_cast<Side>(!left_first);
-        Side const second = static_cast<Side>(left_first);
+        bool const rightward = ray.dir[ax] >= 0;
+        Side const first = static_cast<Side>(!rightward);
+        Side const second = static_cast<Side>(rightward);
         auto inv_dir = 1 / static_cast<fast_real_type>(ray.dir[ax]);
         auto pos = static_cast<fast_real_type>(ray.pos[ax]);
 
@@ -160,7 +164,8 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
 
         if (second_isect < max_search_dist)
         {
-            // Push second node so that it'll be tested after the first
+            // Will hit second node: push first so that it'll be tested after
+            // the current one
             stack.push(node.edges[second].child);
         }
         if (first_isect >= 0)
@@ -179,9 +184,9 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
  * Determine if the intersection with an edge/vol bbox is less than min_dist.
  */
 CELER_FUNCTION
-bool BIHIntersectingVolFinder::visit_bbox(FastBBox const& bbox,
-                                          Ray ray,
-                                          real_type min_dist) const
+bool BIHIntersectingVolFinder::hits_bbox(FastBBox const& bbox,
+                                         Ray ray,
+                                         real_type min_dist) const
 {
     return is_inside(bbox, ray.pos)
            || calc_dist_to_inside(bbox, ray.pos, ray.dir) < min_dist;
@@ -202,7 +207,7 @@ BIHIntersectingVolFinder::visit_leaf(BIHLeafNode const& leaf_node,
     {
         auto const& bbox = view_.bbox(id);
 
-        if (this->visit_bbox(bbox, ray, min_intersection.distance))
+        if (this->hits_bbox(bbox, ray, min_intersection.distance))
         {
             auto intersection = visit_vol(id, min_intersection.distance);
             if (intersection)

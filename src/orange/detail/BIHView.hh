@@ -6,6 +6,10 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
+#include "corecel/Macros.hh"
+#include "corecel/Types.hh"
+#include "orange/OrangeTypes.hh"
+
 #include "../OrangeData.hh"
 
 namespace celeritas
@@ -31,6 +35,9 @@ class BIHView
     inline CELER_FUNCTION
     BIHView(BIHTreeRecord const& tree, Storage const& storage);
 
+    // Number of nodes (inner plus outer)
+    inline CELER_FUNCTION BIHNodeId::size_type num_nodes() const;
+
     // Determine if a node is inner, i.e., not a leaf
     inline CELER_FUNCTION bool is_inner(BIHNodeId id) const;
 
@@ -39,6 +46,9 @@ class BIHView
 
     // Get a leaf node for a given BIHNodeId
     inline CELER_FUNCTION BIHLeafNode const& leaf_node(BIHNodeId id) const;
+
+    // Get the bbox for a given node ID.
+    inline CELER_FUNCTION FastBBox const& bbox(BIHNodeId id) const;
 
     // Get the bbox for a given vol_id.
     inline CELER_FUNCTION FastBBox const& bbox(LocalVolumeId vol_id) const;
@@ -67,6 +77,16 @@ BIHView::BIHView(BIHTreeRecord const& tree, BIHView::Storage const& storage)
     : tree_(tree), storage_(storage)
 {
     CELER_EXPECT(tree);
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ *  Determine if a node is inner, i.e., not a leaf.
+ */
+CELER_FUNCTION
+BIHNodeId::size_type BIHView::num_nodes() const
+{
+    return tree_.node_bboxes.size();
 }
 
 //---------------------------------------------------------------------------//
@@ -104,12 +124,22 @@ BIHLeafNode const& BIHView::leaf_node(BIHNodeId id) const
 
 //---------------------------------------------------------------------------//
 /*!
- *  Get the bbox for a given vol_id.
+ *  Get the bbox for a given BIH node (inner or outer.
+ */
+CELER_FUNCTION FastBBox const& BIHView::bbox(BIHNodeId node_id) const
+{
+    CELER_EXPECT(node_id < this->num_nodes());
+    return storage_.bboxes[tree_.node_bboxes[node_id]];
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ *  Get the bbox for a given local volume.
  */
 CELER_FUNCTION FastBBox const& BIHView::bbox(LocalVolumeId vol_id) const
 {
-    CELER_EXPECT(vol_id.unchecked_get() < tree_.bboxes.size());
-    return storage_.bboxes[tree_.bboxes[vol_id]];
+    CELER_EXPECT(vol_id < tree_.vol_bboxes.size());
+    return storage_.bboxes[tree_.vol_bboxes[vol_id]];
 }
 
 //---------------------------------------------------------------------------//

@@ -39,9 +39,6 @@ struct BIHInnerNode
         real_type bounding_plane_pos{};
         //! The child node connected to this edge
         BIHNodeId child;
-        //! Bbox created by clipping an inf bbox with the bounding planes
-        //! between this edge (inclusive) and the root.
-        FastBBox bbox;
     };
 
     enum class Side
@@ -97,8 +94,11 @@ struct BIHTreeRecord
 
     //// DATA ////
 
-    //! All bounding boxes managed by the BIH
-    ItemMap<LocalVolumeId, FastBBoxId> bboxes;
+    //! All node bounding boxes managed by the BIH
+    ItemMap<BIHNodeId, FastBBoxId> node_bboxes;
+
+    //! All volume bounding boxes managed by the BIH
+    ItemMap<LocalVolumeId, FastBBoxId> vol_bboxes;
 
     //! Inner nodes, the first being the root
     ItemRange<BIHInnerNode> inner_nodes;
@@ -118,7 +118,7 @@ struct BIHTreeRecord
     {
         if (!inner_nodes.empty())
         {
-            return !bboxes.empty() && !leaf_nodes.empty();
+            return !vol_bboxes.empty() && !leaf_nodes.empty();
         }
         else
         {
@@ -127,7 +127,7 @@ struct BIHTreeRecord
             // a) a single volume
             // b) multiple non-partitionable volumes,
             // b) only infinite volumes.
-            return !bboxes.empty() && leaf_nodes.size() == 1;
+            return !vol_bboxes.empty() && leaf_nodes.size() == 1;
         }
     }
 };

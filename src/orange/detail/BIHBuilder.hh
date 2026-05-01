@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "corecel/data/CollectionBuilder.hh"
+#include "orange/OrangeTypes.hh"
 
 #include "../OrangeData.hh"
 #include "../inp/Bih.hh"
@@ -71,19 +72,29 @@ class BIHBuilder
 
     using Real3 = Array<fast_real_type, 3>;
     using VecIndices = std::vector<LocalVolumeId>;
-    using VecNodes = std::vector<std::variant<BIHInnerNode, BIHLeafNode>>;
     using VecInnerNodes = std::vector<BIHInnerNode>;
     using VecLeafNodes = std::vector<BIHLeafNode>;
-    using ArrangedNodes = std::pair<VecInnerNodes, VecLeafNodes>;
 
-    struct Temporaries
+    struct ReorderedNodes
     {
+        VecInnerNodes inner;
+        VecLeafNodes leaf;
         VecBBox bboxes;
-        std::vector<Real3> centers;
     };
 
     //// DATA ////
-    Temporaries temp_;
+
+    struct
+    {
+        VecBBox bboxes;
+        std::vector<Real3> centers;
+    } temp_vols_;
+
+    struct
+    {
+        std::vector<std::variant<BIHInnerNode, BIHLeafNode>> records;
+        VecBBox bboxes;
+    } temp_nodes_;
 
     CollectionBuilder<FastBBox> bboxes_;
     CollectionBuilder<LocalVolumeId> local_volume_ids_;
@@ -95,14 +106,13 @@ class BIHBuilder
     //// HELPER FUNCTIONS ////
 
     // Recursively construct BIH nodes for a vector of bbox indices
-    void construct_tree(VecIndices const& indices,
-                        VecNodes* nodes,
-                        BIHNodeId parent,
-                        size_type current_depth,
-                        size_type& depth);
+    BIHNodeId construct_nodes(VecIndices const& indices,
+                              BIHNodeId parent,
+                              size_type current_depth,
+                              size_type& depth);
 
     // Separate nodes into inner and leaf vectors and renumber accordingly
-    ArrangedNodes arrange_nodes(VecNodes const& nodes) const;
+    ReorderedNodes calc_reordered_nodes() const;
 };
 
 //---------------------------------------------------------------------------//

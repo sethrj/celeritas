@@ -8,6 +8,7 @@
 
 #include "corecel/cont/VariantUtils.hh"
 #include "geocel/BoundingBox.hh"
+#include "orange/OrangeTypes.hh"
 
 #include "BIHPartitioner.hh"
 #include "../BoundingBoxUtils.hh"
@@ -53,17 +54,17 @@ BIHBuilder::operator()(VecBBox&& bboxes,
     CELER_EXPECT(!bboxes.empty());
 
     // Store bounding boxes and their corresponding centers
-    temp_.bboxes = std::move(bboxes);
-    temp_.centers.resize(temp_.bboxes.size());
-    std::transform(temp_.bboxes.begin(),
-                   temp_.bboxes.end(),
-                   temp_.centers.begin(),
+    temp_vols_.bboxes = std::move(bboxes);
+    temp_vols_.centers.resize(temp_vols_.bboxes.size());
+    std::transform(temp_vols_.bboxes.begin(),
+                   temp_vols_.bboxes.end(),
+                   temp_vols_.centers.begin(),
                    &celeritas::calc_center<fast_real_type>);
 
     // Separate infinite bounding boxes from finite
     VecIndices indices;
     VecIndices inf_vol_ids;
-    for (auto i : range(temp_.bboxes.size()))
+    for (auto i : range(temp_vols_.bboxes.size()))
     {
         LocalVolumeId id(i);
 
@@ -71,7 +72,7 @@ BIHBuilder::operator()(VecBBox&& bboxes,
         {
             // Background volume, do not include bbox in tree
         }
-        else if (is_infinite(temp_.bboxes[i]))
+        else if (is_infinite(temp_vols_.bboxes[i]))
         {
             // Infinite in *every* direction
             /*!
@@ -84,16 +85,15 @@ BIHBuilder::operator()(VecBBox&& bboxes,
         {
             // Prohibit semi-infinite bounding boxes because those break the
             // cost function
-            CELER_ASSERT(is_finite(temp_.bboxes[i]));
+            CELER_ASSERT(is_finite(temp_vols_.bboxes[i]));
             indices.push_back(id);
         }
     }
 
     BIHTreeRecord tree;
 
-    tree.bboxes = ItemMap<LocalVolumeId, FastBBoxId>(
-        bboxes_.insert_back(temp_.bboxes.begin(), temp_.bboxes.end()));
-
+    tree.vol_bboxes = ItemMap<LocalVolumeId, FastBBoxId>(bboxes_.insert_back(
+        temp_vols_.bboxes.begin(), temp_vols_.bboxes.end()));
     tree.inf_vol_ids = local_volume_ids_.insert_back(inf_vol_ids.begin(),
                                                      inf_vol_ids.end());
 
@@ -104,15 +104,15 @@ BIHBuilder::operator()(VecBBox&& bboxes,
     if (!indices.empty())
     {
         // Construct the tree recursively
-        VecNodes nodes;
-        this->construct_tree(indices, &nodes, BIHNodeId{}, 0, depth);
-        auto [inner_nodes, leaf_nodes] = this->arrange_nodes(std::move(nodes));
+        this->construct_nodes(indices, BIHNodeId{}, 0, depth);
+        auto nodes = this->calc_reordered_nodes();
 
         tree.inner_nodes
-            = inner_nodes_.insert_back(inner_nodes.begin(), inner_nodes.end());
-
+            = inner_nodes_.insert_back(nodes.inner.begin(), nodes.inner.end());
         tree.leaf_nodes
-            = leaf_nodes_.insert_back(leaf_nodes.begin(), leaf_nodes.end());
+            = leaf_nodes_.insert_back(nodes.leaf.begin(), nodes.leaf.end());
+        tree.node_bboxes = ItemMap<BIHNodeId, FastBBoxId>{
+            bboxes_.insert_back(nodes.bboxes.begin(), nodes.bboxes.end())};
     }
     else
     {
@@ -122,7 +122,12 @@ BIHBuilder::operator()(VecBBox&& bboxes,
         BIHLeafNode const empty_nodes[] = {{}};
         tree.leaf_nodes = leaf_nodes_.insert_back(std::begin(empty_nodes),
                                                   std::end(empty_nodes));
+        FastBBox const inf_bboxes[] = {FastBBox::from_infinite()};
+        tree.node_bboxes = ItemMap<BIHNodeId, FastBBoxId>{
+            bboxes_.insert_back(std::begin(inf_bboxes), std::end(inf_bboxes))};
     }
+    temp_nodes_.records.clear();
+    temp_nodes_.bboxes.clear();
 
     // Assign metadata for diagnostic purposes
     BIHTreeRecord::Metadata md;
@@ -145,22 +150,23 @@ BIHBuilder::operator()(VecBBox&& bboxes,
  * \param[in, out] nodes     All nodes constructed so far, to be added to
  * \param[in] parent         The parent node
  * \param[in] current_depth  The recursion depth of this function call
- * \param[in] depth          The maximum recursion depth encountered during the
+ * \param[in,out] tree_depth The maximum recursion depth encountered during the
  *                           full construction process
+ * \return Constructed node ID
  */
-void BIHBuilder::construct_tree(VecIndices const& indices,
-                                VecNodes* nodes,
-                                BIHNodeId parent,
-                                size_type current_depth,
-                                size_type& depth)
+BIHNodeId BIHBuilder::construct_nodes(VecIndices const& indices,
+                                      BIHNodeId parent,
+                                      size_type current_depth,
+                                      size_type& tree_depth)
 {
     CELER_EXPECT(current_depth < inp_.depth_limit);
 
     using Side = BIHInnerNode::Side;
 
     ++current_depth;
-    auto current_index = nodes->size();
-    nodes->resize(nodes->size() + 1);
+    auto node_id = id_cast<BIHNodeId>(temp_nodes_.records.size());
+    temp_nodes_.records.resize(*node_id + 1);
+    temp_nodes_.bboxes.resize(*node_id + 1);
 
     // Create a single leaf containing all bboxes. This lambda is used only
     // once per call to construct_tree.
@@ -170,8 +176,8 @@ void BIHBuilder::construct_tree(VecIndices const& indices,
         node.vol_ids
             = local_volume_ids_.insert_back(indices.begin(), indices.end());
         CELER_EXPECT(node);
-        (*nodes)[current_index] = node;
-        depth = std::max(depth, current_depth);
+        temp_nodes_.records[*node_id] = node;
+        tree_depth = std::max(tree_depth, current_depth);
     };
 
     if (indices.size() <= inp_.max_leaf_size
@@ -180,11 +186,11 @@ void BIHBuilder::construct_tree(VecIndices const& indices,
         // All bboxes fit on a single leaf, or we have reached the depth limit;
         // make a leaf and exit early
         make_leaf();
-        return;
+        return node_id;
     }
 
     BIHPartitioner partition(
-        &temp_.bboxes, &temp_.centers, inp_.num_part_cands);
+        &temp_vols_.bboxes, &temp_vols_.centers, inp_.num_part_cands);
 
     if (auto p = partition(indices))
     {
@@ -193,34 +199,30 @@ void BIHBuilder::construct_tree(VecIndices const& indices,
         node.parent = parent;
         node.axis = p.axis;
 
-        // Populate left/right bounding planes
-        auto left_pos = p.bboxes[Side::left].upper()[to_int(p.axis)];
-        node.edges[Side::left].bounding_plane_pos = left_pos;
-        node.edges[Side::left].bbox = p.bboxes[Side::left];
-
-        auto right_pos = p.bboxes[Side::right].lower()[to_int(p.axis)];
-        node.edges[Side::right].bounding_plane_pos = right_pos;
-        node.edges[Side::right].bbox = p.bboxes[Side::right];
-
         // Recursively construct the left and right branches
         for (auto side : range(Side::size_))
         {
-            node.edges[side].child = BIHNodeId(nodes->size());
-            this->construct_tree(p.indices[side],
-                                 nodes,
-                                 BIHNodeId(current_index),
-                                 current_depth,
-                                 depth);
+            // Populate bounding plane:
+            // TODO: replace Side with Bound and define flip
+            auto pos = p.bboxes[side].point(
+                side == Side::left ? Bound::hi : Bound::lo, p.axis);
+            node.edges[side].bounding_plane_pos = pos;
+
+            auto child_id = this->construct_nodes(
+                p.indices[side], node_id, current_depth, tree_depth);
+            node.edges[side].child = child_id;
+            temp_nodes_.bboxes[*child_id] = p.bboxes[side];
         }
 
         CELER_EXPECT(node);
-        (*nodes)[current_index] = node;
+        temp_nodes_.records[*node_id] = std::move(node);
     }
     else
     {
         // Bboxes cannot be partitioned; put them all on a single leaf
         make_leaf();
     }
+    return node_id;
 }
 
 //---------------------------------------------------------------------------//
@@ -231,35 +233,34 @@ void BIHBuilder::construct_tree(VecIndices const& indices,
  *
  * \returns  The separated inner and leaf nodes
  */
-BIHBuilder::ArrangedNodes BIHBuilder::arrange_nodes(VecNodes const& nodes) const
+auto BIHBuilder::calc_reordered_nodes() const -> ReorderedNodes
 {
-    VecInnerNodes inner_nodes;
-    VecLeafNodes leaf_nodes;
-
     std::vector<bool> is_leaf;
     std::vector<std::size_t> new_indices;
 
-    is_leaf.reserve(nodes.size());
-    new_indices.reserve(nodes.size());
+    is_leaf.reserve(temp_nodes_.records.size());
+    new_indices.reserve(temp_nodes_.records.size());
+
+    ReorderedNodes result;
 
     auto insert_node = Overload{[&](BIHInnerNode const& node) {
-                                    new_indices.push_back(inner_nodes.size());
-                                    inner_nodes.push_back(node);
+                                    new_indices.push_back(result.inner.size());
+                                    result.inner.push_back(node);
                                     is_leaf.push_back(false);
                                 },
                                 [&](BIHLeafNode const& node) {
-                                    new_indices.push_back(leaf_nodes.size());
-                                    leaf_nodes.push_back(node);
+                                    new_indices.push_back(result.leaf.size());
+                                    result.leaf.push_back(node);
                                     is_leaf.push_back(true);
                                 }};
-    for (auto const& node : nodes)
+    for (auto const& node : temp_nodes_.records)
     {
         std::visit(insert_node, node);
     }
 
     // Transform "leaf ID" to "node ID"
-    auto offset = inner_nodes.size();
-    for (auto i : range(nodes.size()))
+    auto offset = result.inner.size();
+    for (auto i : range(temp_nodes_.records.size()))
     {
         if (is_leaf[i])
         {
@@ -273,7 +274,7 @@ BIHBuilder::ArrangedNodes BIHBuilder::arrange_nodes(VecNodes const& nodes) const
         return id_cast<BIHNodeId>(new_indices[old.unchecked_get()]);
     };
 
-    for (auto& inner_node : inner_nodes)
+    for (auto& inner_node : result.inner)
     {
         for (auto& edge : inner_node.edges)
         {
@@ -285,7 +286,7 @@ BIHBuilder::ArrangedNodes BIHBuilder::arrange_nodes(VecNodes const& nodes) const
         }
     }
 
-    for (auto& leaf_node : leaf_nodes)
+    for (auto& leaf_node : result.leaf)
     {
         if (leaf_node.parent)
         {
@@ -293,8 +294,17 @@ BIHBuilder::ArrangedNodes BIHBuilder::arrange_nodes(VecNodes const& nodes) const
         }
     }
 
-    return {std::move(inner_nodes), std::move(leaf_nodes)};
+    result.bboxes.resize(new_indices.size());
+    for (auto i : range(temp_nodes_.bboxes.size()))
+    {
+        auto new_id = remapped_id(id_cast<BIHNodeId>(i));
+        CELER_ASSERT(new_id < result.bboxes.size());
+        result.bboxes[*new_id] = temp_nodes_.bboxes[i];
+    }
+
+    return result;
 }
+
 //---------------------------------------------------------------------------//
 }  // namespace detail
 }  // namespace celeritas

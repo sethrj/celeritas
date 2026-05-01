@@ -96,7 +96,7 @@ TEST_F(BIHBuilderTest, basic)
               storage_.local_volume_ids[bih_tree.inf_vol_ids[0]]);
 
     // Test bounding box storage
-    auto bbox1 = storage_.bboxes[bih_tree.bboxes[LocalVolumeId{2}]];
+    auto bbox1 = storage_.bboxes[bih_tree.vol_bboxes[LocalVolumeId{2}]];
     EXPECT_VEC_SOFT_EQ(Real3({1.2f, 0, 0}), bbox1.lower());
     EXPECT_VEC_SOFT_EQ(Real3({2.8f, 1, 100}), bbox1.upper());
 
