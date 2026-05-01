@@ -150,30 +150,31 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
         auto inv_dir = 1 / static_cast<fast_real_type>(ray.dir[ax]);
         auto pos = static_cast<fast_real_type>(ray.pos[ax]);
         auto calc_isect = [&](Side s) {
-            return (node.edges[s].bounding_plane_pos - pos) * inv_dir;
+            return (ldg(&node.edges[s].bounding_plane_pos) - pos) * inv_dir;
         };
 
         Side const second = static_cast<Side>(rightward);
         if (calc_isect(second) < intersection.distance
             && this->hits_bbox(
-                node.edges[second].bbox, ray, intersection.distance))
+                ldg(&node.edges[second].bbox), ray, intersection.distance))
         {
             // Will hit second node: push first so that it'll be tested after
             // the current one
-            stack.push(node.edges[second].child);
+            stack.push(ldg(&node.edges[second].child));
         }
         Side const first = static_cast<Side>(!rightward);
         if (calc_isect(first) >= 0
             && this->hits_bbox(
-                node.edges[first].bbox, ray, intersection.distance))
+                ldg(&node.edges[first].bbox), ray, intersection.distance))
         {
             // Closer edge is hit, so we're inside that half-space
-            stack.push(node.edges[first].child);
+            stack.push(ldg(&node.edges[first].child));
         }
     }
 
     return this->visit_inf_vols(intersection, visit_vol);
 }
+
 //---------------------------------------------------------------------------//
 // HELPER FUNCTIONS
 //---------------------------------------------------------------------------//
