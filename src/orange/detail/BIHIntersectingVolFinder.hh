@@ -143,21 +143,18 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
         }
 
         auto const& node = view_.inner_node(current_node);
-        int ax = to_int(node.axis);
+        int ax = to_int(ldg(&node.axis));
 
         // Guess the better edge to traverse first
         bool const rightward = ray.dir[ax] >= 0;
-        Side const first = static_cast<Side>(!rightward);
-        Side const second = static_cast<Side>(rightward);
         auto inv_dir = 1 / static_cast<fast_real_type>(ray.dir[ax]);
         auto pos = static_cast<fast_real_type>(ray.pos[ax]);
+        auto calc_isect = [&](Side s) {
+            return (node.edges[s].bounding_plane_pos - pos) * inv_dir;
+        };
 
-        fast_real_type first_isect
-            = (node.edges[first].bounding_plane_pos - pos) * inv_dir;
-        fast_real_type second_isect
-            = (node.edges[second].bounding_plane_pos - pos) * inv_dir;
-
-        if (second_isect < intersection.distance
+        Side const second = static_cast<Side>(rightward);
+        if (calc_isect(second) < intersection.distance
             && this->hits_bbox(
                 node.edges[second].bbox, ray, intersection.distance))
         {
@@ -165,7 +162,8 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
             // the current one
             stack.push(node.edges[second].child);
         }
-        if (first_isect >= 0
+        Side const first = static_cast<Side>(!rightward);
+        if (calc_isect(first) >= 0
             && this->hits_bbox(
                 node.edges[first].bbox, ray, intersection.distance))
         {
