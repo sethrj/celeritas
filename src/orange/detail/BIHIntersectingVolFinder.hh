@@ -143,39 +143,44 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
         }
 
         auto const& node = view_.inner_node(current_node);
-        int ax = to_int(node.axis);
+        int ax = to_int(ldg(&node.axis));
+        fast_real_type const bounding_pos[]
+            = {ldg(&node.edges[Side::left].bounding_plane_pos),
+               ldg(&node.edges[Side::right].bounding_plane_pos)};
+        FastBBox const bboxes[] = {ldg(&node.edges[Side::left].bbox),
+                                   ldg(&node.edges[Side::right].bbox)};
 
-        // Guess the better edge to traverse first
-        bool const rightward = ray.dir[ax] >= 0;
-        Side const first = static_cast<Side>(!rightward);
-        Side const second = static_cast<Side>(rightward);
+        BIHNodeId const children[] = {ldg(&node.edges[Side::left].child),
+                                      ldg(&node.edges[Side::right].child)};
+
         auto inv_dir = 1 / static_cast<fast_real_type>(ray.dir[ax]);
         auto pos = static_cast<fast_real_type>(ray.pos[ax]);
 
-        fast_real_type first_isect
-            = (node.edges[first].bounding_plane_pos - pos) * inv_dir;
-        fast_real_type second_isect
-            = (node.edges[second].bounding_plane_pos - pos) * inv_dir;
+        // Guess the better edge to traverse first: if moving rightward
+        // (positive dir), test the left first. If moving left, test the right
+        // first.
+        bool const rightward = ray.dir[ax] >= 0;
+        auto get_first = [rightward](auto&& arr) { return arr[!rightward]; };
+        auto get_second = [rightward](auto&& arr) { return arr[rightward]; };
 
-        if (second_isect < max_search_dist
-            && this->hits_bbox(
-                node.edges[second].bbox, ray, intersection.distance))
+        if ((get_second(bounding_pos) - pos) * inv_dir < max_search_dist
+            && this->hits_bbox(get_second(bboxes), ray, intersection.distance))
         {
             // Will hit second node: push first so that it'll be tested after
             // the current one
-            stack.push(node.edges[second].child);
+            stack.push(get_second(children));
         }
-        if (first_isect >= 0
-            && this->hits_bbox(
-                node.edges[first].bbox, ray, intersection.distance))
+        if ((get_first(bounding_pos) - pos) * inv_dir >= 0
+            && this->hits_bbox(get_first(bboxes), ray, intersection.distance))
         {
             // Closer edge is hit, so we're inside that half-space
-            stack.push(node.edges[first].child);
+            stack.push(get_first(children));
         }
     }
 
     return this->visit_inf_vols(intersection, visit_vol);
 }
+
 //---------------------------------------------------------------------------//
 // HELPER FUNCTIONS
 //---------------------------------------------------------------------------//
