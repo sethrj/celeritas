@@ -150,14 +150,12 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
         auto first_edge = node.edges[Side::left];
         auto second_edge = node.edges[Side::right];
 
-        bool skip_first
-            = (ray.dir[ax] >= 0)
-              && (ray.pos[ax] > node.edges[Side::left].bounding_plane_pos);
-        bool skip_second
-            = (ray.dir[ax] <= 0)
-              && (ray.pos[ax] < node.edges[Side::right].bounding_plane_pos);
+        bool skip_first = (ray.dir[ax] >= 0)
+                          && (ray.pos[ax] > first_edge.bounding_plane_pos);
+        bool skip_second = (ray.dir[ax] <= 0)
+                           && (ray.pos[ax] < second_edge.bounding_plane_pos);
 
-        if (ray.pos[ax] > node.edges[Side::right].bounding_plane_pos)
+        if (ray.pos[ax] > second_edge.bounding_plane_pos)
         {
             trivial_swap(first_edge, second_edge);
             trivial_swap(skip_first, skip_second);
