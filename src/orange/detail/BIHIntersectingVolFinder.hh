@@ -7,7 +7,7 @@
 #pragma once
 
 #include "corecel/cont/IdStack.hh"
-#include "corecel/data/Ldg.hh"
+#include "corecel/math/Algorithms.hh"
 #include "orange/OrangeTypes.hh"
 
 #include "BIHView.hh"
@@ -69,6 +69,11 @@ class BIHIntersectingVolFinder
     BIHView view_;
 
     //// HELPER FUNCTIONS ////
+
+    // Determine if the intersection with an edge/vol bbox is less than
+    // min_dist
+    inline CELER_FUNCTION bool
+    visit_bbox(FastBBox const& bbox, Ray ray, real_type min_dist) const;
 
     // Calculate the current min intersection, which may/may not be on this
     // leaf
@@ -139,33 +144,42 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
 
         auto const& node = view_.inner_node(stack.top());
         stack.pop();
-        int ax = to_int(ldg(&node.axis));
+        int ax = to_int(node.axis);
 
         // Guess the better edge to traverse first
-        bool const rightward = ray.dir[ax] >= 0;
-        auto inv_dir = 1 / static_cast<fast_real_type>(ray.dir[ax]);
-        auto pos = static_cast<fast_real_type>(ray.pos[ax]);
-        auto calc_isect = [&](Side s) {
-            return (ldg(&node.edges[s].bounding_plane_pos) - pos) * inv_dir;
-        };
+        auto first_edge = node.edges[Side::left];
+        auto second_edge = node.edges[Side::right];
 
-        Side const second = static_cast<Side>(rightward);
-        if (intersects_segment(node.edges[second].bbox,
-                               ray.pos,
-                               ray.dir,
-                               intersection.distance))
+        bool skip_first
+            = (ray.dir[ax] >= 0)
+              && (ray.pos[ax] > node.edges[Side::left].bounding_plane_pos);
+        bool skip_second
+            = (ray.dir[ax] <= 0)
+              && (ray.pos[ax] < node.edges[Side::right].bounding_plane_pos);
+
+        if (ray.pos[ax] > node.edges[Side::right].bounding_plane_pos)
         {
-            // Will hit second node: push first so that it'll be tested after
-            // the closer one (if that one hits)
-            stack.push(ldg(&node.edges[second].child));
+            trivial_swap(first_edge, second_edge);
+            trivial_swap(skip_first, skip_second);
         }
-        Side const first = static_cast<Side>(!rightward);
-        if (calc_isect(first) >= 0
-            && intersects_segment(
-                node.edges[first].bbox, ray.pos, ray.dir, intersection.distance))
+
+        // Determine if the first and second edges are hits, short circuiting
+        // with skip_* before testing bounding boxes
+        bool hit_first
+            = !skip_first
+              && this->visit_bbox(first_edge.bbox, ray, intersection.distance);
+        bool hit_second = !skip_second
+                          && this->visit_bbox(
+                              second_edge.bbox, ray, intersection.distance);
+
+        // Choose the next node on the basis of which edges are hits
+        if (hit_second)
         {
-            // Closer edge is hit, so we're inside that half-space
-            stack.push(ldg(&node.edges[first].child));
+            stack.push(second_edge.child);
+        }
+        if (hit_first)
+        {
+            stack.push(first_edge.child);
         }
     }
 
@@ -173,6 +187,18 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
 }
 //---------------------------------------------------------------------------//
 // HELPER FUNCTIONS
+//---------------------------------------------------------------------------//
+/*!
+ * Determine if the intersection with an edge/vol bbox is less than min_dist.
+ */
+CELER_FUNCTION
+bool BIHIntersectingVolFinder::visit_bbox(FastBBox const& bbox,
+                                          Ray ray,
+                                          real_type min_dist) const
+{
+    return intersects_segment(bbox, ray.pos, ray.dir, min_dist);
+}
+
 //---------------------------------------------------------------------------//
 /*!
  * Calculate the current min intersection, which may/may not be on this leaf.
@@ -186,8 +212,9 @@ BIHIntersectingVolFinder::visit_leaf(BIHLeafNode const& leaf_node,
 {
     for (auto id : view_.leaf_vol_ids(leaf_node))
     {
-        if (intersects_segment(
-                view_.bbox(id), ray.pos, ray.dir, min_intersection.distance))
+        auto const& bbox = view_.bbox(id);
+
+        if (this->visit_bbox(bbox, ray, min_intersection.distance))
         {
             auto intersection = visit_vol(id, min_intersection.distance);
             if (intersection)
