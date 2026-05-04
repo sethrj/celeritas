@@ -257,8 +257,7 @@ inline bool encloses(BoundingBox<T> const& big, BoundingBox<T> const& small)
  * intersects the bounding box.
  *
  * If the position is already inside the bounding box, the result is always
- * true. This uses a separating-axis test
- * \citep{kay-slab-1986, https://doi.org/10.1145/15886.15916}.
+ * true. This uses a separating-axis test.
  */
 template<class T>
 inline CELER_FUNCTION bool intersects_segment(BoundingBox<T> const& bbox,
@@ -266,34 +265,55 @@ inline CELER_FUNCTION bool intersects_segment(BoundingBox<T> const& bbox,
                                               Array<T, 3> const& dir,
                                               T distance)
 {
-    T t_enter = 0;
-    T t_exit = distance;
+    CELER_EXPECT(distance > 0 && !std::isinf(distance));
+    Array<T, 3> hw;  // Half-widths of bounding box
+    Array<T, 3> mid;  // Midpoint of the line segment
+    Array<T, 3> hseg;  // Vector from pos to the midpoint of the segment
+    Array<T, 3> abs_hseg;
 
-    // Separating-axis test: check each coordinate axis independently
+    T const half_distance = distance / 2;
+    constexpr T epsilon = numeric_limits<T>::epsilon();
+
     for (auto ax : range(Axis::size_))
     {
-        // Compute ray parameter range for intersection with this slab.
-        // IEEE arithmetic ensures +/-inf when dir component is zero,
-        // providing the correct separation logic automatically.
-        T inv_dir = 1 / dir[to_int(ax)];
-        T t_lo = (bbox.point(Bound::lo, ax) - pos[to_int(ax)]) * inv_dir;
-        T t_hi = (bbox.point(Bound::hi, ax) - pos[to_int(ax)]) * inv_dir;
+        auto i = to_int(ax);
+        T const lower = bbox.point(Bound::lo, ax);
+        T const upper = bbox.point(Bound::hi, ax);
+        T const center = (lower + upper) / 2;
 
-        // Ensure t_lo < t_hi
-        if (t_lo > t_hi)
-        {
-            trivial_swap(t_lo, t_hi);
-        }
+        hw[i] = (upper - lower) / 2;
+        hseg[i] = dir[i] * half_distance;
+        abs_hseg[i] = std::fabs(hseg[i]) + epsilon;
+        mid[i] = pos[i] + hseg[i] - center;
 
-        // Refine the ray parameter range that keeps the segment inside all slabs
-        t_enter = celeritas::max(t_enter, t_lo);
-        t_exit = celeritas::min(t_exit, t_hi);
-
-        // Early exit: this axis separates the ray from the box
-        if (t_enter > t_exit)
+        if (std::fabs(mid[i]) > hw[i] + abs_hseg[i])
         {
             return false;
         }
+    }
+
+    if (std::fabs(mid[to_int(Axis::y)] * hseg[to_int(Axis::z)]
+                  - mid[to_int(Axis::z)] * hseg[to_int(Axis::y)])
+        > hw[to_int(Axis::y)] * abs_hseg[to_int(Axis::z)]
+              + hw[to_int(Axis::z)] * abs_hseg[to_int(Axis::y)])
+    {
+        return false;
+    }
+
+    if (std::fabs(mid[to_int(Axis::z)] * hseg[to_int(Axis::x)]
+                  - mid[to_int(Axis::x)] * hseg[to_int(Axis::z)])
+        > hw[to_int(Axis::x)] * abs_hseg[to_int(Axis::z)]
+              + hw[to_int(Axis::z)] * abs_hseg[to_int(Axis::x)])
+    {
+        return false;
+    }
+
+    if (std::fabs(mid[to_int(Axis::x)] * hseg[to_int(Axis::y)]
+                  - mid[to_int(Axis::y)] * hseg[to_int(Axis::x)])
+        > hw[to_int(Axis::x)] * abs_hseg[to_int(Axis::y)]
+              + hw[to_int(Axis::y)] * abs_hseg[to_int(Axis::x)])
+    {
+        return false;
     }
 
     return true;

@@ -218,8 +218,7 @@ TEST_F(BoundingBoxUtilsTest, bbox_intersects_segment)
 
     // No intersection
     dir = Real3{0, -1, 0};
-    EXPECT_FALSE(intersects_segment(
-        bbox, pos, dir, numeric_limits<double>::infinity()));
+    EXPECT_FALSE(intersects_segment(bbox, pos, dir, 1e6));
 
     // Already inside: always true
     pos = Real3{0.5, 0.6, 0.7};
