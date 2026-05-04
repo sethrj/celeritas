@@ -83,11 +83,17 @@ class BoundingBox
         return points_[to_int(b)];
     }
 
-    //! Access a bounding point
-    CELER_CONSTEXPR_FUNCTION real_type point(Bound b, Axis ax) const
+    //! Access a bounding point (returning reference to allow ldg)
+    CELER_CONSTEXPR_FUNCTION real_type const& point(Bound b, Axis ax) const&
     {
         CELER_EXPECT(ax != Axis::size_);
         return this->point(b)[to_int(ax)];
+    }
+
+    //! Access a bounding point (returning reference to allow ldg)
+    CELER_CONSTEXPR_FUNCTION real_type point(Bound b, Axis ax) const&&
+    {
+        return this->point(b, ax);
     }
 
     // Whether the bbox is non-null
