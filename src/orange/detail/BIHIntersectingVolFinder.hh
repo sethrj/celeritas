@@ -7,7 +7,7 @@
 #pragma once
 
 #include "corecel/cont/IdStack.hh"
-#include "corecel/math/Algorithms.hh"
+#include "corecel/data/Ldg.hh"
 #include "orange/OrangeTypes.hh"
 
 #include "BIHView.hh"
@@ -139,14 +139,14 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
 
         auto const& node = view_.inner_node(stack.top());
         stack.pop();
-        int ax = to_int(node.axis);
+        int ax = to_int(ldg(&node.axis));
 
         // Guess the better edge to traverse first
         bool const rightward = ray.dir[ax] >= 0;
         auto inv_dir = 1 / static_cast<fast_real_type>(ray.dir[ax]);
         auto pos = static_cast<fast_real_type>(ray.pos[ax]);
         auto calc_isect = [&](Side s) {
-            return (node.edges[s].bounding_plane_pos - pos) * inv_dir;
+            return (ldg(&node.edges[s].bounding_plane_pos) - pos) * inv_dir;
         };
 
         Side const second = static_cast<Side>(rightward);
@@ -157,7 +157,7 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
         {
             // Will hit second node: push first so that it'll be tested after
             // the closer one (if that one hits)
-            stack.push(node.edges[second].child);
+            stack.push(ldg(&node.edges[second].child));
         }
         Side const first = static_cast<Side>(!rightward);
         if (calc_isect(first) >= 0
@@ -165,7 +165,7 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
                 node.edges[first].bbox, ray.pos, ray.dir, intersection.distance))
         {
             // Closer edge is hit, so we're inside that half-space
-            stack.push(node.edges[first].child);
+            stack.push(ldg(&node.edges[first].child));
         }
     }
 

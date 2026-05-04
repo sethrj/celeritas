@@ -12,6 +12,7 @@
 
 #include "corecel/Assert.hh"
 #include "corecel/cont/Range.hh"
+#include "corecel/data/Ldg.hh"
 #include "corecel/grid/GridTypes.hh"
 #include "corecel/math/Algorithms.hh"
 #include "geocel/BoundingBox.hh"
@@ -279,12 +280,12 @@ inline CELER_FUNCTION bool intersects_segment(BoundingBox<T> const& bbox,
     T const abs_hseg_y = std::fabs(hseg_y) + eps;
     T const abs_hseg_z = std::fabs(hseg_z) + eps;
 
-    T const lo_x = bbox.point(Bound::lo, Axis::x);
-    T const hi_x = bbox.point(Bound::hi, Axis::x);
-    T const lo_y = bbox.point(Bound::lo, Axis::y);
-    T const hi_y = bbox.point(Bound::hi, Axis::y);
-    T const lo_z = bbox.point(Bound::lo, Axis::z);
-    T const hi_z = bbox.point(Bound::hi, Axis::z);
+    T const lo_x = ldg(&bbox.point(Bound::lo, Axis::x));
+    T const hi_x = ldg(&bbox.point(Bound::hi, Axis::x));
+    T const lo_y = ldg(&bbox.point(Bound::lo, Axis::y));
+    T const hi_y = ldg(&bbox.point(Bound::hi, Axis::y));
+    T const lo_z = ldg(&bbox.point(Bound::lo, Axis::z));
+    T const hi_z = ldg(&bbox.point(Bound::hi, Axis::z));
 
     T const hw_x = (hi_x - lo_x) / 2;
     T const hw_y = (hi_y - lo_y) / 2;
