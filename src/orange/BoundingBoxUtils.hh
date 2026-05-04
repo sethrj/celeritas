@@ -292,28 +292,16 @@ inline CELER_FUNCTION bool intersects_segment(BoundingBox<T> const& bbox,
         }
     }
 
-    if (std::fabs(mid[to_int(Axis::y)] * hseg[to_int(Axis::z)]
-                  - mid[to_int(Axis::z)] * hseg[to_int(Axis::y)])
-        > hw[to_int(Axis::y)] * abs_hseg[to_int(Axis::z)]
-              + hw[to_int(Axis::z)] * abs_hseg[to_int(Axis::y)])
+    for (int i = 0; i < 3; ++i)
     {
-        return false;
-    }
+        int const j = (i + 1) % 3;
+        int const k = (i + 2) % 3;
 
-    if (std::fabs(mid[to_int(Axis::z)] * hseg[to_int(Axis::x)]
-                  - mid[to_int(Axis::x)] * hseg[to_int(Axis::z)])
-        > hw[to_int(Axis::x)] * abs_hseg[to_int(Axis::z)]
-              + hw[to_int(Axis::z)] * abs_hseg[to_int(Axis::x)])
-    {
-        return false;
-    }
-
-    if (std::fabs(mid[to_int(Axis::x)] * hseg[to_int(Axis::y)]
-                  - mid[to_int(Axis::y)] * hseg[to_int(Axis::x)])
-        > hw[to_int(Axis::x)] * abs_hseg[to_int(Axis::y)]
-              + hw[to_int(Axis::y)] * abs_hseg[to_int(Axis::x)])
-    {
-        return false;
+        if (std::fabs(mid[j] * hseg[k] - mid[k] * hseg[j])
+            > hw[j] * abs_hseg[k] + hw[k] * abs_hseg[j])
+        {
+            return false;
+        }
     }
 
     return true;
