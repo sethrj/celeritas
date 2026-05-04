@@ -150,14 +150,13 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
         };
 
         Side const second = static_cast<Side>(rightward);
-        if (calc_isect(second) < intersection.distance
-            && intersects_segment(node.edges[second].bbox,
-                                  ray.pos,
-                                  ray.dir,
-                                  intersection.distance))
+        if (intersects_segment(node.edges[second].bbox,
+                               ray.pos,
+                               ray.dir,
+                               intersection.distance))
         {
             // Will hit second node: push first so that it'll be tested after
-            // the current one
+            // the closer one (if that one hits)
             stack.push(node.edges[second].child);
         }
         Side const first = static_cast<Side>(!rightward);
