@@ -31,9 +31,9 @@ class Transformation;
 template<class T>
 inline bool is_infinite(BoundingBox<T> const& bbox)
 {
-    constexpr T inf = numeric_limits<T>::infinity();
     auto axes = range(Axis::size_);
-    return all_of(axes.begin(), axes.end(), [&bbox, inf](Axis ax) {
+    return all_of(axes.begin(), axes.end(), [&bbox](Axis ax) {
+        constexpr T inf = numeric_limits<T>::infinity();
         return bbox.point(Bound::lo, ax) == -inf
                && bbox.point(Bound::hi, ax) == inf;
     });
