@@ -266,42 +266,65 @@ inline CELER_FUNCTION bool intersects_segment(BoundingBox<T> const& bbox,
                                               T distance)
 {
     CELER_EXPECT(distance > 0 && !std::isinf(distance));
-    Array<T, 3> hw;  // Half-widths of bounding box
-    Array<T, 3> mid;  // Midpoint of the line segment
-    Array<T, 3> hseg;  // Vector from pos to the midpoint of the segment
-    Array<T, 3> abs_hseg;
-
     T const half_distance = distance / 2;
-    constexpr T epsilon = numeric_limits<T>::epsilon();
+    constexpr T eps = numeric_limits<T>::epsilon();
 
-    for (auto ax : range(Axis::size_))
+    // Axis-aligned overlap checks with scalar temporaries to avoid indexed
+    // local arrays that can spill to local memory on device.
+    T const hseg_x = dir[to_int(Axis::x)] * half_distance;
+    T const hseg_y = dir[to_int(Axis::y)] * half_distance;
+    T const hseg_z = dir[to_int(Axis::z)] * half_distance;
+
+    T const abs_hseg_x = std::fabs(hseg_x) + eps;
+    T const abs_hseg_y = std::fabs(hseg_y) + eps;
+    T const abs_hseg_z = std::fabs(hseg_z) + eps;
+
+    T const lo_x = bbox.point(Bound::lo, Axis::x);
+    T const hi_x = bbox.point(Bound::hi, Axis::x);
+    T const lo_y = bbox.point(Bound::lo, Axis::y);
+    T const hi_y = bbox.point(Bound::hi, Axis::y);
+    T const lo_z = bbox.point(Bound::lo, Axis::z);
+    T const hi_z = bbox.point(Bound::hi, Axis::z);
+
+    T const hw_x = (hi_x - lo_x) / 2;
+    T const hw_y = (hi_y - lo_y) / 2;
+    T const hw_z = (hi_z - lo_z) / 2;
+
+    T const mid_x = pos[to_int(Axis::x)] + hseg_x - (lo_x + hi_x) / 2;
+    if (std::fabs(mid_x) > hw_x + abs_hseg_x)
     {
-        auto i = to_int(ax);
-        T const lower = bbox.point(Bound::lo, ax);
-        T const upper = bbox.point(Bound::hi, ax);
-        T const center = (lower + upper) / 2;
-
-        hw[i] = (upper - lower) / 2;
-        hseg[i] = dir[i] * half_distance;
-        abs_hseg[i] = std::fabs(hseg[i]) + epsilon;
-        mid[i] = pos[i] + hseg[i] - center;
-
-        if (std::fabs(mid[i]) > hw[i] + abs_hseg[i])
-        {
-            return false;
-        }
+        return false;
     }
 
-    for (int i = 0; i < 3; ++i)
+    T const mid_y = pos[to_int(Axis::y)] + hseg_y - (lo_y + hi_y) / 2;
+    if (std::fabs(mid_y) > hw_y + abs_hseg_y)
     {
-        int const j = (i + 1) % 3;
-        int const k = (i + 2) % 3;
+        return false;
+    }
 
-        if (std::fabs(mid[j] * hseg[k] - mid[k] * hseg[j])
-            > hw[j] * abs_hseg[k] + hw[k] * abs_hseg[j])
-        {
-            return false;
-        }
+    T const mid_z = pos[to_int(Axis::z)] + hseg_z - (lo_z + hi_z) / 2;
+    if (std::fabs(mid_z) > hw_z + abs_hseg_z)
+    {
+        return false;
+    }
+
+    // Cross-product separating-axis checks (one per segment axis pair).
+    if (std::fabs(mid_y * hseg_z - mid_z * hseg_y)
+        > hw_y * abs_hseg_z + hw_z * abs_hseg_y)
+    {
+        return false;
+    }
+
+    if (std::fabs(mid_z * hseg_x - mid_x * hseg_z)
+        > hw_z * abs_hseg_x + hw_x * abs_hseg_z)
+    {
+        return false;
+    }
+
+    if (std::fabs(mid_x * hseg_y - mid_y * hseg_x)
+        > hw_x * abs_hseg_y + hw_y * abs_hseg_x)
+    {
+        return false;
     }
 
     return true;
