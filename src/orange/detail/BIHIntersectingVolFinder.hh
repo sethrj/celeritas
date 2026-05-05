@@ -151,30 +151,30 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
         };
         fast_real_type first_isect{calc_isect(Side::left)};
         fast_real_type second_isect{calc_isect(Side::right)};
-        // Preload other edge elements
-        BBox first_bbox{node.edges[Side::left].bbox};
-        BBox second_bbox{node.edges[Side::right].bbox};
-        BIHNodeId first_child{node.edges[Side::left].child};
-        BIHNodeId second_child{node.edges[Side::right].child};
+        Side first_side{Side::left};
+        Side second_side{Side::left};
 
         if (ray.dir[ax] < 0)
         {
             trivial_swap(first_isect, second_isect);
-            trivial_swap(first_bbox, second_bbox);
-            trivial_swap(first_child, second_child);
+            trivial_swap(first_side, second_side);
         }
 
         if (second_isect < intersection.distance
-            && intersects_segment(
-                second_bbox, ray.pos, ray.dir, intersection.distance))
+            && intersects_segment(node.edges[second_side].bbox,
+                                  ray.pos,
+                                  ray.dir,
+                                  intersection.distance))
         {
-            stack.push(second_child);
+            stack.push(node.edges[second_side].child);
         }
         if (first_isect > 0
-            && intersects_segment(
-                first_bbox, ray.pos, ray.dir, intersection.distance))
+            && intersects_segment(node.edges[first_side].bbox,
+                                  ray.pos,
+                                  ray.dir,
+                                  intersection.distance))
         {
-            stack.push(first_child);
+            stack.push(node.edges[first_side].child);
         }
     }
 
