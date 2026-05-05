@@ -140,19 +140,41 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
         }
 
         auto const& node = view_.inner_node(stack.top());
-        EnumArray<Side, BBox> const bboxes{node.edges[Side::left].bbox,
-                                           node.edges[Side::right].bbox};
-        EnumArray<Side, BIHNodeId> const children{
-            node.edges[Side::left].child, node.edges[Side::right].child};
         stack.pop();
 
-        for (auto s : {Side::left, Side::right})
+        // Guess the better edge to traverse first
+        int const ax = to_int(node.axis);
+        auto inv_dir = 1 / static_cast<fast_real_type>(ray.dir[ax]);
+        auto pos = static_cast<fast_real_type>(ray.pos[ax]);
+        auto calc_isect = [&](Side s) {
+            return (node.edges[s].bounding_plane_pos - pos) * inv_dir;
+        };
+        fast_real_type first_isect{calc_isect(Side::left)};
+        fast_real_type second_isect{calc_isect(Side::right)};
+        // Preload other edge elements
+        BBox first_bbox{node.edges[Side::left].bbox};
+        BBox second_bbox{node.edges[Side::right].bbox};
+        BIHNodeId first_child{node.edges[Side::left].child};
+        BIHNodeId second_child{node.edges[Side::right].child};
+
+        if (ray.dir[ax] < 0)
         {
-            if (intersects_segment(
-                    bboxes[s], ray.pos, ray.dir, intersection.distance))
-            {
-                stack.push(children[s]);
-            }
+            trivial_swap(first_isect, second_isect);
+            trivial_swap(first_bbox, second_bbox);
+            trivial_swap(first_child, second_child);
+        }
+
+        if (second_isect < intersection.distance
+            && intersects_segment(
+                second_bbox, ray.pos, ray.dir, intersection.distance))
+        {
+            stack.push(second_child);
+        }
+        if (first_isect > 0
+            && intersects_segment(
+                first_bbox, ray.pos, ray.dir, intersection.distance))
+        {
+            stack.push(first_child);
         }
     }
 
