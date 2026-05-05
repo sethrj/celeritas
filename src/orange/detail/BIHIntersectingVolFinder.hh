@@ -140,26 +140,13 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
         auto const& node = view_.inner_node(stack.top());
         stack.pop();
 
-        // Guess the better edge to traverse first, prefetching edges
-        // into local memory
-        auto first_edge = node.edges[Side::left];
-        auto second_edge = node.edges[Side::right];
-
-        // Determine if the first and second edges are hits, short circuiting
-        // with skip_* before testing bounding boxes
-        bool hit_first = intersects_segment(
-            first_edge.bbox, ray.pos, ray.dir, intersection.distance);
-        bool hit_second = intersects_segment(
-            second_edge.bbox, ray.pos, ray.dir, intersection.distance);
-
-        // Choose the next node on the basis of which edges are hits
-        if (hit_second)
+        for (auto s : {Side::left, Side::right})
         {
-            stack.push(second_edge.child);
-        }
-        if (hit_first)
-        {
-            stack.push(first_edge.child);
+            if (intersects_segment(
+                    node.edges[s].bbox, ray.pos, ray.dir, intersection.distance))
+            {
+                stack.push(node.edges[s].child);
+            }
         }
     }
 
