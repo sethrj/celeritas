@@ -139,17 +139,11 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
 
         auto const& node = view_.inner_node(stack.top());
         stack.pop();
-        int ax = to_int(node.axis);
 
         // Guess the better edge to traverse first, prefetching edges
         // into local memory
         auto first_edge = node.edges[Side::left];
         auto second_edge = node.edges[Side::right];
-
-        if ((ray.pos[ax] > second_edge.bounding_plane_pos) == (ray.dir[ax] > 0))
-        {
-            trivial_swap(first_edge, second_edge);
-        }
 
         // Determine if the first and second edges are hits, short circuiting
         // with skip_* before testing bounding boxes
