@@ -6,8 +6,10 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
+#include "corecel/cont/EnumArray.hh"
 #include "corecel/cont/IdStack.hh"
 #include "corecel/math/Algorithms.hh"
+#include "geocel/BoundingBox.hh"
 #include "orange/OrangeTypes.hh"
 
 #include "BIHView.hh"
@@ -138,14 +140,18 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
         }
 
         auto const& node = view_.inner_node(stack.top());
+        EnumArray<Side, BBox> const bboxes{node.edges[Side::left].bbox,
+                                           node.edges[Side::right].bbox};
+        EnumArray<Side, BIHNodeId> const children{
+            node.edges[Side::left].child, node.edges[Side::right].child};
         stack.pop();
 
         for (auto s : {Side::left, Side::right})
         {
             if (intersects_segment(
-                    node.edges[s].bbox, ray.pos, ray.dir, intersection.distance))
+                    bboxes[s], ray.pos, ray.dir, intersection.distance))
             {
-                stack.push(node.edges[s].child);
+                stack.push(children[s]);
             }
         }
     }
