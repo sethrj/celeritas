@@ -146,27 +146,17 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
         auto first_edge = node.edges[Side::left];
         auto second_edge = node.edges[Side::right];
 
-        bool skip_first = (ray.dir[ax] >= 0)
-                          && (ray.pos[ax] > first_edge.bounding_plane_pos);
-        bool skip_second = (ray.dir[ax] <= 0)
-                           && (ray.pos[ax] < second_edge.bounding_plane_pos);
-
         if (ray.pos[ax] > second_edge.bounding_plane_pos)
         {
             trivial_swap(first_edge, second_edge);
-            trivial_swap(skip_first, skip_second);
         }
 
         // Determine if the first and second edges are hits, short circuiting
         // with skip_* before testing bounding boxes
-        bool hit_first
-            = !skip_first
-              && intersects_segment(
-                  first_edge.bbox, ray.pos, ray.dir, intersection.distance);
-        bool hit_second
-            = !skip_second
-              && intersects_segment(
-                  second_edge.bbox, ray.pos, ray.dir, intersection.distance);
+        bool hit_first = intersects_segment(
+            first_edge.bbox, ray.pos, ray.dir, intersection.distance);
+        bool hit_second = intersects_segment(
+            second_edge.bbox, ray.pos, ray.dir, intersection.distance);
 
         // Choose the next node on the basis of which edges are hits
         if (hit_second)
