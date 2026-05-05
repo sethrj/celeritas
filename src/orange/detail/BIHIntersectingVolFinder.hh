@@ -146,7 +146,7 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
         auto first_edge = node.edges[Side::left];
         auto second_edge = node.edges[Side::right];
 
-        if (ray.pos[ax] > second_edge.bounding_plane_pos)
+        if ((ray.pos[ax] > second_edge.bounding_plane_pos) == (ray.dir[ax] > 0))
         {
             trivial_swap(first_edge, second_edge);
         }
