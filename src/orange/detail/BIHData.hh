@@ -70,6 +70,9 @@ struct BIHTreeRecord
     //! All bounding boxes managed by the BIH
     ItemMap<LocalVolumeId, FastBBoxId> bboxes;
 
+    //! All node bounding boxes managed by the BIH
+    ItemMap<BIHNodeId, FastBBoxId> node_bboxes;
+
     //! Internal-node slots, the first being the root
     ItemRange<Axis> internal_nodes;
 
@@ -88,7 +91,7 @@ struct BIHTreeRecord
 
     explicit CELER_FUNCTION operator bool() const
     {
-        return !bboxes.empty() && num_leaf_nodes > 0;
+        return !bboxes.empty() && !node_bboxes.empty() && num_leaf_nodes > 0;
     }
 };
 
@@ -104,6 +107,7 @@ struct BIHTreeData
 
     // Low-level storage
     Items<FastBBox> bboxes;
+    Items<FastBBox> node_bboxes;
     Items<LocalVolumeId> local_volume_ids;
     Items<Axis> axes;
     Items<fast_real_type> bounding_planes;
@@ -116,7 +120,8 @@ struct BIHTreeData
     {
         // Note that internal-node arrays may be empty for single-node trees
         return !bboxes.empty() && !local_volume_ids.empty()
-               && !leaf_nodes.empty()
+               && !node_bboxes.empty() && !leaf_nodes.empty()
+               && node_bboxes.size() == axes.size() + leaf_nodes.size()
                && 2 * axes.size() == bounding_planes.size()
                && 2 * axes.size() == children.size()
                && 2 * axes.size() == fast_bboxes.size();
@@ -127,6 +132,7 @@ struct BIHTreeData
     BIHTreeData& operator=(BIHTreeData<W2, M2> const& other)
     {
         bboxes = other.bboxes;
+        node_bboxes = other.node_bboxes;
         local_volume_ids = other.local_volume_ids;
         axes = other.axes;
         bounding_planes = other.bounding_planes;

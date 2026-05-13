@@ -115,7 +115,7 @@ BIHEnclosingVolFinder::operator()(Real3 const& pos, F&& is_inside_vol) const
             stack.pop();
             for (auto s : {Side::right, Side::left})
             {
-                if (is_inside(node.bbox(s), pos))
+                if (is_inside(view_.bbox(node.child(s)), pos))
                 {
                     stack.push(node.child(s));
                 }

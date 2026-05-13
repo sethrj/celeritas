@@ -7,7 +7,6 @@
 #pragma once
 
 #include <set>
-#include <utility>
 #include <variant>
 #include <vector>
 
@@ -107,7 +106,14 @@ class BIHBuilder
     using VecNodes = std::vector<std::variant<BIHInternalNode, BIHLeafNode>>;
     using VecInnerNodes = std::vector<BIHInternalNode>;
     using VecLeafNodes = std::vector<BIHLeafNode>;
-    using ArrangedNodes = std::pair<VecInnerNodes, VecLeafNodes>;
+    using VecNodeBboxes = std::vector<FastBBox>;
+
+    struct ReorderedNodes
+    {
+        VecInnerNodes inner;
+        VecLeafNodes leaf;
+        VecNodeBboxes bboxes;
+    };
 
     struct Temporaries
     {
@@ -119,6 +125,7 @@ class BIHBuilder
     Temporaries temp_;
 
     CollectionBuilder<FastBBox> bboxes_;
+    CollectionBuilder<FastBBox> node_bboxes_;
     CollectionBuilder<LocalVolumeId> local_volume_ids_;
     CollectionBuilder<Axis> axes_;
     CollectionBuilder<fast_real_type> bounding_planes_;
@@ -133,11 +140,13 @@ class BIHBuilder
     // Recursively construct BIH nodes for a vector of bbox indices
     void construct_tree(VecIndices const& indices,
                         VecNodes* nodes,
+                        VecNodeBboxes* node_bboxes,
                         size_type current_depth,
                         size_type& depth);
 
     // Separate nodes into inner and leaf vectors and renumber accordingly
-    ArrangedNodes arrange_nodes(VecNodes const& nodes) const;
+    ReorderedNodes arrange_nodes(VecNodes const& nodes,
+                                 VecNodeBboxes const& node_bboxes) const;
 };
 
 //---------------------------------------------------------------------------//

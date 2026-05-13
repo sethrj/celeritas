@@ -123,6 +123,16 @@ TEST_F(BIHBuilderTest, basic)
     EXPECT_EQ(2 * bih_data.axes.size(), bih_data.bounding_planes.size());
     EXPECT_EQ(2 * bih_data.axes.size(), bih_data.children.size());
     EXPECT_EQ(2 * bih_data.axes.size(), bih_data.fast_bboxes.size());
+    EXPECT_EQ(view.num_nodes(), bih_data.node_bboxes.size());
+
+    EXPECT_VEC_SOFT_EQ(VecFastReal({0.f, -1.f, 0.f}),
+                       view.bbox(BIHNodeId{0}).lower());
+    EXPECT_VEC_SOFT_EQ(VecFastReal({5.f, 1.f, 100.f}),
+                       view.bbox(BIHNodeId{0}).upper());
+    EXPECT_VEC_SOFT_EQ(VecFastReal({0.f, 0.f, 0.f}),
+                       view.bbox(BIHNodeId{3}).lower());
+    EXPECT_VEC_SOFT_EQ(VecFastReal({1.6f, 1.f, 100.f}),
+                       view.bbox(BIHNodeId{3}).upper());
 
     // N0, I0
     {
