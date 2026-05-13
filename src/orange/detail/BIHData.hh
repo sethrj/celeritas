@@ -8,7 +8,6 @@
 #pragma once
 
 #include "corecel/Types.hh"
-#include "corecel/cont/EnumArray.hh"
 #include "corecel/data/Collection.hh"
 #include "geocel/BoundingBox.hh"  // IWYU pragma: keep
 
@@ -30,41 +29,6 @@ enum class BihSide
 //---------------------------------------------------------------------------//!
 // The maximum depth of the BIH tree (single leaf node is 1)
 inline constexpr size_type max_bih_depth = 18;
-
-//---------------------------------------------------------------------------//
-/*!
- * Data for a single internal node in a Bounding Interval Hierarchy.
- *
- * As a convention, a node's LEFT edge corresponds to the half space that is
- * less than the partition value. In other words, the LEFT bounding plane
- * position is the far right boundary of the left side of the tree, and the
- * RIGHT bounding plane position is the far left boundary of the right side of
- * the tree. Since the halfspaces created by the bounding planes may overlap,
- * the LEFT bounding plane position could be either left or right of the RIGHT
- * bounding plane position.
- */
-struct BIHInternalNode
-{
-    struct Edge
-    {
-        //! The position of the bounding plane along the partition axis
-        fast_real_type bounding_plane_pos{};
-        //! The child node connected to this edge
-        BIHNodeId child;
-        //! Bbox created by clipping an inf bbox with the bounding planes
-        //! between this edge (inclusive) and the root.
-        FastBBox bbox;
-    };
-
-    Axis axis;  //!< Axis that the partition is performed on
-    EnumArray<BihSide, Edge> edges;  //!< Left/right edges
-
-    explicit CELER_FUNCTION operator bool() const
-    {
-        return this->edges[BihSide::left].child
-               && this->edges[BihSide::right].child;
-    }
-};
 
 //---------------------------------------------------------------------------//
 /*!

@@ -13,6 +13,7 @@
 
 #include "corecel/Types.hh"
 #include "corecel/cont/Array.hh"
+#include "corecel/cont/EnumArray.hh"
 #include "corecel/data/CollectionBuilder.hh"
 #include "geocel/BoundingBox.hh"  // IWYU pragma: keep
 #include "orange/OrangeTypes.hh"
@@ -24,6 +25,33 @@ namespace celeritas
 {
 namespace detail
 {
+//---------------------------------------------------------------------------//
+/*!
+ * Builder-local representation of a BIH internal node.
+ */
+struct BIHInternalNode
+{
+    struct Edge
+    {
+        //! The position of the bounding plane along the partition axis
+        fast_real_type bounding_plane_pos{};
+        //! The child node connected to this edge
+        BIHNodeId child;
+        //! Bbox created by clipping an inf bbox with the bounding planes
+        //! between this edge (inclusive) and the root.
+        FastBBox bbox;
+    };
+
+    Axis axis;  //!< Axis that the partition is performed on
+    EnumArray<BihSide, Edge> edges;  //!< Left/right edges
+
+    explicit CELER_FUNCTION operator bool() const
+    {
+        return this->edges[BihSide::left].child
+               && this->edges[BihSide::right].child;
+    }
+};
+
 //---------------------------------------------------------------------------//
 /*!
  * Create a bounding interval hierarchy from the supplied bounding boxes.

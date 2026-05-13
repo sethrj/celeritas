@@ -13,7 +13,6 @@
 #include "corecel/cont/Range.hh"
 #include "corecel/cont/VariantUtils.hh"
 #include "corecel/data/Collection.hh"
-#include "orange/detail/BIHData.hh"
 
 #include "BIHPartitioner.hh"
 #include "../BoundingBoxUtils.hh"
