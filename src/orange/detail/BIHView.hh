@@ -37,9 +37,6 @@ class BIHInternalNodeView
     // Get child node for a side
     inline CELER_FUNCTION BIHNodeId child(Side side) const;
 
-    // Get edge bounding box for a side
-    inline CELER_FUNCTION FastBBox const& bbox(Side side) const;
-
     // Get edge bounding plane position for a side
     inline CELER_FUNCTION fast_real_type bounding_plane_pos(Side side) const;
 
@@ -135,17 +132,6 @@ CELER_FUNCTION BIHNodeId
 BIHInternalNodeView::child(BIHInternalNodeView::Side side) const
 {
     return storage_.children[id_cast<ItemId<BIHNodeId>>(this->side_offset(side))];
-}
-
-//---------------------------------------------------------------------------//
-/*!
- * Get edge bounding box for a side.
- */
-CELER_FUNCTION FastBBox const&
-BIHInternalNodeView::bbox(BIHInternalNodeView::Side side) const
-{
-    return storage_
-        .fast_bboxes[id_cast<ItemId<FastBBox>>(this->side_offset(side))];
 }
 
 //---------------------------------------------------------------------------//

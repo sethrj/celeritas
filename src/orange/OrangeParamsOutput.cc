@@ -140,6 +140,7 @@ void OrangeParamsOutput::output(JsonPimpl* j) const
     obj["sizes"]["bih"] = [&bihdata = data.bih_tree_data] {
         return json::object({
             OPO_SIZE_PAIR(bihdata, bboxes),
+            OPO_SIZE_PAIR(bihdata, node_bboxes),
             {"internal_nodes", bihdata.axes.size()},
             OPO_SIZE_PAIR(bihdata, leaf_nodes),
             OPO_SIZE_PAIR(bihdata, local_volume_ids),

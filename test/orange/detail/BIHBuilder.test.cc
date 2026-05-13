@@ -122,7 +122,6 @@ TEST_F(BIHBuilderTest, basic)
     EXPECT_EQ(view.num_internal_nodes(), bih_data.axes.size());
     EXPECT_EQ(2 * bih_data.axes.size(), bih_data.bounding_planes.size());
     EXPECT_EQ(2 * bih_data.axes.size(), bih_data.children.size());
-    EXPECT_EQ(2 * bih_data.axes.size(), bih_data.fast_bboxes.size());
     EXPECT_EQ(view.num_nodes(), bih_data.node_bboxes.size());
 
     EXPECT_VEC_SOFT_EQ(VecFastReal({0.f, -1.f, 0.f}),
@@ -146,13 +145,13 @@ TEST_F(BIHBuilderTest, basic)
         EXPECT_EQ(BIHNodeId{2}, node.child(Side::right));
 
         EXPECT_VEC_SOFT_EQ(VecFastReal({0.f, 0.f, 0.f}),
-                           node.bbox(Side::left).lower());
+                           view.bbox(node.child(Side::left)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({2.8f, 1.f, 100.f}),
-                           node.bbox(Side::left).upper());
+                           view.bbox(node.child(Side::left)).upper());
         EXPECT_VEC_SOFT_EQ(VecFastReal({0.f, -1.f, 0.f}),
-                           node.bbox(Side::right).lower());
+                           view.bbox(node.child(Side::right)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({5.f, 1.f, 100.f}),
-                           node.bbox(Side::right).upper());
+                           view.bbox(node.child(Side::right)).upper());
     }
 
     // N1, I1
@@ -167,13 +166,13 @@ TEST_F(BIHBuilderTest, basic)
         EXPECT_EQ(BIHNodeId{4}, node.child(Side::right));
 
         EXPECT_VEC_SOFT_EQ(VecFastReal({0.f, 0.f, 0.f}),
-                           node.bbox(Side::left).lower());
+                           view.bbox(node.child(Side::left)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({1.6f, 1.f, 100.f}),
-                           node.bbox(Side::left).upper());
+                           view.bbox(node.child(Side::left)).upper());
         EXPECT_VEC_SOFT_EQ(VecFastReal({1.2f, 0.f, 0.f}),
-                           node.bbox(Side::right).lower());
+                           view.bbox(node.child(Side::right)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({2.8f, 1.f, 100.f}),
-                           node.bbox(Side::right).upper());
+                           view.bbox(node.child(Side::right)).upper());
     }
 
     // N2, I2
@@ -188,13 +187,13 @@ TEST_F(BIHBuilderTest, basic)
         EXPECT_EQ(BIHNodeId{6}, node.child(Side::right));
 
         EXPECT_VEC_SOFT_EQ(VecFastReal({0.f, -1.f, 0.f}),
-                           node.bbox(Side::left).lower());
+                           view.bbox(node.child(Side::left)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({5.f, 0.f, 100.f}),
-                           node.bbox(Side::left).upper());
+                           view.bbox(node.child(Side::left)).upper());
         EXPECT_VEC_SOFT_EQ(VecFastReal({2.8f, 0.f, 0.f}),
-                           node.bbox(Side::right).lower());
+                           view.bbox(node.child(Side::right)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({5.f, 1.f, 100.f}),
-                           node.bbox(Side::right).upper());
+                           view.bbox(node.child(Side::right)).upper());
     }
 
     EXPECT_VEC_EQ(VecInt({1}), id_to_int(view.leaf_vol_ids(BIHNodeId{3})));
@@ -306,13 +305,13 @@ TEST_F(GridTest, basic)
         EXPECT_EQ(BIHNodeId{6}, node.child(Side::right));
 
         EXPECT_VEC_SOFT_EQ(VecFastReal({0.f, 0.f, 0.f}),
-                           node.bbox(Side::left).lower());
+                           view.bbox(node.child(Side::left)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({3.f, 2.f, 100.f}),
-                           node.bbox(Side::left).upper());
+                           view.bbox(node.child(Side::left)).upper());
         EXPECT_VEC_SOFT_EQ(VecFastReal({0.f, 2.f, 0.f}),
-                           node.bbox(Side::right).lower());
+                           view.bbox(node.child(Side::right)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({3.f, 4.f, 100.f}),
-                           node.bbox(Side::right).upper());
+                           view.bbox(node.child(Side::right)).upper());
     }
 
     // N1, I1
@@ -327,13 +326,13 @@ TEST_F(GridTest, basic)
         EXPECT_EQ(BIHNodeId{3}, node.child(Side::right));
 
         EXPECT_VEC_SOFT_EQ(VecFastReal({0.f, 0.f, 0.f}),
-                           node.bbox(Side::left).lower());
+                           view.bbox(node.child(Side::left)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({1.f, 2.f, 100.f}),
-                           node.bbox(Side::left).upper());
+                           view.bbox(node.child(Side::left)).upper());
         EXPECT_VEC_SOFT_EQ(VecFastReal({1.f, 0.f, 0.f}),
-                           node.bbox(Side::right).lower());
+                           view.bbox(node.child(Side::right)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({3.f, 2.f, 100.f}),
-                           node.bbox(Side::right).upper());
+                           view.bbox(node.child(Side::right)).upper());
     }
 
     // N2, I2
@@ -348,13 +347,13 @@ TEST_F(GridTest, basic)
         EXPECT_EQ(BIHNodeId{12}, node.child(Side::right));
 
         EXPECT_VEC_SOFT_EQ(VecFastReal({0.f, 0.f, 0.f}),
-                           node.bbox(Side::left).lower());
+                           view.bbox(node.child(Side::left)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({1.f, 1.f, 100.f}),
-                           node.bbox(Side::left).upper());
+                           view.bbox(node.child(Side::left)).upper());
         EXPECT_VEC_SOFT_EQ(VecFastReal({0.f, 1.f, 0.f}),
-                           node.bbox(Side::right).lower());
+                           view.bbox(node.child(Side::right)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({1.f, 2.f, 100.f}),
-                           node.bbox(Side::right).upper());
+                           view.bbox(node.child(Side::right)).upper());
     }
 
     // N3, I3
@@ -369,13 +368,13 @@ TEST_F(GridTest, basic)
         EXPECT_EQ(BIHNodeId{5}, node.child(Side::right));
 
         EXPECT_VEC_SOFT_EQ(VecFastReal({1.f, 0.f, 0.f}),
-                           node.bbox(Side::left).lower());
+                           view.bbox(node.child(Side::left)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({2.f, 2.f, 100.f}),
-                           node.bbox(Side::left).upper());
+                           view.bbox(node.child(Side::left)).upper());
         EXPECT_VEC_SOFT_EQ(VecFastReal({2.f, 0.f, 0.f}),
-                           node.bbox(Side::right).lower());
+                           view.bbox(node.child(Side::right)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({3.f, 2.f, 100.f}),
-                           node.bbox(Side::right).upper());
+                           view.bbox(node.child(Side::right)).upper());
     }
 
     // N4, I4
@@ -390,13 +389,13 @@ TEST_F(GridTest, basic)
         EXPECT_EQ(BIHNodeId{14}, node.child(Side::right));
 
         EXPECT_VEC_SOFT_EQ(VecFastReal({1.f, 0.f, 0.f}),
-                           node.bbox(Side::left).lower());
+                           view.bbox(node.child(Side::left)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({2.f, 1.f, 100.f}),
-                           node.bbox(Side::left).upper());
+                           view.bbox(node.child(Side::left)).upper());
         EXPECT_VEC_SOFT_EQ(VecFastReal({1.f, 1.f, 0.f}),
-                           node.bbox(Side::right).lower());
+                           view.bbox(node.child(Side::right)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({2.f, 2.f, 100.f}),
-                           node.bbox(Side::right).upper());
+                           view.bbox(node.child(Side::right)).upper());
     }
 
     // N5, I5
@@ -411,13 +410,13 @@ TEST_F(GridTest, basic)
         EXPECT_EQ(BIHNodeId{16}, node.child(Side::right));
 
         EXPECT_VEC_SOFT_EQ(VecFastReal({2.f, 0.f, 0.f}),
-                           node.bbox(Side::left).lower());
+                           view.bbox(node.child(Side::left)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({3.f, 1.f, 100.f}),
-                           node.bbox(Side::left).upper());
+                           view.bbox(node.child(Side::left)).upper());
         EXPECT_VEC_SOFT_EQ(VecFastReal({2.f, 1.f, 0.f}),
-                           node.bbox(Side::right).lower());
+                           view.bbox(node.child(Side::right)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({3.f, 2.f, 100.f}),
-                           node.bbox(Side::right).upper());
+                           view.bbox(node.child(Side::right)).upper());
     }
 
     EXPECT_VEC_EQ(VecInt({1}), id_to_int(view.leaf_vol_ids(BIHNodeId{11})));
@@ -485,13 +484,13 @@ TEST_F(GridTest, max_leaf_size)
         EXPECT_EQ(BIHNodeId{2}, node.child(Side::right));
 
         EXPECT_VEC_SOFT_EQ(VecFastReal({0.f, 0.f, 0.f}),
-                           node.bbox(Side::left).lower());
+                           view.bbox(node.child(Side::left)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({3.f, 2.f, 100.f}),
-                           node.bbox(Side::left).upper());
+                           view.bbox(node.child(Side::left)).upper());
         EXPECT_VEC_SOFT_EQ(VecFastReal({0.f, 2.f, 0.f}),
-                           node.bbox(Side::right).lower());
+                           view.bbox(node.child(Side::right)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({3.f, 4.f, 100.f}),
-                           node.bbox(Side::right).upper());
+                           view.bbox(node.child(Side::right)).upper());
     }
 
     // N1, I1
@@ -506,13 +505,13 @@ TEST_F(GridTest, max_leaf_size)
         EXPECT_EQ(BIHNodeId{4}, node.child(Side::right));
 
         EXPECT_VEC_SOFT_EQ(VecFastReal({0.f, 0.f, 0.f}),
-                           node.bbox(Side::left).lower());
+                           view.bbox(node.child(Side::left)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({1.f, 2.f, 100.f}),
-                           node.bbox(Side::left).upper());
+                           view.bbox(node.child(Side::left)).upper());
         EXPECT_VEC_SOFT_EQ(VecFastReal({1.f, 0.f, 0.f}),
-                           node.bbox(Side::right).lower());
+                           view.bbox(node.child(Side::right)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({3.f, 2.f, 100.f}),
-                           node.bbox(Side::right).upper());
+                           view.bbox(node.child(Side::right)).upper());
     }
 
     // N2, I2
@@ -527,13 +526,13 @@ TEST_F(GridTest, max_leaf_size)
         EXPECT_EQ(BIHNodeId{6}, node.child(Side::right));
 
         EXPECT_VEC_SOFT_EQ(VecFastReal({0.f, 2.f, 0.f}),
-                           node.bbox(Side::left).lower());
+                           view.bbox(node.child(Side::left)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({1.f, 4.f, 100.f}),
-                           node.bbox(Side::left).upper());
+                           view.bbox(node.child(Side::left)).upper());
         EXPECT_VEC_SOFT_EQ(VecFastReal({1.f, 2.f, 0.f}),
-                           node.bbox(Side::right).lower());
+                           view.bbox(node.child(Side::right)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({3.f, 4.f, 100.f}),
-                           node.bbox(Side::right).upper());
+                           view.bbox(node.child(Side::right)).upper());
     }
 
     EXPECT_VEC_EQ(VecInt({1, 2}), id_to_int(view.leaf_vol_ids(BIHNodeId{3})));
@@ -607,13 +606,13 @@ TEST_F(GridTest, depth_limit)
         EXPECT_EQ(BIHNodeId{4}, node.child(Side::right));
 
         EXPECT_VEC_SOFT_EQ(VecFastReal({0.f, 0.f, 0.f}),
-                           node.bbox(Side::left).lower());
+                           view.bbox(node.child(Side::left)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({3.f, 2.f, 100.f}),
-                           node.bbox(Side::left).upper());
+                           view.bbox(node.child(Side::left)).upper());
         EXPECT_VEC_SOFT_EQ(VecFastReal({0.f, 2.f, 0.f}),
-                           node.bbox(Side::right).lower());
+                           view.bbox(node.child(Side::right)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({3.f, 4.f, 100.f}),
-                           node.bbox(Side::right).upper());
+                           view.bbox(node.child(Side::right)).upper());
     }
 
     // N1, I1
@@ -628,13 +627,13 @@ TEST_F(GridTest, depth_limit)
         EXPECT_EQ(BIHNodeId{3}, node.child(Side::right));
 
         EXPECT_VEC_SOFT_EQ(VecFastReal({0.f, 0.f, 0.f}),
-                           node.bbox(Side::left).lower());
+                           view.bbox(node.child(Side::left)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({1.f, 2.f, 100.f}),
-                           node.bbox(Side::left).upper());
+                           view.bbox(node.child(Side::left)).upper());
         EXPECT_VEC_SOFT_EQ(VecFastReal({1.f, 0.f, 0.f}),
-                           node.bbox(Side::right).lower());
+                           view.bbox(node.child(Side::right)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({3.f, 2.f, 100.f}),
-                           node.bbox(Side::right).upper());
+                           view.bbox(node.child(Side::right)).upper());
     }
 
     // N2, I2
@@ -649,13 +648,13 @@ TEST_F(GridTest, depth_limit)
         EXPECT_EQ(BIHNodeId{8}, node.child(Side::right));
 
         EXPECT_VEC_SOFT_EQ(VecFastReal({0.f, 0.f, 0.f}),
-                           node.bbox(Side::left).lower());
+                           view.bbox(node.child(Side::left)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({1.f, 1.f, 100.f}),
-                           node.bbox(Side::left).upper());
+                           view.bbox(node.child(Side::left)).upper());
         EXPECT_VEC_SOFT_EQ(VecFastReal({0.f, 1.f, 0.f}),
-                           node.bbox(Side::right).lower());
+                           view.bbox(node.child(Side::right)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({1.f, 2.f, 100.f}),
-                           node.bbox(Side::right).upper());
+                           view.bbox(node.child(Side::right)).upper());
     }
 
     // N3, I3
@@ -670,13 +669,13 @@ TEST_F(GridTest, depth_limit)
         EXPECT_EQ(BIHNodeId{10}, node.child(Side::right));
 
         EXPECT_VEC_SOFT_EQ(VecFastReal({1.f, 0.f, 0.f}),
-                           node.bbox(Side::left).lower());
+                           view.bbox(node.child(Side::left)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({2.f, 2.f, 100.f}),
-                           node.bbox(Side::left).upper());
+                           view.bbox(node.child(Side::left)).upper());
         EXPECT_VEC_SOFT_EQ(VecFastReal({2.f, 0.f, 0.f}),
-                           node.bbox(Side::right).lower());
+                           view.bbox(node.child(Side::right)).lower());
         EXPECT_VEC_SOFT_EQ(VecFastReal({3.f, 2.f, 100.f}),
-                           node.bbox(Side::right).upper());
+                           view.bbox(node.child(Side::right)).upper());
     }
 
     EXPECT_VEC_EQ(VecInt({1}), id_to_int(view.leaf_vol_ids(BIHNodeId{7})));

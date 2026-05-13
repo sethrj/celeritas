@@ -38,7 +38,6 @@ BIHBuilder::BIHBuilder(Storage* storage, Input inp)
     , axes_{&storage->axes}
     , bounding_planes_{&storage->bounding_planes}
     , children_{&storage->children}
-    , fast_bboxes_{&storage->fast_bboxes}
     , leaf_nodes_{&storage->leaf_nodes}
     , inp_{inp}
 {
@@ -151,12 +150,10 @@ BIHBuilder::operator()(VecBBox&& bboxes,
     std::vector<Axis> axes;
     std::vector<fast_real_type> bounding_planes;
     std::vector<BIHNodeId> children;
-    std::vector<FastBBox> fast_bboxes;
 
     axes.reserve(internal.size());
     bounding_planes.reserve(2 * internal.size());
     children.reserve(2 * internal.size());
-    fast_bboxes.reserve(2 * internal.size());
 
     for (auto const& node : internal)
     {
@@ -167,7 +164,6 @@ BIHBuilder::operator()(VecBBox&& bboxes,
             auto const& edge = node.edges[side];
             bounding_planes.push_back(edge.bounding_plane_pos);
             children.push_back(edge.child);
-            fast_bboxes.push_back(edge.bbox);
         }
     }
 
@@ -175,7 +171,6 @@ BIHBuilder::operator()(VecBBox&& bboxes,
     bounding_planes_.insert_back(bounding_planes.begin(),
                                  bounding_planes.end());
     children_.insert_back(children.begin(), children.end());
-    fast_bboxes_.insert_back(fast_bboxes.begin(), fast_bboxes.end());
     tree.node_bboxes = ItemMap<BIHNodeId, FastBBoxId>(
         node_bboxes_.insert_back(node_bboxes.begin(), node_bboxes.end()));
 

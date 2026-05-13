@@ -112,7 +112,6 @@ struct BIHTreeData
     Items<Axis> axes;
     Items<fast_real_type> bounding_planes;
     Items<BIHNodeId> children;
-    Items<FastBBox> fast_bboxes;
     Items<detail::BIHLeafNode> leaf_nodes;
 
     //! True if assigned
@@ -123,8 +122,7 @@ struct BIHTreeData
                && !node_bboxes.empty() && !leaf_nodes.empty()
                && node_bboxes.size() == axes.size() + leaf_nodes.size()
                && 2 * axes.size() == bounding_planes.size()
-               && 2 * axes.size() == children.size()
-               && 2 * axes.size() == fast_bboxes.size();
+               && 2 * axes.size() == children.size();
     }
 
     //! Assign from another set of data
@@ -137,7 +135,6 @@ struct BIHTreeData
         axes = other.axes;
         bounding_planes = other.bounding_planes;
         children = other.children;
-        fast_bboxes = other.fast_bboxes;
         leaf_nodes = other.leaf_nodes;
 
         CELER_ENSURE(static_cast<bool>(*this) == static_cast<bool>(other));
