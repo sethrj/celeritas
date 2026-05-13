@@ -146,29 +146,32 @@ BIHIntersectingVolFinder::operator()(BIHIntersectingVolFinder::Ray ray,
         stack.pop();
         int ax = to_int(node.axis());
 
-        // Guess the better edge to traverse first: unrolled with loads for
-        // GPU performance
-        BIHNodeId first_child = node.child(Side::left);
+        // Prefetch edge positions and children
         fast_real_type left_pos = node.bounding_plane_pos(Side::left);
-        BIHNodeId second_child = node.child(Side::right);
         fast_real_type right_pos = node.bounding_plane_pos(Side::right);
+        BIHNodeId first_child = node.child(Side::left);
+        BIHNodeId second_child = node.child(Side::right);
 
-        bool skip_first = (ray.dir[ax] >= 0) && (ray.pos[ax] > left_pos);
-        bool skip_second = (ray.dir[ax] <= 0) && (ray.pos[ax] < right_pos);
+        // Guess the better edge to traverse first
+        auto inv_dir = 1 / static_cast<fast_real_type>(ray.dir[ax]);
+        auto pos = static_cast<fast_real_type>(ray.pos[ax]);
+        fast_real_type first_isect{(left_pos - pos) * inv_dir};
+        fast_real_type second_isect{(right_pos - pos) * inv_dir};
 
-        if (ray.pos[ax] > right_pos)
+        if (inv_dir < 0)
         {
+            trivial_swap(first_isect, second_isect);
             trivial_swap(first_child, second_child);
-            trivial_swap(skip_first, skip_second);
         }
 
-        // Choose the next node on the basis of which edges are hits
-        if (!skip_second)
+        if (second_isect < intersection.distance)
         {
+            // Further half-space is intersected
             stack.push(second_child);
         }
-        if (!skip_first)
+        if (first_isect > 0)
         {
+            // Closer half-space is intersected (try first)
             stack.push(first_child);
         }
     }
