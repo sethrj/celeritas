@@ -34,7 +34,10 @@ namespace detail
 BIHBuilder::BIHBuilder(Storage* storage, Input inp)
     : bboxes_{&storage->bboxes}
     , local_volume_ids_{&storage->local_volume_ids}
-    , internal_nodes_{&storage->internal_nodes}
+    , axes_{&storage->axes}
+    , bounding_planes_{&storage->bounding_planes}
+    , children_{&storage->children}
+    , fast_bboxes_{&storage->fast_bboxes}
     , leaf_nodes_{&storage->leaf_nodes}
     , inp_{inp}
 {
@@ -138,8 +141,35 @@ BIHBuilder::operator()(VecBBox&& bboxes,
     }
 
     // Add nodes to linearized data structure
-    tree.internal_nodes
-        = internal_nodes_.insert_back(internal.begin(), internal.end());
+    std::vector<Axis> axes;
+    std::vector<fast_real_type> bounding_planes;
+    std::vector<BIHNodeId> children;
+    std::vector<FastBBox> fast_bboxes;
+
+    axes.reserve(internal.size());
+    bounding_planes.reserve(2 * internal.size());
+    children.reserve(2 * internal.size());
+    fast_bboxes.reserve(2 * internal.size());
+
+    for (auto const& node : internal)
+    {
+        axes.push_back(node.axis);
+
+        for (auto side : range(BihSide::size_))
+        {
+            auto const& edge = node.edges[side];
+            bounding_planes.push_back(edge.bounding_plane_pos);
+            children.push_back(edge.child);
+            fast_bboxes.push_back(edge.bbox);
+        }
+    }
+
+    tree.internal_nodes = axes_.insert_back(axes.begin(), axes.end());
+    bounding_planes_.insert_back(bounding_planes.begin(),
+                                 bounding_planes.end());
+    children_.insert_back(children.begin(), children.end());
+    fast_bboxes_.insert_back(fast_bboxes.begin(), fast_bboxes.end());
+
     ItemRange<BIHLeafNode> leaf_node_ids
         = leaf_nodes_.insert_back(leaf.begin(), leaf.end());
 

@@ -106,8 +106,8 @@ struct BIHTreeRecord
     //! All bounding boxes managed by the BIH
     ItemMap<LocalVolumeId, FastBBoxId> bboxes;
 
-    //! Internal (branch) nodes, the first being the root
-    ItemRange<BIHInternalNode> internal_nodes;
+    //! Internal-node slots, the first being the root
+    ItemRange<Axis> internal_nodes;
 
     //! Add to BIHNodeId of leaf node to get ItemId<BIHLeafNodeId>
     node_difference_type first_leaf_node_id{};
@@ -141,15 +141,21 @@ struct BIHTreeData
     // Low-level storage
     Items<FastBBox> bboxes;
     Items<LocalVolumeId> local_volume_ids;
-    Items<detail::BIHInternalNode> internal_nodes;
+    Items<Axis> axes;
+    Items<fast_real_type> bounding_planes;
+    Items<BIHNodeId> children;
+    Items<FastBBox> fast_bboxes;
     Items<detail::BIHLeafNode> leaf_nodes;
 
     //! True if assigned
     explicit CELER_FUNCTION operator bool() const
     {
-        // Note that internal_nodes may be empty for single-node trees
+        // Note that internal-node arrays may be empty for single-node trees
         return !bboxes.empty() && !local_volume_ids.empty()
-               && !leaf_nodes.empty();
+               && !leaf_nodes.empty()
+               && 2 * axes.size() == bounding_planes.size()
+               && 2 * axes.size() == children.size()
+               && 2 * axes.size() == fast_bboxes.size();
     }
 
     //! Assign from another set of data
@@ -158,7 +164,10 @@ struct BIHTreeData
     {
         bboxes = other.bboxes;
         local_volume_ids = other.local_volume_ids;
-        internal_nodes = other.internal_nodes;
+        axes = other.axes;
+        bounding_planes = other.bounding_planes;
+        children = other.children;
+        fast_bboxes = other.fast_bboxes;
         leaf_nodes = other.leaf_nodes;
 
         CELER_ENSURE(static_cast<bool>(*this) == static_cast<bool>(other));

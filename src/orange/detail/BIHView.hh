@@ -24,11 +24,12 @@ class BIHInternalNodeView
     //!@{
     //! \name Type aliases
     using Side = BihSide;
+    using Storage = NativeCRef<BIHTreeData>;
     //!@}
 
-    // Construct from internal node data
-    inline CELER_FUNCTION explicit BIHInternalNodeView(
-        BIHInternalNode const& node);
+    // Construct from internal-node slot and storage data
+    inline CELER_FUNCTION explicit BIHInternalNodeView(ItemId<Axis> node,
+                                                       Storage const& storage);
 
     // Get partition axis
     inline CELER_FUNCTION Axis axis() const;
@@ -43,7 +44,12 @@ class BIHInternalNodeView
     inline CELER_FUNCTION fast_real_type bounding_plane_pos(Side side) const;
 
   private:
-    BIHInternalNode const& node_;
+    // Get side-dependent offset into per-edge arrays
+    inline CELER_FUNCTION size_type side_offset(Side side) const;
+
+  private:
+    ItemId<Axis> node_;
+    Storage const& storage_;
 };
 
 //---------------------------------------------------------------------------//
@@ -99,13 +105,14 @@ class BIHView
 // INLINE DEFINITIONS
 //---------------------------------------------------------------------------//
 /*!
- * Construct from an internal node.
+ * Construct from an internal-node slot.
  */
 CELER_FUNCTION
-BIHInternalNodeView::BIHInternalNodeView(BIHInternalNode const& node)
-    : node_(node)
+BIHInternalNodeView::BIHInternalNodeView(ItemId<Axis> node,
+                                         Storage const& storage)
+    : node_(node), storage_(storage)
 {
-    CELER_EXPECT(node_);
+    CELER_EXPECT(node_ < storage_.axes.size());
 }
 
 //---------------------------------------------------------------------------//
@@ -114,7 +121,7 @@ BIHInternalNodeView::BIHInternalNodeView(BIHInternalNode const& node)
  */
 CELER_FUNCTION Axis BIHInternalNodeView::axis() const
 {
-    return node_.axis;
+    return storage_.axes[node_];
 }
 
 //---------------------------------------------------------------------------//
@@ -124,7 +131,7 @@ CELER_FUNCTION Axis BIHInternalNodeView::axis() const
 CELER_FUNCTION BIHNodeId
 BIHInternalNodeView::child(BIHInternalNodeView::Side side) const
 {
-    return node_.edges[side].child;
+    return storage_.children[id_cast<ItemId<BIHNodeId>>(this->side_offset(side))];
 }
 
 //---------------------------------------------------------------------------//
@@ -134,7 +141,8 @@ BIHInternalNodeView::child(BIHInternalNodeView::Side side) const
 CELER_FUNCTION FastBBox const&
 BIHInternalNodeView::bbox(BIHInternalNodeView::Side side) const
 {
-    return node_.edges[side].bbox;
+    return storage_
+        .fast_bboxes[id_cast<ItemId<FastBBox>>(this->side_offset(side))];
 }
 
 //---------------------------------------------------------------------------//
@@ -144,7 +152,19 @@ BIHInternalNodeView::bbox(BIHInternalNodeView::Side side) const
 CELER_FUNCTION fast_real_type
 BIHInternalNodeView::bounding_plane_pos(BIHInternalNodeView::Side side) const
 {
-    return node_.edges[side].bounding_plane_pos;
+    return storage_.bounding_planes[id_cast<ItemId<fast_real_type>>(
+        this->side_offset(side))];
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Get side-dependent offset into per-edge arrays.
+ */
+CELER_FUNCTION size_type
+BIHInternalNodeView::side_offset(BIHInternalNodeView::Side side) const
+{
+    CELER_EXPECT(side < Side::size_);
+    return 2 * node_.unchecked_get() + static_cast<size_type>(side);
 }
 
 //---------------------------------------------------------------------------//
@@ -176,8 +196,8 @@ CELER_FUNCTION
 BIHInternalNodeView BIHView::inner_node(BIHNodeId id) const
 {
     CELER_EXPECT(this->is_internal(id));
-    return BIHInternalNodeView{
-        storage_.internal_nodes[tree_.internal_nodes[id.unchecked_get()]]};
+    return BIHInternalNodeView{tree_.internal_nodes[id.unchecked_get()],
+                               storage_};
 }
 
 //---------------------------------------------------------------------------//

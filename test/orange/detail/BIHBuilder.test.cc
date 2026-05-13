@@ -118,6 +118,12 @@ TEST_F(BIHBuilderTest, basic)
     ASSERT_EQ(4, view.num_leaf_nodes());
     EXPECT_VEC_EQ(VecInt({0}), id_to_int(view.inf_vol_ids()));
 
+    auto const& bih_data = store_.host_ref();
+    EXPECT_EQ(view.num_internal_nodes(), bih_data.axes.size());
+    EXPECT_EQ(2 * bih_data.axes.size(), bih_data.bounding_planes.size());
+    EXPECT_EQ(2 * bih_data.axes.size(), bih_data.children.size());
+    EXPECT_EQ(2 * bih_data.axes.size(), bih_data.fast_bboxes.size());
+
     // N0, I0
     {
         auto const& node = view.inner_node(BIHNodeId{0});

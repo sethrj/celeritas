@@ -92,7 +92,10 @@ class BIHBuilder
 
     CollectionBuilder<FastBBox> bboxes_;
     CollectionBuilder<LocalVolumeId> local_volume_ids_;
-    CollectionBuilder<BIHInternalNode> internal_nodes_;
+    CollectionBuilder<Axis> axes_;
+    CollectionBuilder<fast_real_type> bounding_planes_;
+    CollectionBuilder<BIHNodeId> children_;
+    CollectionBuilder<FastBBox> fast_bboxes_;
     CollectionBuilder<BIHLeafNode> leaf_nodes_;
 
     Input inp_;
