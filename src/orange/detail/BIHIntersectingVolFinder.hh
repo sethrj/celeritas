@@ -202,10 +202,14 @@ BIHIntersectingVolFinder::visit_leaf(BIHNodeId leaf_node_id,
                                      F&& visit_vol) const -> Intersection
 {
     auto volumes = view_.leaf_vol_ids(leaf_node_id);
+    // The leaf node's bbox has already been checked if there's only a single
+    // volume; don't duplicate the work
+    bool const single_volume = volumes.size() == 1;
 
     for (auto id : volumes)
     {
-        if (this->hit_bbox(view_.bbox(id), ray, min_intersection.distance))
+        if (single_volume
+            || this->hit_bbox(view_.bbox(id), ray, min_intersection.distance))
         {
             auto intersection = visit_vol(id, min_intersection.distance);
             if (intersection)
