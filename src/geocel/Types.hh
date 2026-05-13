@@ -7,6 +7,8 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
+#include <cstdint>
+
 #include "corecel/OpaqueId.hh"
 #include "corecel/Types.hh"
 #include "corecel/cont/Array.hh"
@@ -71,7 +73,7 @@ using ImplVolumeId = OpaqueId<struct ImplVolumeId_>;
 /*!
  * Enumeration for cartesian axes.
  */
-enum class Axis
+enum class Axis : std::int_fast8_t
 {
     x,  //!< X axis/I index coordinate
     y,  //!< Y axis/J index coordinate
