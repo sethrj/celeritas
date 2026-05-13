@@ -18,6 +18,15 @@ namespace celeritas
 {
 namespace detail
 {
+//---------------------------------------------------------------------------//
+//! Side of a BIH internal-node partition
+enum class BihSide
+{
+    left,
+    right,
+    size_
+};
+
 //---------------------------------------------------------------------------//!
 // The maximum depth of the BIH tree (single leaf node is 1)
 inline constexpr size_type max_bih_depth = 18;
@@ -47,19 +56,13 @@ struct BIHInternalNode
         FastBBox bbox;
     };
 
-    enum class Side
-    {
-        left,
-        right,
-        size_
-    };
-
     Axis axis;  //!< Axis that the partition is performed on
-    EnumArray<Side, Edge> edges;  //!< Left/right edges
+    EnumArray<BihSide, Edge> edges;  //!< Left/right edges
 
     explicit CELER_FUNCTION operator bool() const
     {
-        return this->edges[Side::left].child && this->edges[Side::right].child;
+        return this->edges[BihSide::left].child
+               && this->edges[BihSide::right].child;
     }
 };
 

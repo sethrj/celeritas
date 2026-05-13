@@ -43,7 +43,7 @@ make_bih_structure_json(detail::BIHTreeRecord const& tree,
     for (auto i : range(BIHNodeId{view.num_internal_nodes()}))
     {
         auto const& inner = view.inner_node(i);
-        using Side = detail::BIHInternalNode::Side;
+        using Side = detail::BihSide;
 
         out.push_back(json::array(
             {"i",

@@ -37,7 +37,7 @@ class BIHPartitioner
     using VecBBox = std::vector<FastBBox>;
     using VecReal3 = std::vector<Real3>;
     using VecIndices = std::vector<LocalVolumeId>;
-    using Side = BIHInternalNode::Side;
+    using Side = BihSide;
 
     //! Output struct specifying the indices and bboxes of the left and right
     //! sides of the partition

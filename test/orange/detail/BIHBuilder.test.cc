@@ -34,7 +34,7 @@ class BIHBuilderTest : public ::celeritas::test::Test
     using VecFastBbox = BIHBuilder::VecBBox;
     using Input = BIHBuilder::Input;
     using VecInt = std::vector<int>;
-    using Side = BIHInternalNode::Side;
+    using Side = BihSide;
     using Real3 = FastBBox::Real3;
 
   protected:

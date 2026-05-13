@@ -180,7 +180,7 @@ void BIHBuilder::construct_tree(VecIndices const& indices,
 {
     CELER_EXPECT(current_depth < inp_.depth_limit);
 
-    using Side = BIHInternalNode::Side;
+    using Side = BihSide;
 
     ++current_depth;
     auto current_index = nodes->size();

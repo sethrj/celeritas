@@ -23,7 +23,7 @@ class BIHInternalNodeView
   public:
     //!@{
     //! \name Type aliases
-    using Side = BIHInternalNode::Side;
+    using Side = BihSide;
     //!@}
 
     // Construct from internal node data
