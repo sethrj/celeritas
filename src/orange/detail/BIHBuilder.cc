@@ -33,7 +33,6 @@ namespace detail
  */
 BIHBuilder::BIHBuilder(Storage* storage, Input inp)
     : bboxes_{&storage->bboxes}
-    , node_bboxes_{&storage->node_bboxes}
     , local_volume_ids_{&storage->local_volume_ids}
     , axes_{&storage->axes}
     , bounding_planes_{&storage->bounding_planes}
@@ -112,7 +111,7 @@ BIHBuilder::operator()(VecBBox&& bboxes,
 
     BIHTreeRecord tree;
 
-    tree.bboxes = ItemMap<LocalVolumeId, FastBBoxId>(
+    tree.vol_bboxes = ItemMap<LocalVolumeId, FastBBoxId>(
         bboxes_.insert_back(temp_.bboxes.begin(), temp_.bboxes.end()));
 
     VecNodeBboxes node_bboxes;
@@ -172,7 +171,7 @@ BIHBuilder::operator()(VecBBox&& bboxes,
                                  bounding_planes.end());
     children_.insert_back(children.begin(), children.end());
     tree.node_bboxes = ItemMap<BIHNodeId, FastBBoxId>(
-        node_bboxes_.insert_back(node_bboxes.begin(), node_bboxes.end()));
+        bboxes_.insert_back(node_bboxes.begin(), node_bboxes.end()));
 
     ItemRange<BIHLeafNode> leaf_node_ids
         = leaf_nodes_.insert_back(leaf.begin(), leaf.end());

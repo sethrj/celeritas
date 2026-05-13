@@ -125,7 +125,6 @@ class BIHBuilder
     Temporaries temp_;
 
     CollectionBuilder<FastBBox> bboxes_;
-    CollectionBuilder<FastBBox> node_bboxes_;
     CollectionBuilder<LocalVolumeId> local_volume_ids_;
     CollectionBuilder<Axis> axes_;
     CollectionBuilder<fast_real_type> bounding_planes_;

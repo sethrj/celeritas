@@ -141,7 +141,7 @@ BIHInternalNodeView::child(BIHInternalNodeView::Side side) const
 CELER_FUNCTION FastBBox const& BIHView::bbox(BIHNodeId id) const
 {
     CELER_EXPECT(id < this->num_nodes());
-    return storage_.node_bboxes[tree_.node_bboxes[id]];
+    return storage_.bboxes[tree_.node_bboxes[id]];
 }
 
 //---------------------------------------------------------------------------//
@@ -232,8 +232,8 @@ CELER_FUNCTION auto BIHView::num_nodes() const -> size_type
  */
 CELER_FUNCTION FastBBox const& BIHView::bbox(LocalVolumeId vol_id) const
 {
-    CELER_EXPECT(vol_id.unchecked_get() < tree_.bboxes.size());
-    return storage_.bboxes[tree_.bboxes[vol_id]];
+    CELER_EXPECT(vol_id.unchecked_get() < tree_.vol_bboxes.size());
+    return storage_.bboxes[tree_.vol_bboxes[vol_id]];
 }
 
 //---------------------------------------------------------------------------//
