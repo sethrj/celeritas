@@ -7,6 +7,8 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
+#include <type_traits>
+
 #include "corecel/Types.hh"
 #include "corecel/cont/EnumArray.hh"
 #include "corecel/data/Collection.hh"
@@ -87,14 +89,16 @@ struct BIHTreeRecord
     struct Metadata
     {
         //! The number of finite bounding boxes in the tree
-        size_type num_finite_bboxes{};
+        LocalVolumeId::size_type num_finite_bboxes{};
         //! The number of infinite bounding boxes, i.e., those not included in
         //! the tree itself.
-        size_type num_infinite_bboxes{};
+        LocalVolumeId::size_type num_infinite_bboxes{};
         //! The depth of the most embedded leaf node. This has a value of 1
         //! when the root node is a leaf.
         size_type depth{};
     };
+
+    using node_difference_type = BIHNodeId::difference_type;
 
     //// DATA ////
 
@@ -104,8 +108,10 @@ struct BIHTreeRecord
     //! Internal (branch) nodes, the first being the root
     ItemRange<BIHInternalNode> internal_nodes;
 
-    //! Leaf nodes
-    ItemRange<BIHLeafNode> leaf_nodes;
+    //! Add to BIHNodeId of leaf node to get ItemId<BIHLeafNodeId>
+    node_difference_type first_leaf_node_id{};
+    //! Number of leaf nodes
+    size_type num_leaf_nodes{};
 
     //! Local volumes that have infinite bounding boxes
     ItemRange<LocalVolumeId> inf_vol_ids;
@@ -117,19 +123,7 @@ struct BIHTreeRecord
 
     explicit CELER_FUNCTION operator bool() const
     {
-        if (!internal_nodes.empty())
-        {
-            return !bboxes.empty() && !leaf_nodes.empty();
-        }
-        else
-        {
-            // Degenerate single leaf node case. This occurs when a tree
-            // contains either:
-            // a) a single volume
-            // b) multiple non-partitionable volumes,
-            // b) only infinite volumes.
-            return !bboxes.empty() && leaf_nodes.size() == 1;
-        }
+        return !bboxes.empty() && num_leaf_nodes > 0;
     }
 };
 

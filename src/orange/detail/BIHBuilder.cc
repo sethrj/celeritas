@@ -118,30 +118,37 @@ BIHBuilder::operator()(VecBBox&& bboxes,
     // The depth of the most embedded node (where 1 is the root node), to be
     // calculated during the recursive construction process
     size_type depth = 0;
+    std::vector<BIHInternalNode> internal;
+    std::vector<BIHLeafNode> leaf;
 
     if (!indices.empty())
     {
         // Construct the tree recursively
         VecNodes nodes;
         this->construct_tree(indices, &nodes, 0, depth);
-        auto [internal_nodes, leaf_nodes]
-            = this->arrange_nodes(std::move(nodes));
-
-        tree.internal_nodes = internal_nodes_.insert_back(
-            internal_nodes.begin(), internal_nodes.end());
-
-        tree.leaf_nodes
-            = leaf_nodes_.insert_back(leaf_nodes.begin(), leaf_nodes.end());
+        // Unpack into internal + leaf nodes
+        std::tie(internal, leaf) = this->arrange_nodes(std::move(nodes));
     }
     else
     {
         // Degenerate case where all bounding boxes are infinite. Create a
         // single empty leaf node, so that the existence of leaf nodes does not
         // need to be checked at runtime.
-        BIHLeafNode const empty_nodes[] = {{}};
-        tree.leaf_nodes = leaf_nodes_.insert_back(std::begin(empty_nodes),
-                                                  std::end(empty_nodes));
+        leaf = {{}};
     }
+
+    // Add nodes to linearized data structure
+    tree.internal_nodes
+        = internal_nodes_.insert_back(internal.begin(), internal.end());
+    ItemRange<BIHLeafNode> leaf_node_ids
+        = leaf_nodes_.insert_back(leaf.begin(), leaf.end());
+
+    // Convert leaf node range to offset: for universe 0 it will be
+    // negative(-num_internal_nodes); but may be positive
+    using node_diff_t = BIHTreeRecord::node_difference_type;
+    tree.first_leaf_node_id = static_cast<node_diff_t>(**leaf_node_ids.begin())
+                              - tree.internal_nodes.size();
+    tree.num_leaf_nodes = leaf.size();
 
     // Assign metadata for diagnostic purposes
     BIHTreeRecord::Metadata md;

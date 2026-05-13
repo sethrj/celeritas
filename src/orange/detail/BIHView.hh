@@ -195,7 +195,7 @@ CELER_FUNCTION auto BIHView::num_internal_nodes() const -> size_type
  */
 CELER_FUNCTION auto BIHView::num_leaf_nodes() const -> size_type
 {
-    return tree_.leaf_nodes.size();
+    return tree_.num_leaf_nodes;
 }
 
 //---------------------------------------------------------------------------//
@@ -204,7 +204,7 @@ CELER_FUNCTION auto BIHView::num_leaf_nodes() const -> size_type
  */
 CELER_FUNCTION auto BIHView::num_nodes() const -> size_type
 {
-    return tree_.internal_nodes.size() + tree_.leaf_nodes.size();
+    return tree_.internal_nodes.size() + tree_.num_leaf_nodes;
 }
 
 //---------------------------------------------------------------------------//
@@ -225,10 +225,9 @@ CELER_FUNCTION auto BIHView::leaf_vol_ids(BIHNodeId id) const -> SpanLocalVol
 {
     CELER_EXPECT(id >= BIHNodeId{this->num_internal_nodes()}
                  && id < this->num_nodes());
-    ItemId<BIHLeafNode> leaf_id
-        = tree_.leaf_nodes[*id - this->num_internal_nodes()];
+    auto leaf_id = id_cast<ItemId<BIHLeafNode>>(*id + tree_.first_leaf_node_id);
     CELER_ASSERT(leaf_id < storage_.leaf_nodes.size());
-    auto&& leaf_node = storage_.leaf_nodes[leaf_id];
+    auto const& leaf_node = storage_.leaf_nodes[leaf_id];
     return storage_.local_volume_ids[leaf_node.vol_ids];
 }
 
