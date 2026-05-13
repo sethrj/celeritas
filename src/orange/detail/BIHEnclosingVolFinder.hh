@@ -134,13 +134,21 @@ BIHEnclosingVolFinder::operator()(Real3 const& pos, F&& is_inside_vol) const
  */
 template<class F>
 CELER_FUNCTION LocalVolumeId BIHEnclosingVolFinder::visit_leaf(
-    BIHNodeId leaf_id, Real3 const& pos, F&& is_inside) const
+    BIHNodeId leaf_node_id, Real3 const& pos, F&& is_inside_volume) const
 {
-    for (auto id : view_.leaf_vol_ids(leaf_id))
+    auto volumes = view_.leaf_vol_ids(leaf_node_id);
+    // The leaf node's bbox has already been checked if there's only a single
+    // volume; don't duplicate the work
+    bool const single_volume = volumes.size() == 1;
+
+    for (auto id : volumes)
     {
-        if (this->visit_bbox(id, pos) && is_inside(id))
+        if (single_volume || is_inside(view_.bbox(id), pos))
         {
-            return id;
+            if (is_inside_volume(id))
+            {
+                return id;
+            }
         }
     }
     return LocalVolumeId{};
@@ -162,17 +170,6 @@ BIHEnclosingVolFinder::visit_inf_vols(F&& is_inside) const
         }
     }
     return LocalVolumeId{};
-}
-
-//---------------------------------------------------------------------------//
-/*!
- * Determinate if a single bbox contains the point.
- */
-CELER_FUNCTION
-bool BIHEnclosingVolFinder::visit_bbox(LocalVolumeId const& id,
-                                       Real3 const& point) const
-{
-    return is_inside(view_.bbox(id), point);
 }
 
 //---------------------------------------------------------------------------//
