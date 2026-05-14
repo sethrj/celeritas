@@ -99,6 +99,11 @@ BIHEnclosingVolFinder::operator()(Real3 const& pos, F&& is_inside_vol) const
 
     while (!stack.empty())
     {
+        if (!is_inside(view_.bbox(stack.top()), pos))
+        {
+            stack.pop();
+            continue;
+        }
         if (!view_.is_internal(stack.top()))
         {
             auto id = this->visit_leaf(stack.top(), pos, is_inside_vol);
@@ -113,12 +118,22 @@ BIHEnclosingVolFinder::operator()(Real3 const& pos, F&& is_inside_vol) const
         {
             auto const& node = view_.inner_node(stack.top());
             stack.pop();
-            for (auto s : {Side::right, Side::left})
+            int ax = to_int(node.axis());
+
+            // Prefetch edge positions and children
+            fast_real_type left_pos = node.bounding_plane_pos(Side::left);
+            fast_real_type right_pos = node.bounding_plane_pos(Side::right);
+            fast_real_type ax_pos = pos[ax];
+            BIHNodeId left_child = node.child(Side::left);
+            BIHNodeId right_child = node.child(Side::right);
+
+            if (ax_pos > right_pos)
             {
-                if (is_inside(view_.bbox(node.child(s)), pos))
-                {
-                    stack.push(node.child(s));
-                }
+                stack.push(right_child);
+            }
+            if (ax_pos < left_pos)
+            {
+                stack.push(left_child);
             }
         }
     }
