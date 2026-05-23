@@ -55,6 +55,57 @@ CELER_FUNCTION void PropagateExecutor::operator()(CoreTrackView& track)
     }
 }
 
+class PropagateThreadExecutor
+{
+  public:
+    //!@{
+    //! \name Type aliases
+    using ParamsPtr = CoreParamsPtr<MemSpace::native>;
+    using StatePtr = CoreStatePtr<MemSpace::native>;
+    using Applier = AppliesValidVolumetric;
+    //!@}
+
+  public:
+    //! Construct with condition and operator
+    CELER_FUNCTION
+    PropagateThreadExecutor(ParamsPtr params,
+                            StatePtr state,
+                            Applier&& applies,
+                            PropagateExecutor&& execute_track)
+        : params_{params}
+        , state_{state}
+        , applies_{celeritas::move(applies)}
+        , execute_track_{celeritas::move(execute_track)}
+    {
+    }
+
+    //! Launch the given thread if the track meets the condition
+    CELER_FUNCTION void operator()(TrackSlotId ts)
+    {
+        CELER_EXPECT(ts < state_->size());
+        CoreTrackView track(*params_, *state_, ts);
+        if (!applies_(track))
+        {
+            return;
+        }
+
+        return execute_track_(track);
+    }
+
+    //! Call the underlying function using the thread index
+    CELER_FORCEINLINE_FUNCTION void operator()(ThreadId thread)
+    {
+        // For optical photons, thread index maps exactly to
+        return (*this)(TrackSlotId{thread.unchecked_get()});
+    }
+
+  private:
+    ParamsPtr const params_;
+    StatePtr const state_;
+    Applier applies_;
+    PropagateExecutor execute_track_;
+};
+
 //---------------------------------------------------------------------------//
 }  // namespace detail
 }  // namespace optical
