@@ -49,23 +49,33 @@ _apptainer_fnal() {
 alias apptainer-fnal=_apptainer_fnal
 # END APPTAINER SCRIPT
 
+_mkscratch() {
+  _scratch="$1"
+  if test -d "${_scratch}"; then
+    return 0
+  fi
+
+  celerlog info "Creating scratch directory at ${_scratch}"
+  mkdir -p "${_scratch}" || return $?
+  chmod 700 "${_scratch}" || return $?
+}
+
 # Reduce I/O metadata overhead by avoiding language translation lookups
 export LC_ALL=C
 
-# Set default scratchdir; /scratch should exist according to excl docs
+# Set default scratchdir in higher-performance local dir;
+# (/scratch should exist according to excl docs, if the node is set up right)
 export SCRATCHDIR="${SCRATCHDIR:-/scratch/$USER}"
+_mkscratch $SCRATCHDIR || (
+  _tmp="$(mktemp -d)"
+  celerlog error "Could not create scratch dir: setting to ${_tmp}"
+  export SCRATCHDIR=${_tmp}
+)
 if [ -n "${APPTAINER_NAME}" ]; then
   export SCRATCHDIR="${SCRATCHDIR}/${APPTAINER_NAME%%:*}"
 fi
 for _d in build install cache; do
-  # Create build/install in higher-performance local-but-persistent dir
-  _scratch="$SCRATCHDIR/$_d"
-  if ! test -d "${_scratch}"; then
-    celerlog info "Creating scratch directory at ${_scratch}"
-    mkdir -p "${_scratch}" || return $?
-    chmod 700 "${_scratch}" || return $?
-  fi
-  unset _scratch
+  _mkscratch "$SCRATCHDIR/$_d"
 done
 export XDG_CACHE_HOME="${SCRATCHDIR}/cache"
 
