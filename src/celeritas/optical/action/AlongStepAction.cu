@@ -7,6 +7,7 @@
 #include "AlongStepAction.hh"
 
 #include "corecel/sys/KernelParamCalculator.device.hh"
+#include "corecel/sys/WarpMask.hh"
 #include "celeritas/optical/CoreParams.hh"
 #include "celeritas/optical/CoreState.hh"
 
@@ -26,13 +27,13 @@ __global__ void __launch_bounds__(CELERITAS_MAX_BLOCK_SIZE)
                       detail::PropagateThreadExecutor execute_thread)
 {
     auto tid = KernelParamCalculator::thread_id();
-    detail::warp_mask_uint mask
-        = __ballot_sync(detail::full_warp_mask, tid < thread_range.size());
+    warp_mask_uint mask
+        = ballot_sync(full_warp_mask, tid < thread_range.size());
 
-#if CELER_DEVICE_COMPILE
-    if (mask != detail::full_warp_mask)
+#if CELER_DEVICE_COMPILE && CELERITAS_DEBUG
+    if (mask != full_warp_mask || tid == ThreadId{0})
     {
-        printf("launch %03u: %0x\n",
+        printf("launch %04u: 0x%08x\n",
                static_cast<unsigned int>(*tid),
                static_cast<unsigned int>(mask));
     }
@@ -41,10 +42,10 @@ __global__ void __launch_bounds__(CELERITAS_MAX_BLOCK_SIZE)
     if (!(tid < thread_range.size()))
         return;
 
-#if CELER_DEVICE_COMPILE
-    if (mask != full_warp_mask)
+#if CELER_DEVICE_COMPILE && CELERITAS_DEBUG
+    if (mask != full_warp_mask || tid == ThreadId{0})
     {
-        printf("after early return %03u: %0x\n",
+        printf("after early return %04u: 0x%08x\n",
                static_cast<unsigned int>(*tid),
                static_cast<unsigned int>(mask));
     }

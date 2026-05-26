@@ -8,6 +8,7 @@
 
 #include "corecel/Assert.hh"
 #include "corecel/Macros.hh"
+#include "corecel/sys/WarpMask.hh"
 #include "celeritas/Types.hh"
 #include "celeritas/optical/CoreTrackView.hh"
 #include "celeritas/optical/SimTrackView.hh"
@@ -19,39 +20,6 @@ namespace optical
 {
 namespace detail
 {
-//---------------------------------------------------------------------------//
-// TODO: as per HIP 7 this should be a kernel template parameter based on
-// device properties, or perhaps a configuration compiler definition
-constexpr unsigned int warp_size = 32;
-using warp_mask_uint = std::uint32_t;
-constexpr warp_mask_uint full_warp_mask = ~(warp_mask_uint{0});
-
-#if CELERITAS_USE_DEVICE
-CELER_FORCEINLINE __device__ void syncwarp(warp_mask_uint mask = full_mask)
-{
-    return __syncwarp(mask);
-}
-
-CELER_FORCEINLINE __device__ void
-ballot_sync(warp_mask_uint mask, int predicate)
-{
-    return __ballot_sync(mask);
-}
-#else
-CELER_FORCEINLINE_FUNCTION void syncwarp(warp_mask_uint = full_warp_mask) {}
-CELER_FORCEINLINE_FUNCTION warp_mask_uint ballot_sync(warp_mask_uint mask,
-                                                      int predicate)
-{
-    return mask & static_cast<bool>(predicate);
-}
-#endif
-
-#if CELERITAS_USE_DEVICE
-#    define CELER_DEVICE_IMPL(STMT) STMT
-#else
-#    define CELER_IF_DEVICE(STMT)
-#endif
-
 //---------------------------------------------------------------------------//
 /*!
  * Move a track to the next interaction or geometry boundary.
@@ -68,6 +36,15 @@ struct PropagateExecutor
 CELER_FUNCTION void
 PropagateExecutor::operator()(CoreTrackView& track, warp_mask_uint mask)
 {
+#if CELER_DEVICE_COMPILE && CELERITAS_DEBUG
+    if (mask != full_warp_mask || track.track_slot_id() == TrackSlotId{0})
+    {
+        printf("propagate main: %04u: 0x%08x\n",
+               static_cast<unsigned int>(*track.track_slot_id()),
+               static_cast<unsigned int>(mask));
+    }
+#endif
+
     auto&& sim = track.sim();
     CELER_ASSERT(sim.status() == TrackStatus::alive);
 
@@ -124,19 +101,19 @@ class PropagateThreadExecutor
         CoreTrackView track(*params_, *state_, ts);
         bool applies = applies_(track);
         mask = ballot_sync(mask, applies);
-        if (!applies)
+#if CELER_DEVICE_COMPILE && CELERITAS_DEBUG
+        if (mask != full_warp_mask || ts == TrackSlotId{0})
         {
-            return;
-        }
-#if CELER_DEVICE_COMPILE
-        if (mask != full_warp_mask)
-        {
-            printf("propagate %03u: %0x\n",
+            printf("propagate applies: %04u: 0x%08x\n",
                    static_cast<unsigned int>(*ts),
                    static_cast<unsigned int>(mask));
         }
 #endif
 
+        if (!applies)
+        {
+            return;
+        }
         return execute_track_(track, mask);
     }
 

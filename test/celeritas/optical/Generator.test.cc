@@ -273,10 +273,13 @@ TEST_F(DuneGeneratorTest, offload)
     // Enable action times
     osi_.problem.timers.action = true;
 
+    osi_.problem.capacity.tracks = 500;
+    // osi_.problem.limits.step_iters = 2;
+
     // Create host distributions and copy to generator
     optical::GeneratorDistributionData gdd;
     gdd.type = GeneratorType::scintillation;
-    gdd.num_photons = 4096;
+    gdd.num_photons = 500;
     gdd.primary = PrimaryId{123};
     gdd.step_length = 2.0 * units::centimeter;
     gdd.charge = units::ElementaryCharge{-1};

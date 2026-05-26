@@ -15,6 +15,7 @@
 #include "corecel/math/Algorithms.hh"
 #include "corecel/math/NumericLimits.hh"
 #include "corecel/sys/ThreadId.hh"
+#include "corecel/sys/WarpMask.hh"
 #include "geocel/Types.hh"
 
 #include "LevelStateAccessor.hh"
@@ -99,7 +100,9 @@ class OrangeTrackView
     //// OPERATIONS ////
 
     // Find the distance to the next boundary, up to and including a step
-    inline CELER_FUNCTION Propagation find_next_step(real_type max_step);
+    inline CELER_FUNCTION Propagation find_next_step(real_type max_step,
+                                                     warp_mask_uint mask
+                                                     = full_warp_mask);
 
     // Find the distance to the nearest boundary in any direction
     inline CELER_FUNCTION real_type find_safety();
@@ -633,15 +636,27 @@ CELER_FUNCTION Real3 OrangeTrackView::normal() const
  *
  * \todo Prohibit when GeoStatus::boundary_inc
  */
-CELER_FUNCTION Propagation OrangeTrackView::find_next_step(real_type next_step)
+CELER_FUNCTION Propagation OrangeTrackView::find_next_step(real_type next_step,
+                                                           warp_mask_uint mask)
 {
     CELER_EXPECT(next_step > 0);
+
+    mask = ballot_sync(mask, this->geo_status() != GeoStatus::boundary_inc);
+#if CELER_DEVICE_COMPILE && CELERITAS_DEBUG
+    if (mask != full_warp_mask || (blockIdx.x == 0 && threadIdx.x == 0))
+    {
+        printf("find_next_step %04u: 0x%08x\n",
+               static_cast<unsigned int>(blockIdx.x * blockDim.x + threadIdx.x),
+               static_cast<unsigned int>(mask));
+    }
+#endif
 
     if (CELER_UNLIKELY(this->geo_status() == GeoStatus::boundary_inc))
     {
         // On a boundary, headed in: next step is zero
         return {0, true};
     }
+    syncwarp(mask);
 
     // The level with minimum distance to intersection
     TrackerVisitor visit_tracker{params_};
@@ -653,8 +668,11 @@ CELER_FUNCTION Propagation OrangeTrackView::find_next_step(real_type next_step)
     // (i.e., lowest univ_id)
     // TODO: reverse the loop and use IsNotFurtherThan; this means smaller
     // distance checks that will eliminate work at the global level
-    for (auto ulev_id : range(this->univ_level() + 1))
+    auto ulev_id = UnivLevelId{0};
+    for (auto end_ulev_id = this->univ_level() + 1; ulev_id != end_ulev_id;
+         ++ulev_id)
     {
+        syncwarp(mask);
         // Find intersection for this local universe
         auto local_isect = visit_tracker(
             [local_state = this->make_local_state(ulev_id), next_step](
@@ -667,6 +685,12 @@ CELER_FUNCTION Propagation OrangeTrackView::find_next_step(real_type next_step)
             next_local_surf = local_isect.surface;
             next_ulev = ulev_id;
         }
+    }
+    for (auto end_ulev_id = UnivLevelId{params_.scalars.num_univ_levels};
+         ulev_id != end_ulev_id;
+         ++ulev_id)
+    {
+        syncwarp(mask);
     }
 
     this->next_step(next_step);
