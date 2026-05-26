@@ -11,6 +11,7 @@
 #include "celeritas/Types.hh"
 #include "celeritas/optical/CoreTrackView.hh"
 #include "celeritas/optical/SimTrackView.hh"
+#include "celeritas/optical/action/TrackSlotExecutor.hh"
 
 namespace celeritas
 {
@@ -19,6 +20,39 @@ namespace optical
 namespace detail
 {
 //---------------------------------------------------------------------------//
+// TODO: as per HIP 7 this should be a kernel template parameter based on
+// device properties, or perhaps a configuration compiler definition
+constexpr unsigned int warp_size = 32;
+using warp_mask_uint = std::uint32_t;
+constexpr warp_mask_uint full_warp_mask = ~(warp_mask_uint{0});
+
+#if CELERITAS_USE_DEVICE
+CELER_FORCEINLINE __device__ void syncwarp(warp_mask_uint mask = full_mask)
+{
+    return __syncwarp(mask);
+}
+
+CELER_FORCEINLINE __device__ void
+ballot_sync(warp_mask_uint mask, int predicate)
+{
+    return __ballot_sync(mask);
+}
+#else
+CELER_FORCEINLINE_FUNCTION void syncwarp(warp_mask_uint = full_warp_mask) {}
+CELER_FORCEINLINE_FUNCTION warp_mask_uint ballot_sync(warp_mask_uint mask,
+                                                      int predicate)
+{
+    return mask & static_cast<bool>(predicate);
+}
+#endif
+
+#if CELERITAS_USE_DEVICE
+#    define CELER_DEVICE_IMPL(STMT) STMT
+#else
+#    define CELER_IF_DEVICE(STMT)
+#endif
+
+//---------------------------------------------------------------------------//
 /*!
  * Move a track to the next interaction or geometry boundary.
  *
@@ -26,11 +60,13 @@ namespace detail
  */
 struct PropagateExecutor
 {
-    inline CELER_FUNCTION void operator()(CoreTrackView& track);
+    inline CELER_FUNCTION void
+    operator()(CoreTrackView& track, warp_mask_uint mask = full_warp_mask);
 };
 
 //---------------------------------------------------------------------------//
-CELER_FUNCTION void PropagateExecutor::operator()(CoreTrackView& track)
+CELER_FUNCTION void
+PropagateExecutor::operator()(CoreTrackView& track, warp_mask_uint mask)
 {
     auto&& sim = track.sim();
     CELER_ASSERT(sim.status() == TrackStatus::alive);
@@ -38,9 +74,11 @@ CELER_FUNCTION void PropagateExecutor::operator()(CoreTrackView& track)
     // Propagate up to the physics distance
     real_type step = sim.step_length();
     CELER_ASSERT(step > 0);
+    syncwarp(mask);
 
     auto&& geo = track.geometry();
     Propagation p = geo.find_next_step(step);
+    syncwarp(mask);
     if (p.boundary)
     {
         geo.move_to_boundary();
@@ -80,23 +118,34 @@ class PropagateThreadExecutor
     }
 
     //! Launch the given thread if the track meets the condition
-    CELER_FUNCTION void operator()(TrackSlotId ts)
+    CELER_FUNCTION void operator()(TrackSlotId ts, warp_mask_uint mask)
     {
         CELER_EXPECT(ts < state_->size());
         CoreTrackView track(*params_, *state_, ts);
-        if (!applies_(track))
+        bool applies = applies_(track);
+        mask = ballot_sync(mask, applies);
+        if (!applies)
         {
             return;
         }
+#if CELER_DEVICE_COMPILE
+        if (mask != full_warp_mask)
+        {
+            printf("propagate %03u: %0x\n",
+                   static_cast<unsigned int>(*ts),
+                   static_cast<unsigned int>(mask));
+        }
+#endif
 
-        return execute_track_(track);
+        return execute_track_(track, mask);
     }
 
     //! Call the underlying function using the thread index
-    CELER_FORCEINLINE_FUNCTION void operator()(ThreadId thread)
+    CELER_FORCEINLINE_FUNCTION void
+    operator()(ThreadId thread, warp_mask_uint mask = 0)
     {
         // For optical photons, thread index maps exactly to
-        return (*this)(TrackSlotId{thread.unchecked_get()});
+        return (*this)(TrackSlotId{*thread}, mask);
     }
 
   private:

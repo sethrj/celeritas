@@ -26,9 +26,31 @@ __global__ void __launch_bounds__(CELERITAS_MAX_BLOCK_SIZE)
                       detail::PropagateThreadExecutor execute_thread)
 {
     auto tid = KernelParamCalculator::thread_id();
+    detail::warp_mask_uint mask
+        = __ballot_sync(detail::full_warp_mask, tid < thread_range.size());
+
+#if CELER_DEVICE_COMPILE
+    if (mask != detail::full_warp_mask)
+    {
+        printf("launch %03u: %0x\n",
+               static_cast<unsigned int>(*tid),
+               static_cast<unsigned int>(mask));
+    }
+#endif
+
     if (!(tid < thread_range.size()))
         return;
-    execute_thread(*(thread_range.cbegin() + tid.get()));
+
+#if CELER_DEVICE_COMPILE
+    if (mask != full_warp_mask)
+    {
+        printf("after early return %03u: %0x\n",
+               static_cast<unsigned int>(*tid),
+               static_cast<unsigned int>(mask));
+    }
+#endif
+
+    execute_thread(*(thread_range.cbegin() + tid.get()), mask);
 }
 
 }  // namespace
