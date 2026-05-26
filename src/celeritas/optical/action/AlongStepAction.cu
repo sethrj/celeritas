@@ -64,8 +64,8 @@ void AlongStepAction::step(CoreParams const& params,
 {
     {
         // Propagate
-        KernelParamCalculator calc_launch_params_{this->label(),
-                                                  &launch_along_step};
+        static KernelParamCalculator const calc_launch_params_{
+            "along-step-propagate", &launch_along_step};
         auto threads = range(ThreadId{state.size()});
         if (!threads.empty())
         {
