@@ -7,9 +7,8 @@
 #pragma once
 
 #include "corecel/Assert.hh"
-#include "corecel/cont/Array.hh"
 #include "corecel/math/Algorithms.hh"
-#include "corecel/math/ArrayUtils.hh"
+#include "corecel/math/ArraySoftUnit.hh"
 #include "corecel/math/NumericLimits.hh"
 
 #include "Types.hh"
