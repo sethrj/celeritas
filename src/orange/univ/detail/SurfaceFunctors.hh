@@ -142,25 +142,34 @@ class CalcIntersections
         CELER_EXPECT(face_ && distance_);
     }
 
+    CELER_FUNCTION size_type face_idx() const { return face_idx_; }
+    CELER_FUNCTION size_type isect_idx() const { return isect_idx_; }
+
     //! Operate on a surface
     template<class S>
     CELER_FUNCTION void operator()(S const& surf)
     {
-        auto on_surface = (on_face_idx_ == face_idx_) ? SurfaceState::on
-                                                      : SurfaceState::off;
         if constexpr (typename S::Intersections{}.size() == 1)
         {
-            if (on_surface == SurfaceState::on)
+            if (on_face_idx_ == face_idx_)
             {
-                // On surface so cannot reintersect
+                // Single intersection and on this face: do not intersect
                 ++face_idx_;
                 return;
             }
         }
 
         // Calculate distance to surface along this direction
-        auto all_dist = surf.calc_intersections(pos_, dir_, on_surface);
+        auto all_dist = surf.calc_intersections(
+            pos_,
+            dir_,
+            (on_face_idx_ == face_idx_) ? SurfaceState::on : SurfaceState::off);
+        return this->fill_intersections(all_dist);
+    }
 
+  private:
+    CELER_FUNCTION void fill_intersections(Span<real_type> all_dist)
+    {
         // Copy possible intersections and this surface to the output
         for (real_type dist : all_dist)
         {
@@ -180,9 +189,6 @@ class CalcIntersections
         // Increment to next face
         ++face_idx_;
     }
-
-    CELER_FUNCTION size_type face_idx() const { return face_idx_; }
-    CELER_FUNCTION size_type isect_idx() const { return isect_idx_; }
 
   private:
     //// DATA ////
