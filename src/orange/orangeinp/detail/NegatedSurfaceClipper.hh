@@ -44,7 +44,7 @@ class NegatedSurfaceClipper
     template<Axis T>
     CELER_FORCEINLINE void operator()(PlaneAligned<T> const& s)
     {
-        return this->clip_impl(T, s.position());
+        return this->clip_impl(T, s.displacement());
     }
 
     //! All other operations invalidate the "interior" box

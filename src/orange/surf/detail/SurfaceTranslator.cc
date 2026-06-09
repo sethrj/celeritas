@@ -40,7 +40,7 @@ PlaneAligned<T>
 SurfaceTranslator::operator()(PlaneAligned<T> const& other) const
 {
     real_type origin = tr_.translation()[to_int(T)];
-    return PlaneAligned<T>{other.position() + origin};
+    return PlaneAligned<T>{other.displacement() + origin};
 }
 
 //! \cond

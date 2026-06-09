@@ -62,8 +62,8 @@ SurfaceClipper::SurfaceClipper(BBox* interior, BBox* exterior)
 template<Axis T>
 void SurfaceClipper::operator()(PlaneAligned<T> const& s) const
 {
-    shrink_if_nonnull(int_, Bound::hi, T, s.position());
-    shrink_if_nonnull(ext_, Bound::hi, T, s.position());
+    shrink_if_nonnull(int_, Bound::hi, T, s.displacement());
+    shrink_if_nonnull(ext_, Bound::hi, T, s.displacement());
 }
 
 //!\cond

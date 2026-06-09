@@ -33,7 +33,7 @@ struct SurfaceHashPoint
     template<Axis T>
     real_type operator()(PlaneAligned<T> const& s) const
     {
-        return s.position();
+        return s.displacement();
     }
 
     template<Axis T>

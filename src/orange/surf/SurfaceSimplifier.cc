@@ -136,7 +136,7 @@ auto SurfaceSimplifier::operator()(PlaneAligned<T> const& p) const
 {
     using namespace celeritas::literals;
 
-    if (p.position() != 0_r && SoftZero{tol_}(p.position()))
+    if (p.displacement() != 0_r && SoftZero{tol_}(p.displacement()))
     {
         // Snap to zero since it's not already zero
         return PlaneAligned<T>{0_r};

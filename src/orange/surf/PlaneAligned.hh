@@ -50,12 +50,6 @@ class PlaneAligned
 
     //// ACCESSORS ////
 
-    //! Distance from the origin along the normal to the plane (deprecated)
-    CELER_CONSTEXPR_FUNCTION real_type position() const
-    {
-        return this->displacement();
-    }
-
     //! Distance from the origin along the normal to the plane
     CELER_CONSTEXPR_FUNCTION real_type displacement() const { return d_; }
 
@@ -192,7 +186,7 @@ PlaneAligned<T>::calc_intersections(Real3 const& pos,
 template<Axis T>
 CELER_FUNCTION Real3 PlaneAligned<T>::calc_normal(Real3 const&) const
 {
-    return this->calc_normal();
+    return this->normal();
 }
 
 //---------------------------------------------------------------------------//

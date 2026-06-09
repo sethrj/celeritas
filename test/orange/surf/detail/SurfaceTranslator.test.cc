@@ -32,7 +32,7 @@ TEST_F(SurfaceTranslatorTest, plane_aligned)
 {
     auto px = translate(PlaneX{4.0});
     EXPECT_EQ(SurfaceType::px, px.surface_type());
-    EXPECT_SOFT_EQ(6.0, px.position());
+    EXPECT_SOFT_EQ(6.0, px.displacement());
 }
 
 TEST_F(SurfaceTranslatorTest, cyl_centered)

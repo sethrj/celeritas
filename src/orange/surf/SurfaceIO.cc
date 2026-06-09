@@ -100,7 +100,7 @@ std::ostream& operator<<(std::ostream& os, Plane const& s)
 template<Axis T>
 std::ostream& operator<<(std::ostream& os, PlaneAligned<T> const& s)
 {
-    os << "Plane: " << to_char(T) << '=' << s.position();
+    os << "Plane: " << to_char(T) << '=' << s.displacement();
     return os;
 }
 

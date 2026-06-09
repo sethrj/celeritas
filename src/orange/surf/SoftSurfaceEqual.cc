@@ -35,7 +35,7 @@ template<Axis T>
 bool SoftSurfaceEqual::operator()(PlaneAligned<T> const& a,
                                   PlaneAligned<T> const& b) const
 {
-    return soft_eq_(a.position(), b.position());
+    return soft_eq_(a.displacement(), b.displacement());
 }
 
 //! \cond
