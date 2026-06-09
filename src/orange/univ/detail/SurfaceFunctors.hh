@@ -164,30 +164,38 @@ class CalcIntersections
             pos_,
             dir_,
             (on_face_idx_ == face_idx_) ? SurfaceState::on : SurfaceState::off);
-        return this->fill_intersections(all_dist);
+
+        // Unroll into first + remainder
+        this->fill_intersection(all_dist[0]);
+        if constexpr (all_dist.size() > 1)
+        {
+            for (auto i = 1; i != all_dist.size(); ++i)
+            {
+                this->fill_intersection(all_dist[i]);
+            }
+        }
+
+        // Increment to next face
+        ++face_idx_;
     }
 
   private:
-    CELER_FUNCTION void fill_intersections(Span<real_type> all_dist)
+    CELER_FUNCTION void fill_intersection(real_type dist)
     {
-        // Copy possible intersections and this surface to the output
-        for (real_type dist : all_dist)
+        CELER_ASSERT(dist > 0);
+        if (!is_valid_isect_(dist))
         {
-            CELER_ASSERT(dist > 0);
-            if (is_valid_isect_(dist))
-            {
-                // Save intersection in the list
-                face_[isect_idx_] = FaceId{face_idx_};
-                distance_[isect_idx_] = dist;
-                if (fill_isect_)
-                {
-                    isect_[isect_idx_] = isect_idx_;
-                }
-                ++isect_idx_;
-            }
+            return;
         }
-        // Increment to next face
-        ++face_idx_;
+
+        // Save intersection in the list
+        face_[isect_idx_] = FaceId{face_idx_};
+        distance_[isect_idx_] = dist;
+        if (fill_isect_)
+        {
+            isect_[isect_idx_] = isect_idx_;
+        }
+        ++isect_idx_;
     }
 
   private:
