@@ -63,7 +63,7 @@ class PlaneAligned
     CELER_FUNCTION StorageSpan data() const { return {&d_, 1}; }
 
     // Construct outward normal vector
-    inline CELER_FUNCTION Real3 calc_normal() const;
+    inline CELER_FUNCTION Real3 normal() const;
 
     //// CALCULATION ////
 
@@ -133,7 +133,7 @@ CELER_FUNCTION PlaneAligned<T>::PlaneAligned(Span<R, StorageSpan::extent> data)
  * Calculate outward normal.
  */
 template<Axis T>
-CELER_FUNCTION Real3 PlaneAligned<T>::calc_normal() const
+CELER_FUNCTION Real3 PlaneAligned<T>::normal() const
 {
     Real3 norm{0, 0, 0};
 
