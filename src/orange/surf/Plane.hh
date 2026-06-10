@@ -13,6 +13,8 @@
 #include "orange/OrangeTypes.hh"
 #include "orange/SenseUtils.hh"
 
+#include "detail/SurfaceUtils.hh"
+
 namespace celeritas
 {
 //---------------------------------------------------------------------------//
@@ -32,7 +34,7 @@ class Plane
   public:
     //@{
     //! \name Type aliases
-    using Intersections = Array<real_type, 1>;
+    using Intersections = detail::PlaneIntersections;
     using StorageSpan = Span<real_type const, 4>;
     //@}
 
@@ -159,14 +161,10 @@ CELER_FUNCTION auto Plane::calc_intersections(Real3 const& pos,
                                               SurfaceState on_surface) const
     -> Intersections
 {
-    real_type const n_pos = this->dot_normal(pos);
-    real_type const n_dir = this->dot_normal(dir);
-    real_type const dist = (this->displacement() - n_pos) / n_dir;
-
-    bool valid = celeritas::logical_all(
-        (on_surface == SurfaceState::off), (n_dir != 0), (dist > 0));
-
-    return {valid ? dist : no_intersection()};
+    return detail::calc_plane_intersections(this->dot_normal(pos),
+                                            this->dot_normal(dir),
+                                            this->displacement(),
+                                            on_surface);
 }
 
 //---------------------------------------------------------------------------//
