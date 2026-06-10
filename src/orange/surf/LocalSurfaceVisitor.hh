@@ -51,14 +51,14 @@ class LocalSurfaceVisitor
     // Apply the function to the surface specified by the given ID
     template<class F>
     inline CELER_FUNCTION decltype(auto)
-    operator()(F&& typed_visitor, LocalSurfaceId t);
+    operator()(F&& typed_visitor, LocalSurfaceId t) const;
 
   private:
     //// TYPES ////
 
     template<class T>
     using Items = Collection<T, Ownership::const_reference, MemSpace::native>;
-    using Reals = Items<real_type>;
+    using SpanReal = LdgSpan<real_type const>;
 
     //// DATA ////
 
@@ -67,9 +67,13 @@ class LocalSurfaceVisitor
 
     //// HELPER FUNCTIONS ////
 
+    // Load data for a surface
+    inline CELER_FUNCTION SpanReal surface_data(LocalSurfaceId id,
+                                                size_type size) const;
+
     // Construct a surface from a data offset
     template<class T>
-    inline CELER_FUNCTION T make_surface(LocalSurfaceId data_offset) const;
+    inline CELER_FUNCTION T make_surface(SpanReal data) const;
 };
 
 //---------------------------------------------------------------------------//
@@ -105,18 +109,22 @@ LocalSurfaceVisitor::LocalSurfaceVisitor(ParamsRef const& params,
  */
 template<class F>
 CELER_FUNCTION decltype(auto)
-LocalSurfaceVisitor::operator()(F&& func, LocalSurfaceId id)
+LocalSurfaceVisitor::operator()(F&& func, LocalSurfaceId id) const
 {
     CELER_EXPECT(id < surfaces_.size());
 
+    auto st = params_.surface_types[surfaces_.types[id]];
     // Apply type-deleted functor based on type
     return visit_surface_type(
-        [this, &func, id](auto s_traits) {
-            // Call the user-provided action using the reconstructed surface
+        [&](auto s_traits) {
             using S = typename decltype(s_traits)::type;
-            return func(this->make_surface<S>(id));
+            using StorageSpan = typename S::StorageSpan;
+
+            auto data = this->surface_data(id, StorageSpan::extent);
+            // Call the user-provided action using the reconstructed surface
+            return func(this->make_surface<S>(data));
         },
-        params_.surface_types[surfaces_.types[id]]);
+        st);
 }
 #endif
 
@@ -124,20 +132,31 @@ LocalSurfaceVisitor::operator()(F&& func, LocalSurfaceId id)
 // PRIVATE HELPER FUNCTIONS
 //---------------------------------------------------------------------------//
 /*!
- * Construct a surface of a given type using the data at a specific ID.
+ * Load the data for a given surface.
  */
-template<class T>
-CELER_FUNCTION T LocalSurfaceVisitor::make_surface(LocalSurfaceId id) const
+CELER_FUNCTION auto
+LocalSurfaceVisitor::surface_data(LocalSurfaceId id, size_type size) const
+    -> SpanReal
 {
+    using Reals = Items<real_type>;
     using RealIdT = Reals::ItemIdT;
     using RealRangeT = Reals::ItemRangeT;
     RealIdT offset = params_.real_ids[surfaces_.data_offsets[id]];
-    constexpr size_type size{T::StorageSpan::extent};
     CELER_ASSERT(offset + size <= params_.reals.size());
-    auto storage_span = params_.reals[RealRangeT{offset, offset + size}];
-    // Convert to a statically sized span using the first() member template
-    // function, then construct a surface, for LdgSpan to work correctly.
-    return T{storage_span.template first<size>()};
+    return params_.reals[RealRangeT{offset, offset + size}];
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Construct a surface of a given type using a span of data.
+ */
+template<class T>
+CELER_FUNCTION T LocalSurfaceVisitor::make_surface(SpanReal storage_span) const
+{
+    constexpr size_type size{T::StorageSpan::extent};
+    CELER_ASSUME(storage_span.size() == size);
+    using LdgSpanT = LdgSpan<real_type const, size>;
+    return T{LdgSpanT{storage_span}};
 }
 
 //---------------------------------------------------------------------------//
