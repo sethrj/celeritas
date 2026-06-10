@@ -115,8 +115,9 @@ enum class Sense : bool
 /*!
  * Enumeration for mapping surface classes to integers.
  *
- * These are ordered roughly by complexity. The storage requirement for
- * corresponding surfaces are:
+ * Surfaces are grouped by behavior (number of intersections and degenerate
+ * cases) and complexity.
+ * The storage requirement for corresponding surfaces are:
  * - 1 for `p.|sc|c.c`,
  * - 3 for `c.`,
  * - 4 for `[ps]|k.`,
@@ -130,15 +131,15 @@ enum class SurfaceType : unsigned char
     px,  //!< Plane aligned with X axis
     py,  //!< Plane aligned with Y axis
     pz,  //!< Plane aligned with Z axis
+    p,  //!< General plane
+    sc,  //!< Sphere centered at the origin
+    s,  //!< Sphere
     cxc,  //!< Cylinder centered on X axis
     cyc,  //!< Cylinder centered on Y axis
     czc,  //!< Cylinder centered on Z axis
-    sc,  //!< Sphere centered at the origin
     cx,  //!< Cylinder parallel to X axis
     cy,  //!< Cylinder parallel to Y axis
     cz,  //!< Cylinder parallel to Z axis
-    p,  //!< General plane
-    s,  //!< Sphere
     kx,  //!< Cone parallel to X axis
     ky,  //!< Cone parallel to Y axis
     kz,  //!< Cone parallel to Z axis
