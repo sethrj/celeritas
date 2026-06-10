@@ -115,6 +115,7 @@ LocalSurfaceVisitor::operator()(F&& func, LocalSurfaceId id) const
 
     constexpr bool is_specialized_plane
         = std::is_invocable_v<F, SurfaceType, SpanReal>;
+    using result_type = std::invoke_result_t<F, GeneralQuadric>;
 
     auto st = params_.surface_types[surfaces_.types[id]];
     if constexpr (is_specialized_plane)
@@ -137,10 +138,14 @@ LocalSurfaceVisitor::operator()(F&& func, LocalSurfaceId id) const
             {
                 // Do not emit code
                 CELER_ASSERT_UNREACHABLE();
+                return result_type();
             }
-
-            // Call the user-provided action using the reconstructed surface
-            return func(this->make_surface<S>(data));
+            else
+            {
+                // Call the user-provided action using the reconstructed
+                // surface
+                return func(this->make_surface<S>(data));
+            }
         },
         st);
 }
