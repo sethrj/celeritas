@@ -393,10 +393,9 @@ CELER_CONSTEXPR_FUNCTION bool is_operator_token(logic_int lv)
 //! Whether a surface type is a plane
 CELER_CONSTEXPR_FUNCTION bool is_plane(SurfaceType st)
 {
-    return static_cast<unsigned char>(SurfaceType::begin_plane_)
-               <= static_cast<unsigned char>(st)
-           && static_cast<unsigned char>(st)
-                  < static_cast<unsigned char>(SurfaceType::end_plane_);
+    static_assert(static_cast<int>(SurfaceType::begin_plane_) == 0);
+    return static_cast<unsigned char>(st)
+           < static_cast<unsigned char>(SurfaceType::end_plane_);
 }
 
 //---------------------------------------------------------------------------//
