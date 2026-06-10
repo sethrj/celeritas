@@ -10,6 +10,7 @@
 #include "corecel/math/Algorithms.hh"
 #include "corecel/math/ArraySoftUnit.hh"
 #include "corecel/math/NumericLimits.hh"
+#include "orange/surf/Plane.hh"
 
 #include "Types.hh"
 #include "Utils.hh"
@@ -24,8 +25,35 @@ struct CalcSense
 {
     Real3 const& pos;
 
+    //! Operate on a plane
+    CELER_FUNCTION SignedSense operator()(SurfaceType st,
+                                          LdgSpan<real_type const> data) const
+    {
+        CELER_ASSUME(is_plane(st));
+
+        real_type n_pos, displacement;
+        if (st != SurfaceType::p)
+        {
+            CELER_ASSUME(data.size() == 1);
+            auto ax = static_cast<int>(st) - static_cast<int>(SurfaceType::px);
+            n_pos = this->pos[ax];
+            displacement = data[0];
+        }
+        else
+        {
+            constexpr size_type size{Plane::StorageSpan::extent};
+            CELER_ASSUME(data.size() == size);
+            using LdgSpanT = LdgSpan<real_type const, size>;
+            Plane p{LdgSpanT{data}};
+            n_pos = p.dot_normal(this->pos);
+            displacement = p.displacement();
+        }
+
+        return real_to_sense(n_pos - displacement);
+    }
+
     template<class S>
-    CELER_FUNCTION SignedSense operator()(S const& surf)
+    CELER_FUNCTION SignedSense operator()(S const& surf) const
     {
         return surf.calc_sense(this->pos);
     }
@@ -145,19 +173,54 @@ class CalcIntersections
     CELER_FUNCTION size_type face_idx() const { return face_idx_; }
     CELER_FUNCTION size_type isect_idx() const { return isect_idx_; }
 
+    //! Operate on a plane
+    CELER_FUNCTION void
+    operator()(SurfaceType st, LdgSpan<real_type const> data)
+    {
+        CELER_ASSUME(is_plane(st));
+
+        if (on_face_idx_ == face_idx_)
+        {
+            // On this face: do not intersect
+            ++face_idx_;
+            return;
+        }
+
+        real_type n_pos, n_dir, displacement;
+        if (st != SurfaceType::p)
+        {
+            CELER_ASSUME(data.size() == 1);
+            auto ax = static_cast<int>(st) - static_cast<int>(SurfaceType::px);
+            CELER_ASSERT(ax >= 0 && ax < 3);
+            n_pos = pos_[ax];
+            n_dir = dir_[ax];
+            displacement = data[0];
+        }
+        else
+        {
+            constexpr size_type size{Plane::StorageSpan::extent};
+            CELER_ASSUME(data.size() == size);
+            using LdgSpanT = LdgSpan<real_type const, size>;
+            Plane p{LdgSpanT{data}};
+            n_pos = p.dot_normal(pos_);
+            n_dir = p.dot_normal(dir_);
+            displacement = p.displacement();
+        }
+
+        auto all_dist = calc_plane_intersections(
+            n_pos, n_dir, displacement, SurfaceState::off);
+        static_assert(all_dist.size() == 1);
+        this->fill_intersection(all_dist[0]);
+
+        ++face_idx_;
+    }
+
     //! Operate on a surface
     template<class S>
     CELER_FUNCTION void operator()(S const& surf)
     {
-        if constexpr (typename S::Intersections{}.size() == 1)
-        {
-            if (on_face_idx_ == face_idx_)
-            {
-                // Single intersection and on this face: do not intersect
-                ++face_idx_;
-                return;
-            }
-        }
+        CELER_EXPECT(!is_plane(S::surface_type()));
+        CELER_EXPECT(typename S::Intersections{}.size() != 1);
 
         // Calculate distance to surface along this direction
         auto all_dist = surf.calc_intersections(

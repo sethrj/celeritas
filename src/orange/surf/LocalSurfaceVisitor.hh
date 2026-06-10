@@ -113,7 +113,19 @@ LocalSurfaceVisitor::operator()(F&& func, LocalSurfaceId id) const
 {
     CELER_EXPECT(id < surfaces_.size());
 
+    constexpr bool is_specialized_plane
+        = std::is_invocable_v<F, SurfaceType, SpanReal>;
+
     auto st = params_.surface_types[surfaces_.types[id]];
+    if constexpr (is_specialized_plane)
+    {
+        if (is_plane(st))
+        {
+            auto data = this->surface_data(id, st != SurfaceType::p ? 1 : 4);
+            return func(st, data);
+        }
+    }
+
     // Apply type-deleted functor based on type
     return visit_surface_type(
         [&](auto s_traits) {
@@ -121,6 +133,12 @@ LocalSurfaceVisitor::operator()(F&& func, LocalSurfaceId id) const
             using StorageSpan = typename S::StorageSpan;
 
             auto data = this->surface_data(id, StorageSpan::extent);
+            if constexpr (is_specialized_plane && is_plane(s_traits()))
+            {
+                // Do not emit code
+                CELER_ASSERT_UNREACHABLE();
+            }
+
             // Call the user-provided action using the reconstructed surface
             return func(this->make_surface<S>(data));
         },

@@ -390,6 +390,16 @@ CELER_CONSTEXPR_FUNCTION bool is_operator_token(logic_int lv)
 }  // namespace logic
 
 //---------------------------------------------------------------------------//
+//! Whether a surface type is a plane
+CELER_CONSTEXPR_FUNCTION bool is_plane(SurfaceType st)
+{
+    return static_cast<unsigned char>(SurfaceType::begin_plane_)
+               <= static_cast<unsigned char>(st)
+           && static_cast<unsigned char>(st)
+                  < static_cast<unsigned char>(SurfaceType::end_plane_);
+}
+
+//---------------------------------------------------------------------------//
 // HELPER FUNCTIONS (HOST)
 //---------------------------------------------------------------------------//
 // Get a string corresponding to a surface sense
