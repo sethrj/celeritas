@@ -93,5 +93,15 @@ inline CELER_FUNCTION OnLocalSurface get_surface(LocalVolumeView const& vol,
 }
 
 //---------------------------------------------------------------------------//
+//! Whether a surface type is a plane
+CELER_CONSTEXPR_FUNCTION bool is_plane(SurfaceType st)
+{
+    return static_cast<unsigned char>(SurfaceType::begin_plane_)
+               <= static_cast<unsigned char>(st)
+           && static_cast<unsigned char>(st)
+                  < static_cast<unsigned char>(SurfaceType::end_plane_);
+}
+
+//---------------------------------------------------------------------------//
 }  // namespace detail
 }  // namespace celeritas

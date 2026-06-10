@@ -128,19 +128,25 @@ enum class Sense : bool
  */
 enum class SurfaceType : unsigned char
 {
-    px,  //!< Plane aligned with X axis
+    begin_plane_,
+    px = begin_plane_,  //!< Plane aligned with X axis
     py,  //!< Plane aligned with Y axis
     pz,  //!< Plane aligned with Z axis
     p,  //!< General plane
-    sc,  //!< Sphere centered at the origin
+    end_plane_,
+    begin_sphere = end_plane_,
+    sc = begin_sphere,  //!< Sphere centered at the origin
     s,  //!< Sphere
-    cxc,  //!< Cylinder centered on X axis
+    end_sphere_,
+    begin_cyl = end_sphere_,
+    cxc = begin_cyl,  //!< Cylinder centered on X axis
     cyc,  //!< Cylinder centered on Y axis
     czc,  //!< Cylinder centered on Z axis
     cx,  //!< Cylinder parallel to X axis
     cy,  //!< Cylinder parallel to Y axis
     cz,  //!< Cylinder parallel to Z axis
-    kx,  //!< Cone parallel to X axis
+    end_cyl_,
+    kx = end_cyl_,  //!< Cone parallel to X axis
     ky,  //!< Cone parallel to Y axis
     kz,  //!< Cone parallel to Z axis
     sq,  //!< Simple quadric
