@@ -11,7 +11,9 @@ Celeritas.
 
 #]=======================================================================]
 
-# TODO: remove once we require a veccore version including https://github.com/root-project/veccore/commit/743566fac1e9b2eaeb0f0b63242442ba430e0cc0
+# TODO: remove policy once 1.2.11 or higher is required
+# this suppresses warnings after 3.27 but causes warnings with 4.3+
+# due to the old CUDA usage from veccore, which is going to be removed anyway
 cmake_policy(PUSH)
 if(POLICY CMP0146)
   cmake_policy(SET CMP0146 OLD)
