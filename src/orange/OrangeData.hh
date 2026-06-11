@@ -88,11 +88,11 @@ struct OrangeParamsScalars
 struct CompressedFacesRecord
 {
     //! Surface type for each face
-    ItemRange<SurfaceType> types;
-    //! Compressed surface data
+    ItemMap<FaceId, ItemId<SurfaceType>> types;
+    //! Compressed surface data, NOT indexed
     ItemRange<real_type> reals;
     //! Compressed data offsets for individual surface lookups
-    ItemRange<size_type> offsets;
+    ItemMap<FaceId, ItemId<size_type>> offsets;
 
     //! Number of surfaces stored
     CELER_FUNCTION size_type size() const { return types.size(); }

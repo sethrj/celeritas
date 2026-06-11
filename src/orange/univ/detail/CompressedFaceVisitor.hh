@@ -6,8 +6,10 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
+#include "corecel/Macros.hh"
 #include "corecel/Types.hh"
 #include "orange/OrangeData.hh"
+#include "orange/OrangeTypes.hh"
 #include "orange/surf/SurfaceTypeTraits.hh"
 #include "orange/surf/detail/AllSurfaces.hh"
 
@@ -50,20 +52,18 @@ class CompressedFaceVisitor
   private:
     //// TYPES ////
 
-    using SpanSurfaceType = LdgSpan<SurfaceType const>;
-    using SpanReal = LdgSpan<real_type const>;
-    using SpanSize = LdgSpan<size_type const>;
+    using RealId = ItemId<real_type>;
 
     //// DATA ////
-
-    SpanSurfaceType surface_types_;
-    SpanReal reals_;
-    SpanSize offsets_;
+    ParamsRef const& params_;
+    CompressedFacesRecord const& faces_;
 
     //// HELPER FUNCTIONS ////
 
+    inline CELER_FUNCTION SurfaceType surface_type(FaceId) const;
+
     template<class T>
-    inline CELER_FUNCTION T make_surface(size_type data_offset) const;
+    inline CELER_FUNCTION T make_surface(RealId data_offset) const;
 };
 
 //---------------------------------------------------------------------------//
@@ -75,9 +75,7 @@ class CompressedFaceVisitor
 CELER_FORCEINLINE_FUNCTION
 CompressedFaceVisitor::CompressedFaceVisitor(
     ParamsRef const& params, CompressedFacesRecord const& local_surfaces)
-    : surface_types_{params.surface_types[local_surfaces.types]}
-    , reals_{params.reals[local_surfaces.reals]}
-    , offsets_{params.sizes[local_surfaces.offsets]}
+    : params_{params}, faces_{local_surfaces}
 {
 }
 
@@ -89,18 +87,19 @@ CompressedFaceVisitor::CompressedFaceVisitor(
 template<class F>
 CELER_FUNCTION void CompressedFaceVisitor::operator()(F&& func) const
 {
-    size_type data_offset{0};
+    RealId::size_type data_begin(**faces_.reals.begin());
     auto surface_visitor = [&](auto s_traits) -> size_type {
         using S = typename decltype(s_traits)::type;
-        func(this->make_surface<S>(data_offset));
+        func(this->make_surface<S>(RealId{data_begin}));
         return S::StorageSpan::extent;
     };
 
-    for (size_type i : range(surface_types_.size()))
+    for (auto face_id : range(id_cast<FaceId>(faces_.size())))
     {
-        data_offset += visit_surface_type(surface_visitor, surface_types_[i]);
+        data_begin += visit_surface_type(surface_visitor,
+                                         this->surface_type(face_id));
     }
-    CELER_ENSURE(data_offset == reals_.size());
+    CELER_ENSURE(data_begin == **faces_.reals.end());
 }
 
 //---------------------------------------------------------------------------//
@@ -113,33 +112,44 @@ template<class F>
 CELER_FUNCTION decltype(auto)
 CompressedFaceVisitor::operator()(F&& func, FaceId fid) const
 {
-    CELER_EXPECT(fid < surface_types_.size());
+    CELER_EXPECT(fid < faces_.size());
 
-    auto st = surface_types_[*fid];
-    auto data_offset = offsets_[*fid];
+    size_type offset = params_.sizes[faces_.offsets[fid]];
+    RealId data_begin(faces_.reals[offset]);
 
     return visit_surface_type(
         [&](auto s_traits) {
             using S = typename decltype(s_traits)::type;
-            return func(this->make_surface<S>(data_offset));
+            return func(this->make_surface<S>(data_begin));
         },
-        st);
+        this->surface_type(fid));
 }
 
 #endif
 
 //---------------------------------------------------------------------------//
 /*!
+ * Surface type of a face.
+ */
+CELER_FORCEINLINE_FUNCTION SurfaceType
+CompressedFaceVisitor::surface_type(FaceId fid) const
+{
+    return params_.surface_types[faces_.types[fid]];
+}
+
+//---------------------------------------------------------------------------//
+/*!
  * Create the surface at this offset.
  */
 template<class T>
-CELER_FUNCTION T CompressedFaceVisitor::make_surface(size_type data_offset) const
+CELER_FUNCTION T CompressedFaceVisitor::make_surface(RealId data_begin) const
 {
     constexpr auto size{T::StorageSpan::extent};
     using LdgSpanT = LdgSpan<real_type const, size>;
 
-    CELER_ASSERT(data_offset + size <= reals_.size());
-    auto data = reals_.subspan(data_offset, size);
+    auto data_end = data_begin + size;
+    CELER_ASSERT(data_end <= *faces_.reals.end());
+    auto data = params_.reals[ItemRange<real_type>{data_begin, data_end}];
     return T{LdgSpanT{data}};
 }
 
