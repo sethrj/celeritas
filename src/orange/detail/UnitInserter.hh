@@ -67,6 +67,7 @@ class UnitInserter
     DedupeCollectionBuilder<vol_level_uint> vl_uints_;
     DedupeCollectionBuilder<logic_int> logic_ints_;
     DedupeCollectionBuilder<real_type> reals_;
+    DedupeCollectionBuilder<size_type> sizes_;
     DedupeCollectionBuilder<SurfaceType> surface_types_;
     CollectionBuilder<ConnectivityRecord> connectivity_records_;
     CollectionBuilder<LocalVolumeRecord> volume_records_;

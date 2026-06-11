@@ -80,15 +80,19 @@ struct OrangeParamsScalars
  * Compressed faces in a single local volume.
  *
  * These are two contiguous chunks of memory for the local surface types and
- * data. It is meant for use when iterating over \em all faces. Random access
- * over faces can use LocalSurfaceVisitor .
+ * data. It is meant for use when iterating over \em all faces and drastically
+ * improves performance on CPU.
+ *
+ * All items are indexed by \c FaceId.
  */
 struct CompressedFacesRecord
 {
-    //! Surface type for each face (indexed by LocalSurfaceId)
+    //! Surface type for each face
     ItemRange<SurfaceType> types;
-    //! Compressed surface data offset (indexed by LocalSurfaceId)
+    //! Compressed surface data
     ItemRange<real_type> reals;
+    //! Compressed data offsets for individual surface lookups
+    ItemRange<size_type> offsets;
 
     //! Number of surfaces stored
     CELER_FUNCTION size_type size() const { return types.size(); }
@@ -410,6 +414,7 @@ struct OrangeParamsData
     Items<vol_level_uint> vl_uints;
     Items<logic_int> logic_ints;
     Items<real_type> reals;
+    Items<size_type> sizes;
     Items<SurfaceType> surface_types;
     Items<ConnectivityRecord> connectivity_records;
     Items<LocalVolumeRecord> volume_records;
@@ -429,7 +434,7 @@ struct OrangeParamsData
                && volume_ids.size() == volume_instance_ids.size()
                && (bvh_tree_data || !simple_units.empty())
                && ((!local_volume_ids.empty() && !logic_ints.empty()
-                    && !reals.empty())
+                    && !reals.empty() && !sizes.empty())
                    || surface_types.empty())
                && !volume_records.empty() && univ_indexer_data;
     }
@@ -457,6 +462,7 @@ struct OrangeParamsData
         vl_uints = other.vl_uints;
         logic_ints = other.logic_ints;
         reals = other.reals;
+        sizes = other.sizes;
         surface_types = other.surface_types;
         connectivity_records = other.connectivity_records;
         volume_records = other.volume_records;

@@ -418,6 +418,7 @@ UnitInserter::UnitInserter(UniverseInserter* insert_universe,
     , vl_uints_{&orange_data_->vl_uints}
     , logic_ints_{&orange_data_->logic_ints}
     , reals_{&orange_data_->reals}
+    , sizes_{&orange_data_->sizes}
     , surface_types_{&orange_data_->surface_types}
     , connectivity_records_{&orange_data_->connectivity_records}
     , volume_records_{&orange_data_->volume_records}
@@ -634,14 +635,18 @@ LocalVolumeRecord UnitInserter::insert_volume(SurfacesRecord const& surf_record,
     auto compressed_faces = [&] {
         std::vector<SurfaceType> types;
         std::vector<real_type> reals;
+        std::vector<size_type> offsets;
+        size_type accum_offset{0};
         for (LocalSurfaceId sid : v.faces)
         {
             // See SurfacesRecordBuilder
             visit_surface(
-                [&types, &reals](auto&& s) {
+                [&](auto&& s) {
                     types.push_back(s.surface_type());
                     auto data = s.data();
                     reals.insert(reals.end(), data.begin(), data.end());
+                    offsets.push_back(accum_offset);
+                    accum_offset += data.size();
                 },
                 sid);
         }
@@ -649,6 +654,9 @@ LocalVolumeRecord UnitInserter::insert_volume(SurfacesRecord const& surf_record,
         CompressedFacesRecord result;
         result.types = surface_types_.insert_back(types.begin(), types.end());
         result.reals = reals_.insert_back(reals.begin(), reals.end());
+        result.offsets = sizes_.insert_back(offsets.begin(), offsets.end());
+
+        CELER_ENSURE(result.types.size() == result.offsets.size());
         return result;
     }();
 

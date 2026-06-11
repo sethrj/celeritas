@@ -12,6 +12,7 @@
 #include "orange/SenseUtils.hh"
 #include "orange/surf/LocalSurfaceVisitor.hh"
 
+#include "CompressedFaceVisitor.hh"
 #include "LocalVolumeView.hh"
 #include "SurfaceFunctors.hh"
 #include "Types.hh"
@@ -40,7 +41,7 @@ class SenseCalculator
 {
   public:
     // Construct from persistent, current, and temporary data
-    inline CELER_FUNCTION SenseCalculator(LocalSurfaceVisitor const& visit,
+    inline CELER_FUNCTION SenseCalculator(CompressedFaceVisitor const& visit,
                                           LocalVolumeView const& vol,
                                           Real3 const& pos,
                                           OnFace& face);
@@ -50,8 +51,8 @@ class SenseCalculator
     inline CELER_FUNCTION Sense operator()(FaceId face_id);
 
   private:
-    //! Apply a function to a local surface
-    LocalSurfaceVisitor visit_;
+    //! Apply a function to a volume face
+    CompressedFaceVisitor visit_;
 
     //! Volume to calculate senses for
     LocalVolumeView const& vol_;
@@ -70,7 +71,7 @@ class SenseCalculator
  * Construct from persistent, current, and temporary data.
  */
 CELER_FUNCTION
-SenseCalculator::SenseCalculator(LocalSurfaceVisitor const& visit,
+SenseCalculator::SenseCalculator(CompressedFaceVisitor const& visit,
                                  LocalVolumeView const& vol,
                                  Real3 const& pos,
                                  OnFace& face)
@@ -94,7 +95,7 @@ CELER_FUNCTION auto SenseCalculator::operator()(FaceId face_id) -> Sense
     if (face_id != face_.id())
     {
         // Calculate sense
-        SignedSense ss = visit_(CalcSense{pos_}, vol_.get_surface(face_id));
+        SignedSense ss = visit_(CalcSense{pos_}, face_id);
         sense = to_sense(ss);
         if (ss == SignedSense::on && !face_)
         {

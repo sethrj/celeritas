@@ -153,7 +153,7 @@ LocalSurfaceVisitor::surface_data(LocalSurfaceId id, size_type size) const
 template<class T>
 CELER_FUNCTION T LocalSurfaceVisitor::make_surface(SpanReal storage_span) const
 {
-    constexpr size_type size{T::StorageSpan::extent};
+    constexpr auto size{T::StorageSpan::extent};
     CELER_ASSUME(storage_span.size() == size);
     using LdgSpanT = LdgSpan<real_type const, size>;
     return T{LdgSpanT{storage_span}};

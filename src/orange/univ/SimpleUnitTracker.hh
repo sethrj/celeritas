@@ -202,7 +202,7 @@ SimpleUnitTracker::initialize(LocalState const& state) const -> Initialization
         on_surface = {};
         VolumeView vol = this->make_local_volume(id);
         auto calc_senses = detail::SenseCalculator(
-            this->make_surface_visitor(), vol, state.pos, on_surface);
+            this->make_face_visitor(vol), vol, state.pos, on_surface);
         return LogicEvaluator(vol.logic())(calc_senses);
     };
     LocalVolumeId id = this->find_volume_where(state.pos, is_inside);
@@ -243,7 +243,7 @@ SimpleUnitTracker::cross_boundary(LocalState const& state) const
         VolumeView vol = this->make_local_volume(id);
         detail::OnFace face{detail::find_face(vol, state.surface)};
         auto calc_senses = detail::SenseCalculator(
-            this->make_surface_visitor(), vol, state.pos, face);
+            this->make_face_visitor(vol), vol, state.pos, face);
 
         if (LogicEvaluator(vol.logic())(calc_senses))
         {
@@ -497,7 +497,7 @@ SimpleUnitTracker::simple_intersect(LocalState const& state,
         // Crossing the same surface that we're currently on and inside (e.g.
         // on the inside surface of a sphere, and the next intersection is the
         // other side)
-        // UNLIKELY since we eliminate same-surface planes from testing in
+        // ATYPICAL since we eliminate same-surface planes from testing in
         // calc_intersections
         cur_sense = state.surface.sense();
     }
@@ -544,7 +544,7 @@ SimpleUnitTracker::complex_intersect(LocalState const& state,
     detail::OnFace on_face(detail::find_face(vol, state.surface));
 
     detail::SenseCalculator calc_sense{
-        this->make_surface_visitor(), vol, pos, on_face};
+        this->make_face_visitor(vol), vol, pos, on_face};
 
     // Calculate local senses, taking current face into account
     // Current senses should put us inside the volume

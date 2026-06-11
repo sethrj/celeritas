@@ -20,8 +20,9 @@ namespace detail
  * Apply a functor to all type-deleted local compressed surfaces.
  *
  * Example: \code
- CompressedFaceVisitor visit_all_faces{params_, vol.};
- visit_all_faces( [&](auto const& s) { calc_intersection(s)});
+ CompressedFaceVisitor visit_faces{params_, vol.compressed_faces()};
+ visit_faces([&](auto const& s) { calc_intersection(s)});
+ visit_faces(calc_intersection, FaceId{1});
  \endcode
  */
 class CompressedFaceVisitor
@@ -40,30 +41,29 @@ class CompressedFaceVisitor
 
     // Apply the function to all faces
     template<class F>
-    inline CELER_FUNCTION void operator()(F&& typed_visitor) const;
+    inline CELER_FUNCTION void operator()(F&& func) const;
+
+    // Visit a single face (less efficient for multiple lookups)
+    template<class F>
+    inline CELER_FUNCTION decltype(auto) operator()(F&& func, FaceId) const;
 
   private:
     //// TYPES ////
 
-    template<class T>
-    using Items = Collection<T, Ownership::const_reference, MemSpace::native>;
     using SpanSurfaceType = LdgSpan<SurfaceType const>;
     using SpanReal = LdgSpan<real_type const>;
+    using SpanSize = LdgSpan<size_type const>;
 
     //// DATA ////
 
     SpanSurfaceType surface_types_;
     SpanReal reals_;
+    SpanSize offsets_;
 
     //// HELPER FUNCTIONS ////
 
-    // Load data for a surface
-    inline CELER_FUNCTION SpanReal surface_data(LocalSurfaceId id,
-                                                size_type size) const;
-
-    // Construct a surface from a data offset
     template<class T>
-    inline CELER_FUNCTION T make_surface(SpanReal data) const;
+    inline CELER_FUNCTION T make_surface(size_type data_offset) const;
 };
 
 //---------------------------------------------------------------------------//
@@ -77,6 +77,7 @@ CompressedFaceVisitor::CompressedFaceVisitor(
     ParamsRef const& params, CompressedFacesRecord const& local_surfaces)
     : surface_types_{params.surface_types[local_surfaces.types]}
     , reals_{params.reals[local_surfaces.reals]}
+    , offsets_{params.sizes[local_surfaces.offsets]}
 {
 }
 
@@ -91,13 +92,8 @@ CELER_FUNCTION void CompressedFaceVisitor::operator()(F&& func) const
     size_type data_offset{0};
     auto surface_visitor = [&](auto s_traits) -> size_type {
         using S = typename decltype(s_traits)::type;
-        constexpr auto size = S::StorageSpan::extent;
-        using LdgSpanT = LdgSpan<real_type const, size>;
-
-        CELER_ASSERT(data_offset + size <= reals_.size());
-        auto data = reals_.subspan(data_offset, size);
-        func(S{LdgSpanT{data}});
-        return size;
+        func(this->make_surface<S>(data_offset));
+        return S::StorageSpan::extent;
     };
 
     for (size_type i : range(surface_types_.size()))
@@ -106,7 +102,46 @@ CELER_FUNCTION void CompressedFaceVisitor::operator()(F&& func) const
     }
     CELER_ENSURE(data_offset == reals_.size());
 }
+
+//---------------------------------------------------------------------------//
+/*!
+ * Apply a function to a single face.
+ *
+ * This is the same signature as \c LocalSurfaceVisitor .
+ */
+template<class F>
+CELER_FUNCTION decltype(auto)
+CompressedFaceVisitor::operator()(F&& func, FaceId fid) const
+{
+    CELER_EXPECT(fid < surface_types_.size());
+
+    auto st = surface_types_[*fid];
+    auto data_offset = offsets_[*fid];
+
+    return visit_surface_type(
+        [&](auto s_traits) {
+            using S = typename decltype(s_traits)::type;
+            return func(this->make_surface<S>(data_offset));
+        },
+        st);
+}
+
 #endif
+
+//---------------------------------------------------------------------------//
+/*!
+ * Create the surface at this offset.
+ */
+template<class T>
+CELER_FUNCTION T CompressedFaceVisitor::make_surface(size_type data_offset) const
+{
+    constexpr auto size{T::StorageSpan::extent};
+    using LdgSpanT = LdgSpan<real_type const, size>;
+
+    CELER_ASSERT(data_offset + size <= reals_.size());
+    auto data = reals_.subspan(data_offset, size);
+    return T{LdgSpanT{data}};
+}
 
 //---------------------------------------------------------------------------//
 }  // namespace detail
