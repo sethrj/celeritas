@@ -173,16 +173,16 @@
       "displayName": "With ORANGE in optimized mode",
       "inherits": [".ccache", ".ndebug", ".spackbase"],
       "cacheVariables": {
-        "CELERITAS_USE_ROOT": {"type": "BOOL",   "value": "OFF"}
+        "CELERITAS_CODESIGN_APPS": {"type": "BOOL", "value": "ON"},
+        "CELERITAS_USE_ROOT": {"type": "BOOL", "value": "OFF"}
       }
     },
     {
       "name": "ndebug-vecgeom",
       "displayName": "With vecgeom, g4 in optimized mode",
-      "inherits": [".ccache", ".spackbase", ".ndebug", "vecgeom"],
+      "inherits": ["ndebug"],
       "cacheVariables": {
         "CELERITAS_USE_HepMC3":  {"type": "BOOL", "value": "OFF"},
-        "CELERITAS_USE_ROOT":    {"type": "BOOL", "value": "OFF"},
         "CELERITAS_USE_VecGeom": {"type": "BOOL", "value": "ON"},
         "CELERITAS_BUILD_TESTS": {"type": "BOOL", "value": "OFF"}
       }
