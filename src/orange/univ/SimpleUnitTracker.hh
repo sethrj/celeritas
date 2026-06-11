@@ -482,28 +482,24 @@ SimpleUnitTracker::simple_intersect(LocalState const& state,
     CELER_ASSERT(distance_idx < num_isect);
 
     // Determine the crossing surface
-    LocalSurfaceId surface;
-    {
-        FaceId face = state.temp_next.face[distance_idx];
-        CELER_ASSERT(face);
-        surface = vol.get_surface(face);
-        CELER_ASSERT(surface);
-    }
+    FaceId face = state.temp_next.face[distance_idx];
+    CELER_ASSERT(face);
+    LocalSurfaceId surface = vol.get_surface(face);
+    CELER_ASSERT(surface);
 
-    Sense cur_sense;
+    SignedSense ss
+        = this->make_surface_visitor()(detail::CalcSense{state.pos}, surface);
+    CELER_ASSERT(ss != SignedSense::on || surface == state.surface.id());
+    Sense cur_sense = to_sense(ss);
+
     if (surface == state.surface.id())
     {
         // Crossing the same surface that we're currently on and inside (e.g.
         // on the inside surface of a sphere, and the next intersection is the
         // other side)
+        // UNLIKELY since we eliminate same-surface planes from testing in
+        // calc_intersections
         cur_sense = state.surface.sense();
-    }
-    else
-    {
-        SignedSense ss = this->make_surface_visitor()(
-            detail::CalcSense{state.pos}, surface);
-        CELER_ASSERT(ss != SignedSense::on);
-        cur_sense = to_sense(ss);
     }
 
     // Post-surface sense will be on the other side of the surface
