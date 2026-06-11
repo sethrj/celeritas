@@ -77,6 +77,25 @@ struct OrangeParamsScalars
 
 //---------------------------------------------------------------------------//
 /*!
+ * Compressed faces in a single local volume.
+ *
+ * These are two contiguous chunks of memory for the local surface types and
+ * data. It is meant for use when iterating over \em all faces. Random access
+ * over faces can use LocalSurfaceVisitor .
+ */
+struct CompressedFacesRecord
+{
+    //! Surface type for each face (indexed by LocalSurfaceId)
+    ItemRange<SurfaceType> types;
+    //! Compressed surface data offset (indexed by LocalSurfaceId)
+    ItemRange<real_type> reals;
+
+    //! Number of surfaces stored
+    CELER_FUNCTION size_type size() const { return types.size(); }
+};
+
+//---------------------------------------------------------------------------//
+/*!
  * Data for a single local volume definition inside a unit.
  *
  * - This record defines an *implementation volume* which may correspond to
@@ -90,6 +109,7 @@ struct LocalVolumeRecord
 {
     ItemRange<LocalSurfaceId> faces;
     ItemRange<logic_int> logic;
+    CompressedFacesRecord compressed_faces;
 
     logic_int max_intersections{0};
     logic_int flags{0};

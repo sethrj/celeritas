@@ -25,7 +25,7 @@ struct CalcSense
     Real3 const& pos;
 
     template<class S>
-    CELER_FUNCTION SignedSense operator()(S const& surf)
+    CELER_FUNCTION SignedSense operator()(S const& surf) const
     {
         return surf.calc_sense(this->pos);
     }
@@ -70,7 +70,7 @@ struct CalcSafetyDistance
 
     //! Operate on a surface
     template<class S>
-    CELER_FUNCTION real_type operator()(S const& surf)
+    CELER_FUNCTION real_type operator()(S const& surf) const
     {
         if (!S::simple_safety())
         {

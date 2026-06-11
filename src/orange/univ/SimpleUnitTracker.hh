@@ -16,6 +16,7 @@
 #include "orange/detail/BvhIntersectingVolFinder.hh"
 #include "orange/surf/LocalSurfaceVisitor.hh"
 
+#include "detail/CompressedFaceVisitor.hh"
 #include "detail/InfixEvaluator.hh"
 #include "detail/LogicEvaluator.hh"
 #include "detail/SenseCalculator.hh"
@@ -333,11 +334,9 @@ SimpleUnitTracker::intersect(LocalState const& state, real_type max_dist) const
         state.surface ? vol.find_face(state.surface.id()) : FaceId{},
         vol.simple_intersection(),
         state.temp_next};
-    LocalSurfaceVisitor visit_surface(params_, unit_record_.surfaces);
-    for (LocalSurfaceId surface : vol.faces())
-    {
-        visit_surface(calc_intersections, surface);
-    }
+    detail::CompressedFaceVisitor{params_,
+                                  vol.compressed_faces()}(calc_intersections);
+
     CELER_ASSERT(calc_intersections.face_idx() == vol.num_faces());
     size_type num_isect = calc_intersections.isect_idx();
     CELER_ASSERT(num_isect <= vol.max_intersections());
@@ -402,12 +401,10 @@ CELER_FUNCTION real_type SimpleUnitTracker::safety(Real3 const& pos,
 
     // Calculate minimum distance to all local faces
     real_type result = numeric_limits<real_type>::infinity();
-    LocalSurfaceVisitor visit_surface(params_, unit_record_.surfaces);
-    detail::CalcSafetyDistance calc_safety{pos};
-    for (LocalSurfaceId surface : vol.faces())
-    {
-        result = celeritas::min(result, visit_surface(calc_safety, surface));
-    }
+    detail::CompressedFaceVisitor{params_, vol.compressed_faces()}(
+        [&result, calc_safety = detail::CalcSafetyDistance{pos}](auto&& surf) {
+            result = celeritas::min(result, calc_safety(surf));
+        });
 
     CELER_ENSURE(result >= 0);
     return result;
@@ -672,11 +669,9 @@ SimpleUnitTracker::background_intersect(LocalState const& state,
             is_simple,
             state.temp_next};
 
-        LocalSurfaceVisitor visit_surface(params_, unit_record_.surfaces);
-        for (LocalSurfaceId surface : vol.faces())
-        {
-            visit_surface(calc_intersections, surface);
-        }
+        // Visit all faces in the volume
+        detail::CompressedFaceVisitor{
+            params_, vol.compressed_faces()}(calc_intersections);
 
         size_type num_isect = calc_intersections.isect_idx();
         if (num_isect == 0)

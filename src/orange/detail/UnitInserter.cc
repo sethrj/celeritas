@@ -630,6 +630,28 @@ LocalVolumeRecord UnitInserter::insert_volume(SurfacesRecord const& surf_record,
         }
     }
 
+    // Copy to compressed arrays of face data for this volume
+    auto compressed_faces = [&] {
+        std::vector<SurfaceType> types;
+        std::vector<real_type> reals;
+        for (LocalSurfaceId sid : v.faces)
+        {
+            // See SurfacesRecordBuilder
+            visit_surface(
+                [&types, &reals](auto&& s) {
+                    types.push_back(s.surface_type());
+                    auto data = s.data();
+                    reals.insert(reals.end(), data.begin(), data.end());
+                },
+                sid);
+        }
+
+        CompressedFacesRecord result;
+        result.types = surface_types_.insert_back(types.begin(), types.end());
+        result.reals = reals_.insert_back(reals.begin(), reals.end());
+        return result;
+    }();
+
     LocalVolumeRecord output;
     output.faces
         = local_surface_ids_.insert_back(v.faces.begin(), v.faces.end());
@@ -640,6 +662,7 @@ LocalVolumeRecord UnitInserter::insert_volume(SurfacesRecord const& surf_record,
     {
         output.flags |= LocalVolumeRecord::Flags::simple_safety;
     }
+    output.compressed_faces = compressed_faces;
 
     if (output.max_intersections > forced_scalar_max().intersections
         || output.faces.size() > forced_scalar_max().faces)

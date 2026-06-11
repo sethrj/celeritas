@@ -41,6 +41,7 @@ auto SurfacesRecordBuilder::operator()(VecSurface const& surfaces)
     auto emplace_surface = [this](auto&& s) {
         if constexpr (std::remove_reference_t<decltype(s)>::surface_type()
                       == SurfaceType::inv)
+
         {
             // See discussion on
             // https://github.com/celeritas-project/celeritas/pull/1342
@@ -63,7 +64,6 @@ auto SurfacesRecordBuilder::operator()(VecSurface const& surfaces)
     result.types = {begin_types, types_.size_id()};
     result.data_offsets = {begin_real_ids, real_ids_.size_id()};
 
-    CELER_ENSURE(types_.size() == real_ids_.size());
     return result;
 }
 

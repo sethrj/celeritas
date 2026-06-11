@@ -64,6 +64,9 @@ class LocalVolumeView
     // Get all surface IDs for the volume
     inline CELER_FUNCTION SpanLocalSurf faces() const;
 
+    // Get locally copied surfaces for the volume
+    inline CELER_FUNCTION CompressedFacesRecord const& compressed_faces() const;
+
     // Get logic definition
     inline CELER_FUNCTION SpanLogic logic() const;
 
@@ -164,6 +167,16 @@ CELER_FORCEINLINE_FUNCTION LdgSpan<LocalSurfaceId const>
 LocalVolumeView::faces() const
 {
     return params_.local_surface_ids[def_.faces];
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Get all the surface IDs corresponding to the faces of this volume.
+ */
+CELER_FORCEINLINE_FUNCTION CompressedFacesRecord const&
+LocalVolumeView::compressed_faces() const
+{
+    return def_.compressed_faces;
 }
 
 //---------------------------------------------------------------------------//
