@@ -120,6 +120,9 @@ class SimpleUnitTracker
                                        LocalSurfaceId surf) const;
 
   private:
+    using SurfaceVisitor = LocalSurfaceVisitor;
+    using FaceVisitor = detail::CompressedFaceVisitor;
+
     //// DATA ////
 
     ParamsRef const& params_;
@@ -146,8 +149,12 @@ class SimpleUnitTracker
     inline CELER_FUNCTION Intersection background_intersect(LocalState const&,
                                                             real_type) const;
 
-    // Create a Surfaces object from the params
-    inline CELER_FUNCTION LocalSurfaceVisitor make_surface_visitor() const;
+    // Create a surface visitor object from the params
+    inline CELER_FUNCTION SurfaceVisitor make_surface_visitor() const;
+
+    // Create a face visitor for a volume
+    inline CELER_FUNCTION FaceVisitor
+    make_face_visitor(VolumeView const& vol) const;
 
     // Create a Volumes object from the params
     inline CELER_FUNCTION VolumeView
@@ -334,8 +341,7 @@ SimpleUnitTracker::intersect(LocalState const& state, real_type max_dist) const
         state.surface ? vol.find_face(state.surface.id()) : FaceId{},
         vol.simple_intersection(),
         state.temp_next};
-    detail::CompressedFaceVisitor{params_,
-                                  vol.compressed_faces()}(calc_intersections);
+    this->make_face_visitor(vol)(calc_intersections);
 
     CELER_ASSERT(calc_intersections.face_idx() == vol.num_faces());
     size_type num_isect = calc_intersections.isect_idx();
@@ -401,7 +407,7 @@ CELER_FUNCTION real_type SimpleUnitTracker::safety(Real3 const& pos,
 
     // Calculate minimum distance to all local faces
     real_type result = numeric_limits<real_type>::infinity();
-    detail::CompressedFaceVisitor{params_, vol.compressed_faces()}(
+    this->make_face_visitor(vol)(
         [&result, calc_safety = detail::CalcSafetyDistance{pos}](auto&& surf) {
             result = celeritas::min(result, calc_safety(surf));
         });
@@ -419,8 +425,7 @@ SimpleUnitTracker::normal(Real3 const& pos, LocalSurfaceId surf) const -> Real3
 {
     CELER_EXPECT(surf);
 
-    LocalSurfaceVisitor visit_surface(params_, unit_record_.surfaces);
-    return visit_surface(detail::CalcNormal{pos}, surf);
+    return this->make_surface_visitor()(detail::CalcNormal{pos}, surf);
 }
 
 //---------------------------------------------------------------------------//
@@ -495,8 +500,8 @@ SimpleUnitTracker::simple_intersect(LocalState const& state,
     }
     else
     {
-        LocalSurfaceVisitor visit_surface(params_, unit_record_.surfaces);
-        SignedSense ss = visit_surface(detail::CalcSense{state.pos}, surface);
+        SignedSense ss = this->make_surface_visitor()(
+            detail::CalcSense{state.pos}, surface);
         CELER_ASSERT(ss != SignedSense::on);
         cur_sense = to_sense(ss);
     }
@@ -670,8 +675,7 @@ SimpleUnitTracker::background_intersect(LocalState const& state,
             state.temp_next};
 
         // Visit all faces in the volume
-        detail::CompressedFaceVisitor{
-            params_, vol.compressed_faces()}(calc_intersections);
+        this->make_face_visitor(vol)(calc_intersections);
 
         size_type num_isect = calc_intersections.isect_idx();
         if (num_isect == 0)
@@ -706,10 +710,21 @@ SimpleUnitTracker::background_intersect(LocalState const& state,
 /*!
  * Create a surface visitor from the params for this unit.
  */
-CELER_FORCEINLINE_FUNCTION LocalSurfaceVisitor
-SimpleUnitTracker::make_surface_visitor() const
+CELER_FORCEINLINE_FUNCTION auto SimpleUnitTracker::make_surface_visitor() const
+    -> SurfaceVisitor
 {
-    return LocalSurfaceVisitor{params_, unit_record_.surfaces};
+    return SurfaceVisitor{params_, unit_record_.surfaces};
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Create a surface visitor from the params for this unit.
+ */
+CELER_FORCEINLINE_FUNCTION auto
+SimpleUnitTracker::make_face_visitor(VolumeView const& vol) const
+    -> FaceVisitor
+{
+    return FaceVisitor{params_, vol.compressed_faces()};
 }
 
 //---------------------------------------------------------------------------//
