@@ -240,6 +240,11 @@ class ItemMap
     //! Size of the underlying Range<T2>
     CELER_FIF size_type size() const { return range_.size(); }
 
+    //! First value
+    CELER_FIF auto begin() const { return range_.begin(); }
+    //! First value
+    CELER_FIF auto end() const { return range_.end(); }
+
     //! Allow loading via ldg
     CELER_CEF friend ItemMap ldg(ItemMap const* m) noexcept
     {

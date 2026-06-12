@@ -57,13 +57,15 @@ class CompressedFaceVisitor
     //// DATA ////
     ParamsRef const& params_;
     CompressedFacesRecord const& faces_;
+    SurfaceType const* types_;
+    real_type const* reals_;
 
     //// HELPER FUNCTIONS ////
 
     inline CELER_FUNCTION SurfaceType surface_type(FaceId) const;
 
     template<class T>
-    inline CELER_FUNCTION T make_surface(RealId data_offset) const;
+    inline CELER_FUNCTION T make_surface(size_type offset) const;
 };
 
 //---------------------------------------------------------------------------//
@@ -75,7 +77,10 @@ class CompressedFaceVisitor
 CELER_FORCEINLINE_FUNCTION
 CompressedFaceVisitor::CompressedFaceVisitor(
     ParamsRef const& params, CompressedFacesRecord const& local_surfaces)
-    : params_{params}, faces_{local_surfaces}
+    : params_{params}
+    , faces_{local_surfaces}
+    , types_{params_.surface_types.data().get() + **faces_.types.begin()}
+    , reals_{params_.reals.data().get() + **faces_.reals.begin()}
 {
 }
 
@@ -87,19 +92,21 @@ CompressedFaceVisitor::CompressedFaceVisitor(
 template<class F>
 CELER_FUNCTION void CompressedFaceVisitor::operator()(F&& func) const
 {
-    RealId::size_type data_begin(**faces_.reals.begin());
+    size_type offset{0};
     auto surface_visitor = [&](auto s_traits) -> size_type {
         using S = typename decltype(s_traits)::type;
-        func(this->make_surface<S>(RealId{data_begin}));
+        func(this->make_surface<S>(offset));
         return S::StorageSpan::extent;
     };
 
-    for (auto face_id : range(id_cast<FaceId>(faces_.size())))
+    for (MakeSize_t<FaceId> face_idx = 0, end_idx = faces_.size();
+         face_idx != end_idx;
+         ++face_idx)
     {
-        data_begin += visit_surface_type(surface_visitor,
-                                         this->surface_type(face_id));
+        offset += visit_surface_type(surface_visitor,
+                                     this->surface_type(FaceId{face_idx}));
     }
-    CELER_ENSURE(data_begin == **faces_.reals.end());
+    // CELER_ENSURE(data_begin == **faces_.reals.end());
 }
 
 //---------------------------------------------------------------------------//
@@ -115,12 +122,11 @@ CompressedFaceVisitor::operator()(F&& func, FaceId fid) const
     CELER_EXPECT(fid < faces_.size());
 
     size_type offset = params_.sizes[faces_.offsets[fid]];
-    RealId data_begin(faces_.reals[offset]);
 
     return visit_surface_type(
         [&](auto s_traits) {
             using S = typename decltype(s_traits)::type;
-            return func(this->make_surface<S>(data_begin));
+            return func(this->make_surface<S>(offset));
         },
         this->surface_type(fid));
 }
@@ -134,7 +140,7 @@ CompressedFaceVisitor::operator()(F&& func, FaceId fid) const
 CELER_FORCEINLINE_FUNCTION SurfaceType
 CompressedFaceVisitor::surface_type(FaceId fid) const
 {
-    return params_.surface_types[faces_.types[fid]];
+    return types_[*fid];
 }
 
 //---------------------------------------------------------------------------//
@@ -142,15 +148,16 @@ CompressedFaceVisitor::surface_type(FaceId fid) const
  * Create the surface at this offset.
  */
 template<class T>
-CELER_FUNCTION T CompressedFaceVisitor::make_surface(RealId data_begin) const
+CELER_FUNCTION T CompressedFaceVisitor::make_surface(size_type offset) const
 {
     constexpr auto size{T::StorageSpan::extent};
     using LdgSpanT = LdgSpan<real_type const, size>;
 
-    auto data_end = data_begin + size;
-    CELER_ASSERT(data_end <= *faces_.reals.end());
-    auto data = params_.reals[ItemRange<real_type>{data_begin, data_end}];
-    return T{LdgSpanT{data}};
+    // auto data_end = data_begin + size;
+    // CELER_ASSERT(data_end <= *faces_.reals.end());
+    //  auto data = params_.reals[ItemRange<real_type>{data_begin, data_end}];
+    //  return T{LdgSpanT{data}};
+    return T{LdgSpanT{reals_ + offset, reals_ + offset + size}};
 }
 
 //---------------------------------------------------------------------------//
