@@ -122,7 +122,7 @@ LocalSurfaceVisitor::operator()(F&& func, LocalSurfaceId id) const
     {
         if (is_plane(st))
         {
-            auto data_size = visit_surface_type(
+            auto data_size = visit_planar_surface_type(
                 [](auto s_traits) {
                     using S = typename decltype(s_traits)::type;
                     return S::StorageSpan::extent;

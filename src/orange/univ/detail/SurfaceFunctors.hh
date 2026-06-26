@@ -7,6 +7,7 @@
 #pragma once
 
 #include "corecel/Assert.hh"
+#include "corecel/Types.hh"
 #include "corecel/math/Algorithms.hh"
 #include "corecel/math/ArraySoftUnit.hh"
 #include "corecel/math/NumericLimits.hh"
@@ -33,20 +34,15 @@ struct CalcSense
     {
         CELER_ASSUME(is_plane(dp.surface_type()));
 
-        auto n_pos = visit_planar_surface_type(
+        real_type displacement, n_pos;
+        visit_planar_surface_type(
             [&](auto s_traits) {
                 using S = typename decltype(s_traits)::type;
-                return dp.surface<S>().dot_normal(this->pos);
+                auto p = dp.surface<S>();
+                n_pos = p.dot_normal(this->pos);
+                displacement = p.displacement();
             },
             dp.surface_type());
-
-        auto displacement = visit_planar_surface_type(
-            [&](auto s_traits) {
-                using S = typename decltype(s_traits)::type;
-                return dp.surface<S>().dot_normal(this->pos);
-            },
-            dp.surface_type());
-
         return real_to_sense(n_pos - displacement);
     }
 

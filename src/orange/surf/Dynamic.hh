@@ -44,6 +44,7 @@ class DynamicPlane
     template<class T>
     CELER_FUNCTION T surface() const
     {
+        CELER_ASSUME(T::surface_type() == type_);
         constexpr size_type size{T::StorageSpan::extent};
 
         CELER_ASSUME(data_.size() == size);
