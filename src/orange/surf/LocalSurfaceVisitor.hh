@@ -7,9 +7,10 @@
 #pragma once
 
 #include "corecel/Types.hh"
-#include "corecel/math/Algorithms.hh"
+#include "corecel/cont/LdgSpan.hh"
 #include "orange/OrangeData.hh"
 
+#include "Dynamic.hh"
 #include "SurfaceTypeTraits.hh"
 
 #include "detail/AllSurfaces.hh"
@@ -113,8 +114,7 @@ LocalSurfaceVisitor::operator()(F&& func, LocalSurfaceId id) const
 {
     CELER_EXPECT(id < surfaces_.size());
 
-    constexpr bool is_specialized_plane
-        = std::is_invocable_v<F, SurfaceType, SpanReal>;
+    constexpr bool is_specialized_plane = std::is_invocable_v<F, DynamicPlane>;
     using result_type = std::invoke_result_t<F, GeneralQuadric>;
 
     auto st = params_.surface_types[surfaces_.types[id]];
@@ -122,8 +122,14 @@ LocalSurfaceVisitor::operator()(F&& func, LocalSurfaceId id) const
     {
         if (is_plane(st))
         {
-            auto data = this->surface_data(id, st != SurfaceType::p ? 1 : 4);
-            return func(st, data);
+            auto data_size = visit_surface_type(
+                [](auto s_traits) {
+                    using S = typename decltype(s_traits)::type;
+                    return S::StorageSpan::extent;
+                },
+                st);
+            auto data = this->surface_data(id, data_size);
+            return func(DynamicPlane{st, data});
         }
     }
 

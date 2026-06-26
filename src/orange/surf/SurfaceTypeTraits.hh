@@ -55,6 +55,11 @@ ORANGE_SURFACE_TRAITS(inv, Involute);
 
 #undef ORANGE_SURFACE_TRAITS
 
+#define ORANGE_ST_VISIT_CASE(F, FUNC, TYPE) \
+    case SurfaceType::TYPE:                 \
+        return celeritas::forward<F>(FUNC)( \
+            SurfaceTypeTraits<SurfaceType::TYPE>{})
+
 //---------------------------------------------------------------------------//
 /*!
  * Expand a macro to a switch statement over all possible surface types.
@@ -66,30 +71,25 @@ template<class F>
 CELER_CONSTEXPR_FUNCTION decltype(auto)
 visit_surface_type(F&& func, SurfaceType st)
 {
-#define ORANGE_ST_VISIT_CASE(TYPE)          \
-    case SurfaceType::TYPE:                 \
-        return celeritas::forward<F>(func)( \
-            SurfaceTypeTraits<SurfaceType::TYPE>{})
-
     switch (st)
     {
-        ORANGE_ST_VISIT_CASE(px);
-        ORANGE_ST_VISIT_CASE(py);
-        ORANGE_ST_VISIT_CASE(pz);
-        ORANGE_ST_VISIT_CASE(p);
-        ORANGE_ST_VISIT_CASE(sc);
-        ORANGE_ST_VISIT_CASE(s);
-        ORANGE_ST_VISIT_CASE(cxc);
-        ORANGE_ST_VISIT_CASE(cyc);
-        ORANGE_ST_VISIT_CASE(czc);
-        ORANGE_ST_VISIT_CASE(cx);
-        ORANGE_ST_VISIT_CASE(cy);
-        ORANGE_ST_VISIT_CASE(cz);
-        ORANGE_ST_VISIT_CASE(kx);
-        ORANGE_ST_VISIT_CASE(ky);
-        ORANGE_ST_VISIT_CASE(kz);
-        ORANGE_ST_VISIT_CASE(sq);
-        ORANGE_ST_VISIT_CASE(gq);
+        ORANGE_ST_VISIT_CASE(F, func, px);
+        ORANGE_ST_VISIT_CASE(F, func, py);
+        ORANGE_ST_VISIT_CASE(F, func, pz);
+        ORANGE_ST_VISIT_CASE(F, func, p);
+        ORANGE_ST_VISIT_CASE(F, func, sc);
+        ORANGE_ST_VISIT_CASE(F, func, s);
+        ORANGE_ST_VISIT_CASE(F, func, cxc);
+        ORANGE_ST_VISIT_CASE(F, func, cyc);
+        ORANGE_ST_VISIT_CASE(F, func, czc);
+        ORANGE_ST_VISIT_CASE(F, func, cx);
+        ORANGE_ST_VISIT_CASE(F, func, cy);
+        ORANGE_ST_VISIT_CASE(F, func, cz);
+        ORANGE_ST_VISIT_CASE(F, func, kx);
+        ORANGE_ST_VISIT_CASE(F, func, ky);
+        ORANGE_ST_VISIT_CASE(F, func, kz);
+        ORANGE_ST_VISIT_CASE(F, func, sq);
+        ORANGE_ST_VISIT_CASE(F, func, gq);
         case SurfaceType::inv:
             // Prevented by input reader: see
             // orange/detail/SurfacesRecordBuilder.cc
@@ -97,8 +97,31 @@ visit_surface_type(F&& func, SurfaceType st)
         default:
             CELER_ASSERT_UNREACHABLE();
     }
-#undef ORANGE_ST_VISIT_CASE
 }
+
+//---------------------------------------------------------------------------//
+/*!
+ * Expand a macro to a switch statement over all possible surface types.
+ *
+ * The \c func argument should be a functor that takes a single argument which
+ * is a SurfaceTypeTraits instance.
+ */
+template<class F>
+CELER_CONSTEXPR_FUNCTION decltype(auto)
+visit_planar_surface_type(F&& func, SurfaceType st)
+{
+    switch (st)
+    {
+        ORANGE_ST_VISIT_CASE(F, func, px);
+        ORANGE_ST_VISIT_CASE(F, func, py);
+        ORANGE_ST_VISIT_CASE(F, func, pz);
+        ORANGE_ST_VISIT_CASE(F, func, p);
+        default:
+            CELER_ASSERT_UNREACHABLE();
+    }
+}
+
+#undef ORANGE_ST_VISIT_CASE
 
 //---------------------------------------------------------------------------//
 }  // namespace celeritas

@@ -10,7 +10,10 @@
 #include "corecel/math/Algorithms.hh"
 #include "corecel/math/ArraySoftUnit.hh"
 #include "corecel/math/NumericLimits.hh"
+#include "orange/surf/Dynamic.hh"
 #include "orange/surf/Plane.hh"
+#include "orange/surf/SurfaceTypeTraits.hh"
+#include "orange/surf/detail/AllSurfaces.hh"
 
 #include "Types.hh"
 #include "Utils.hh"
@@ -26,32 +29,28 @@ struct CalcSense
     Real3 const& pos;
 
     //! Operate on a plane
-    CELER_FUNCTION SignedSense operator()(SurfaceType st,
-                                          LdgSpan<real_type const> data) const
+    CELER_FUNCTION SignedSense operator()(DynamicPlane dp) const
     {
-        CELER_ASSUME(is_plane(st));
+        CELER_ASSUME(is_plane(dp.surface_type()));
 
-        real_type n_pos, displacement;
-        if (st != SurfaceType::p)
-        {
-            CELER_ASSUME(data.size() == 1);
-            auto ax = static_cast<int>(st) - static_cast<int>(SurfaceType::px);
-            n_pos = this->pos[ax];
-            displacement = data[0];
-        }
-        else
-        {
-            constexpr size_type size{Plane::StorageSpan::extent};
-            CELER_ASSUME(data.size() == size);
-            using LdgSpanT = LdgSpan<real_type const, size>;
-            Plane p{LdgSpanT{data}};
-            n_pos = p.dot_normal(this->pos);
-            displacement = p.displacement();
-        }
+        auto n_pos = visit_planar_surface_type(
+            [&](auto s_traits) {
+                using S = typename decltype(s_traits)::type;
+                return dp.surface<S>().dot_normal(this->pos);
+            },
+            dp.surface_type());
+
+        auto displacement = visit_planar_surface_type(
+            [&](auto s_traits) {
+                using S = typename decltype(s_traits)::type;
+                return dp.surface<S>().dot_normal(this->pos);
+            },
+            dp.surface_type());
 
         return real_to_sense(n_pos - displacement);
     }
 
+    //! Operate on a raw surface
     template<class S>
     CELER_FUNCTION SignedSense operator()(S const& surf) const
     {
