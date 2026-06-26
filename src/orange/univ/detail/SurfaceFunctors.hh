@@ -142,47 +142,61 @@ class CalcIntersections
         CELER_EXPECT(face_ && distance_);
     }
 
+    CELER_FUNCTION size_type face_idx() const { return face_idx_; }
+    CELER_FUNCTION size_type isect_idx() const { return isect_idx_; }
+
     //! Operate on a surface
     template<class S>
     CELER_FUNCTION void operator()(S const& surf)
     {
-        auto on_surface = (on_face_idx_ == face_idx_) ? SurfaceState::on
-                                                      : SurfaceState::off;
         if constexpr (typename S::Intersections{}.size() == 1)
         {
-            if (on_surface == SurfaceState::on)
+            if (on_face_idx_ == face_idx_)
             {
-                // On surface so cannot reintersect
+                // Single intersection and on this face: do not intersect
                 ++face_idx_;
                 return;
             }
         }
 
         // Calculate distance to surface along this direction
-        auto all_dist = surf.calc_intersections(pos_, dir_, on_surface);
+        auto all_dist = surf.calc_intersections(
+            pos_,
+            dir_,
+            (on_face_idx_ == face_idx_) ? SurfaceState::on : SurfaceState::off);
 
-        // Copy possible intersections and this surface to the output
-        for (real_type dist : all_dist)
+        // Unroll into first + remainder
+        this->fill_intersection(all_dist[0]);
+        if constexpr (all_dist.size() > 1)
         {
-            CELER_ASSERT(dist > 0);
-            if (is_valid_isect_(dist))
+            for (auto i = 1; i != all_dist.size(); ++i)
             {
-                // Save intersection in the list
-                face_[isect_idx_] = FaceId{face_idx_};
-                distance_[isect_idx_] = dist;
-                if (fill_isect_)
-                {
-                    isect_[isect_idx_] = isect_idx_;
-                }
-                ++isect_idx_;
+                this->fill_intersection(all_dist[i]);
             }
         }
+
         // Increment to next face
         ++face_idx_;
     }
 
-    CELER_FUNCTION size_type face_idx() const { return face_idx_; }
-    CELER_FUNCTION size_type isect_idx() const { return isect_idx_; }
+  private:
+    CELER_FUNCTION void fill_intersection(real_type dist)
+    {
+        CELER_ASSERT(dist > 0);
+        if (!is_valid_isect_(dist))
+        {
+            return;
+        }
+
+        // Save intersection in the list
+        face_[isect_idx_] = FaceId{face_idx_};
+        distance_[isect_idx_] = dist;
+        if (fill_isect_)
+        {
+            isect_[isect_idx_] = isect_idx_;
+        }
+        ++isect_idx_;
+    }
 
   private:
     //// DATA ////
