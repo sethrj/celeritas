@@ -37,6 +37,9 @@ using logic_int = ImplSurfaceId::size_type;
 //! Integer type for canonical volume level
 using vol_level_uint = VolumeLevelId::size_type;
 
+//! Integer type for surface storage
+using surface_type_uint = std::uint_least8_t;
+
 //! Helper class for some template dispatch functions
 template<Axis T>
 using AxisTag = std::integral_constant<Axis, T>;
@@ -126,7 +129,7 @@ enum class Sense : bool
  *
  * See \c orange/surf/SurfaceTypeTraits.hh for how these map to classes.
  */
-enum class SurfaceType : unsigned char
+enum class SurfaceType : surface_type_uint
 {
     begin_plane_,
     px = begin_plane_,  //!< Plane aligned with X axis
@@ -153,6 +156,39 @@ enum class SurfaceType : unsigned char
     gq,  //!< General quadric
     inv,  //!< Involute
     size_  //!< Sentinel value for number of surface types
+};
+
+//!
+enum class BaseSurfaceType : surface_type_uint
+{
+    p,  //!< General plane
+    s,  //!< Sphere
+    c,  //!< Cylinder
+    k,  //!< Cone
+    // t,  //!< TODO: hyperbolic paraboloid
+    sq,  //!< Simple quadric
+    gq,  //!< General quadric
+    inv,  //!< Involute
+    size_  //!< Sentinel value for number of surface types
+};
+
+enum class BaseSurfaceAxis : surface_type_uint
+{
+    x,
+    y,
+    z,
+    arb,  //!< Not axis-aligned
+    size_
+};
+
+//! Trivially copyable class for bit-packed surface type + axis
+class GeneralSurfaceType
+{
+  public:
+    CELER_CONSTEXPR_FUNCTION GeneralSurfaceType(BaseSurfaceType bst, BaseSurfaceAxis ax);
+
+  private:
+    surface_type_uint val_{};
 };
 
 //---------------------------------------------------------------------------//
