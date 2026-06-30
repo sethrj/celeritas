@@ -22,8 +22,8 @@ CylAligned<T> CylAligned<T>::from_radius_sq(Real3 const& origin, real_type rsq)
     CELER_EXPECT(rsq > 0);
 
     CylAligned<T> result;
-    result.origin_u_ = origin[to_int(U)];
-    result.origin_v_ = origin[to_int(V)];
+    result.origin_u_ = origin[to_int(u_ax_)];
+    result.origin_v_ = origin[to_int(v_ax_)];
     result.radius_sq_ = rsq;
     return result;
 }
@@ -46,8 +46,8 @@ template<Axis T>
 Real3 CylAligned<T>::calc_origin() const
 {
     Real3 result{0, 0, 0};
-    result[to_int(U)] = this->origin_u();
-    result[to_int(V)] = this->origin_v();
+    result[to_int(u_ax_)] = this->origin_u();
+    result[to_int(v_ax_)] = this->origin_v();
     return result;
 }
 

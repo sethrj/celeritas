@@ -75,8 +75,9 @@ class CylAligned
     //@}
 
   private:
-    static constexpr Axis U{T == Axis::x ? Axis::y : Axis::x};
-    static constexpr Axis V{T == Axis::z ? Axis::y : Axis::z};
+    static constexpr Axis ax_{T};
+    static constexpr Axis u_ax_{ax_ == Axis::x ? Axis::y : Axis::x};
+    static constexpr Axis v_ax_{ax_ == Axis::z ? Axis::y : Axis::z};
 
   public:
     //// CLASS ATTRIBUTES ////
@@ -89,9 +90,9 @@ class CylAligned
 
     //!@{
     //! Axes
-    static CELER_CONSTEXPR_FUNCTION Axis t_axis() { return T; }
-    static CELER_CONSTEXPR_FUNCTION Axis u_axis() { return U; }
-    static CELER_CONSTEXPR_FUNCTION Axis v_axis() { return V; }
+    static CELER_CONSTEXPR_FUNCTION Axis t_axis() { return ax_; }
+    static CELER_CONSTEXPR_FUNCTION Axis u_axis() { return u_ax_; }
+    static CELER_CONSTEXPR_FUNCTION Axis v_axis() { return v_ax_; }
     //!@}
 
   public:
@@ -180,8 +181,8 @@ CELER_CONSTEXPR_FUNCTION SurfaceType CylAligned<T>::surface_type()
  */
 template<Axis T>
 CELER_FUNCTION CylAligned<T>::CylAligned(Real3 const& origin, real_type radius)
-    : origin_u_{origin[to_int(U)]}
-    , origin_v_{origin[to_int(V)]}
+    : origin_u_{origin[to_int(u_ax_)]}
+    , origin_v_{origin[to_int(v_ax_)]}
     , radius_sq_{ipow<2>(radius)}
 {
     CELER_EXPECT(radius > 0);
@@ -205,8 +206,8 @@ CELER_FUNCTION CylAligned<T>::CylAligned(Span<R, StorageSpan::extent> data)
 template<Axis T>
 CELER_FUNCTION SignedSense CylAligned<T>::calc_sense(Real3 const& pos) const
 {
-    real_type const u = pos[to_int(U)] - origin_u_;
-    real_type const v = pos[to_int(V)] - origin_v_;
+    real_type const u = pos[to_int(u_ax_)] - origin_u_;
+    real_type const v = pos[to_int(v_ax_)] - origin_v_;
 
     return real_to_sense(ipow<2>(u) + ipow<2>(v) - radius_sq_);
 }
@@ -231,12 +232,12 @@ CylAligned<T>::calc_intersections(Real3 const& pos,
         return {no_intersection(), no_intersection()};
     }
 
-    real_type const u = pos[to_int(U)] - origin_u_;
-    real_type const v = pos[to_int(V)] - origin_v_;
+    real_type const u = pos[to_int(u_ax_)] - origin_u_;
+    real_type const v = pos[to_int(v_ax_)] - origin_v_;
 
     // b/2 = \omega \dot (x - x_0)
     detail::QuadraticSolver solve_quadric(
-        a, dir[to_int(U)] * u + dir[to_int(V)] * v);
+        a, dir[to_int(u_ax_)] * u + dir[to_int(v_ax_)] * v);
     if (on_surface == SurfaceState::on)
     {
         // Solve degenerate case (c=0)
@@ -256,8 +257,8 @@ CELER_FUNCTION Real3 CylAligned<T>::calc_normal(Real3 const& pos) const
 {
     Real3 norm{0, 0, 0};
 
-    norm[to_int(U)] = pos[to_int(U)] - origin_u_;
-    norm[to_int(V)] = pos[to_int(V)] - origin_v_;
+    norm[to_int(u_ax_)] = pos[to_int(u_ax_)] - origin_u_;
+    norm[to_int(v_ax_)] = pos[to_int(v_ax_)] - origin_v_;
 
     return make_unit_vector(norm);
 }

@@ -90,6 +90,9 @@ class PlaneAligned : public PlaneAlignedBase
     //! Safety is intersection along surface normal
     static CELER_CONSTEXPR_FUNCTION bool simple_safety() { return true; }
 
+  private:
+    static constexpr Axis ax_{T};
+
   public:
     //// CONSTRUCTORS ////
 

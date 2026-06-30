@@ -181,11 +181,12 @@ enum class BaseSurfaceAxis : surface_type_uint
     size_
 };
 
-//! Trivially copyable class for bit-packed surface type + axis
+//! Trivially copyable class for bit-packed surface type + axis + centered
 class GeneralSurfaceType
 {
   public:
-    CELER_CONSTEXPR_FUNCTION GeneralSurfaceType(BaseSurfaceType bst, BaseSurfaceAxis ax);
+    CELER_CONSTEXPR_FUNCTION
+    GeneralSurfaceType(BaseSurfaceType bst, BaseSurfaceAxis ax);
 
   private:
     surface_type_uint val_{};

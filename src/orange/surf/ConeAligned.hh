@@ -55,8 +55,9 @@ class ConeAligned
     //@}
 
   private:
-    static constexpr Axis U{T == Axis::x ? Axis::y : Axis::x};
-    static constexpr Axis V{T == Axis::z ? Axis::y : Axis::z};
+    static constexpr Axis ax_{T};
+    static constexpr Axis u_ax_{ax_ == Axis::x ? Axis::y : Axis::x};
+    static constexpr Axis v_ax_{ax_ == Axis::z ? Axis::y : Axis::z};
 
   public:
     //// CLASS ATTRIBUTES ////
@@ -69,9 +70,9 @@ class ConeAligned
 
     //!@{
     //! Axes
-    static CELER_CONSTEXPR_FUNCTION Axis t_axis() { return T; }
-    static CELER_CONSTEXPR_FUNCTION Axis u_axis() { return U; }
-    static CELER_CONSTEXPR_FUNCTION Axis v_axis() { return V; }
+    static CELER_CONSTEXPR_FUNCTION Axis t_axis() { return ax_; }
+    static CELER_CONSTEXPR_FUNCTION Axis u_axis() { return u_ax_; }
+    static CELER_CONSTEXPR_FUNCTION Axis v_axis() { return v_ax_; }
     //!@}
 
   public:
@@ -163,8 +164,8 @@ template<Axis T>
 CELER_FUNCTION SignedSense ConeAligned<T>::calc_sense(Real3 const& pos) const
 {
     real_type const x = pos[to_int(T)] - origin_[to_int(T)];
-    real_type const y = pos[to_int(U)] - origin_[to_int(U)];
-    real_type const z = pos[to_int(V)] - origin_[to_int(V)];
+    real_type const y = pos[to_int(u_ax_)] - origin_[to_int(u_ax_)];
+    real_type const z = pos[to_int(v_ax_)] - origin_[to_int(v_ax_)];
 
     return real_to_sense((-tsq_ * ipow<2>(x)) + ipow<2>(y) + ipow<2>(z));
 }
@@ -186,12 +187,12 @@ ConeAligned<T>::calc_intersections(Real3 const& pos,
 {
     // Expand translated positions into 'xyz' coordinate system
     real_type const x = pos[to_int(T)] - origin_[to_int(T)];
-    real_type const y = pos[to_int(U)] - origin_[to_int(U)];
-    real_type const z = pos[to_int(V)] - origin_[to_int(V)];
+    real_type const y = pos[to_int(u_ax_)] - origin_[to_int(u_ax_)];
+    real_type const z = pos[to_int(v_ax_)] - origin_[to_int(v_ax_)];
 
     real_type const u = dir[to_int(T)];
-    real_type const v = dir[to_int(U)];
-    real_type const w = dir[to_int(V)];
+    real_type const v = dir[to_int(u_ax_)];
+    real_type const w = dir[to_int(v_ax_)];
 
     // Scaled direction
     real_type a = (-tsq_ * ipow<2>(u)) + ipow<2>(v) + ipow<2>(w);
