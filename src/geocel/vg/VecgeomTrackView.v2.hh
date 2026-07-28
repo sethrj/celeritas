@@ -2,40 +2,28 @@
 // Copyright Celeritas contributors: see top-level COPYRIGHT file for details
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
-//! \file geocel/vg/VecgeomTrackView.v1.hh
+//! \file geocel/vg/VecgeomTrackView.v2.hh
 //---------------------------------------------------------------------------//
 #pragma once
 
 #include "corecel/Config.hh"
-#if CELERITAS_VECGEOM_VERSION >= 0x020000
-#    error "This file requires VecGeom 1.x"
+
+#if CELERITAS_VECGEOM_VERSION < 0x020100
+#    error "This file requires VecGeom 2.1+"
 #endif
 
-#include <VecGeom/base/Version.h>
+#include <VecGeom/navigation/NavView.h>
 
-// NOTE: must include Global before most other vecgeom/veccore includes
-#include <VecGeom/base/Global.h>
-#include <VecGeom/volumes/LogicalVolume.h>
-#include <VecGeom/volumes/PlacedVolume.h>
-
+#include "corecel/Assert.hh"
 #include "corecel/Macros.hh"
 #include "corecel/Types.hh"
 #include "corecel/cont/Span.hh"
 #include "corecel/math/ArraySoftUnit.hh"
-#include "corecel/math/ArrayUtils.hh"
 #include "corecel/sys/ThreadId.hh"
 #include "geocel/Types.hh"
 
 #include "VecgeomData.hh"
 #include "VecgeomTypes.hh"
-
-#include "detail/BVHNavigator.hh"
-
-#if CELER_VGNAV == CELER_VGNAV_PATH
-#    include <VecGeom/navigation/NavStatePath.h>
-#else
-#    include "detail/VgNavStateWrapper.hh"
-#endif
 
 #if !CELER_DEVICE_COMPILE
 #    include "corecel/io/Logger.hh"
@@ -67,10 +55,10 @@ class VecgeomTrackView
     using Initializer_t = GeoTrackInitializer;
     using ParamsRef = NativeCRef<VecgeomParamsData>;
     using StateRef = NativeRef<VecgeomStateData>;
-    using Navigator = celeritas::detail::BVHNavigator;
-    using ImplVolInstanceId = VgVolumeInstanceId;
+    using NavView = vecgeom::NavView;
+    using OpaquePath = NavView::OpaquePath;
     using real_type = vg_real_type;
-    using OpaquePath = int;
+    using ImplVolInstanceId = VgVolumeInstanceId;
     //!@}
 
   public:
@@ -79,8 +67,8 @@ class VecgeomTrackView
         ParamsRef const& data, StateRef const& stateview, TrackSlotId tid);
 
     // Initialize the state
-    inline CELER_FUNCTION VecgeomTrackView& operator=(
-        Initializer_t const& init);
+    inline CELER_FUNCTION VecgeomTrackView&
+    operator=(Initializer_t const& init);
 
     //// STATIC ACCESSORS ////
 
@@ -102,8 +90,8 @@ class VecgeomTrackView
     // Get the depth in the geometry hierarchy
     inline CELER_FUNCTION VolumeLevelId volume_level() const;
     // Get the volume instance ID for all levels
-    inline CELER_FUNCTION void volume_instance_id(
-        Span<VolumeInstanceId> levels) const;
+    inline CELER_FUNCTION void
+    volume_instance_id(Span<VolumeInstanceId> levels) const;
     // Visit every volume instance in the track's path, including world
     template<class F>
     inline CELER_FUNCTION void foreach_volume_path(F&& visit) const;
@@ -159,12 +147,6 @@ class VecgeomTrackView
     using VgLogVol = VgLogicalVolume<MemSpace::native>;
     using VgPlacedVol = VgPlacedVolume<MemSpace::native>;
 
-#if CELER_VGNAV != CELER_VGNAV_PATH
-    using NavStateRef = detail::VgNavStateWrapper;
-#else
-    using NavStateRef = vecgeom::NavStatePath&;
-#endif
-
     //// DATA ////
 
     //! Shared/persistent geometry data
@@ -174,8 +156,8 @@ class VecgeomTrackView
 
     //!@{
     //! Referenced thread-local data
-    NavStateRef vgstate_;
-    NavStateRef vgnext_;
+    VgNavState& vgstate_;
+    VgNavState& vgnext_;
     Real3& pos_;
     Real3& dir_;
 
@@ -184,11 +166,11 @@ class VecgeomTrackView
     // Temporary data
     real_type next_step_{0};
     bool failed_{false};
-    //! Tolerance used for solid model relocation bump
-    static constexpr vg_real_type relocate_bump_
-        = std::is_same_v<vg_real_type, float>      ? 1e-4f
-          : std::is_same_v<vgbvh_real_type, float> ? 1e-5f
-                                                   : 1e-8;
+
+    //// HELPER CLASSES ////
+
+    struct LocalNavData;
+    class LocalNav;
 
     //// HELPER FUNCTIONS ////
 
@@ -204,8 +186,29 @@ class VecgeomTrackView
     // Get a reference to the current volume
     inline CELER_FUNCTION VgLogVol const& logical_volume() const;
 
-    // Construct a bumped real3
-    inline CELER_FUNCTION VgReal3 make_bumped_pos(vg_real_type bump) const;
+    // Create a temporary navigator
+    inline CELER_FUNCTION LocalNav make_nav() const;
+};
+
+//---------------------------------------------------------------------------//
+// LOCAL NAV
+// This will be simplified when the upstream NavView supports true Span.
+//---------------------------------------------------------------------------//
+
+struct VecgeomTrackView::LocalNavData
+{
+    VgReal3 temp_pos;
+    VgReal3 temp_dir;
+};
+
+class VecgeomTrackView::LocalNav : public LocalNavData, public vecgeom::NavView
+{
+  public:
+    explicit LocalNav(VecgeomTrackView& vtv)
+        : LocalNavData{to_vgvector(vtv.pos_), to_vgvector(vtv.dir_)}
+        , NavView{vtv.vgstate_, vtv.vgnext_, this->temp_pos, this->temp_dir}
+    {
+    }
 };
 
 //---------------------------------------------------------------------------//
@@ -214,19 +217,14 @@ class VecgeomTrackView
 /*!
  * Construct from persistent and state data.
  */
-CELER_FUNCTION VecgeomTrackView::VecgeomTrackView(
+CELER_FUNCTION
+VecgeomTrackView::VecgeomTrackView(
     ParamsRef const& params, StateRef const& states, TrackSlotId tid)
     : params_(params)
     , state_(states)
     , tid_(tid)
-#if CELER_VGNAV == CELER_VGNAV_PATH
-    // Nav path holds direct references to state with unused "last state"
     , vgstate_{states.state[tid]}
     , vgnext_{states.next_state[tid]}
-#else
-    , vgstate_{states.state[tid], states.boundary[tid]}
-    , vgnext_{states.next_state[tid], states.next_boundary[tid]}
-#endif
     , pos_(states.pos[tid])
     , dir_(states.dir[tid])
 {
@@ -244,44 +242,30 @@ CELER_FUNCTION VecgeomTrackView::VecgeomTrackView(
  * Otherwise, the state is initialized from a starting location and direction,
  * which is expensive.
  */
-CELER_FUNCTION VecgeomTrackView& VecgeomTrackView::operator=(
-    Initializer_t const& init)
+CELER_FUNCTION VecgeomTrackView&
+VecgeomTrackView::operator=(Initializer_t const& init)
 {
     CELER_EXPECT(is_soft_unit_vector(init.dir));
     failed_ = false;
 
-    // Initialize direction
+    // Copy dir/pos: make_nav currently does array -> vgreal3 conversion
     dir_ = init.dir;
-
+    pos_ = init.pos;
+    auto nav = this->make_nav();
     if (init.parent)
     {
-        // Copy the navigation state and position from the parent state
-        if (tid_ != init.parent)
-        {
-            VecgeomTrackView other(params_, state_, init.parent);
-            other.vgstate_.CopyTo(&vgstate_);
-            pos_ = other.pos_;
-        }
-        // Set up the next state and initialize the direction
-        vgnext_ = vgstate_;
-
-        CELER_ENSURE(this->pos() == init.pos);
-        CELER_ENSURE(!this->has_next_step());
-        return *this;
+        VecgeomTrackView other(params_, state_, init.parent);
+        nav.Initialize(
+            vecgeom::FullPath{other.opaque_path(), other.is_on_boundary()},
+            nav.temp_pos,
+            nav.temp_dir);
+    }
+    else
+    {
+        nav.Initialize(vecgeom::UnknownPath{}, nav.temp_pos, nav.temp_dir);
     }
 
-    // Initialize the state from a position
-    pos_ = init.pos;
-
-    // Set up current state and locate daughter volume
-    vgstate_.Clear();
-    auto const* world = params_.scalars.world<MemSpace::native>();
-    // LocatePointIn sets `vgstate_`
-    constexpr bool contains_point = true;
-    Navigator::LocatePointIn(
-        world, to_vgvector(pos_), vgstate_, contains_point);
-
-    if (CELER_UNLIKELY(vgstate_.IsOutside()))
+    if (CELER_UNLIKELY(nav.IsOutside()))
     {
 #if !CELER_DEVICE_COMPILE
         auto msg = CELER_LOG_LOCAL(error);
@@ -291,6 +275,9 @@ CELER_FUNCTION VecgeomTrackView& VecgeomTrackView::operator=(
         failed_ = true;
     }
 
+    CELER_ENSURE(this->dir() == to_array(nav.GetDirection()));
+    CELER_ENSURE(this->pos() == to_array(nav.GetPosition()));
+    CELER_ENSURE(!this->has_next_step());
     return *this;
 }
 
@@ -316,7 +303,9 @@ CELER_FORCEINLINE_FUNCTION VolumeId VecgeomTrackView::volume_id() const
 CELER_FUNCTION VolumeInstanceId VecgeomTrackView::volume_instance_id() const
 {
     CELER_EXPECT(!this->is_outside());
-    auto ipv_id = id_cast<ImplVolInstanceId>(this->physical_volume().id());
+
+    auto ipv_id
+        = id_cast<ImplVolInstanceId>(this->make_nav().GetPlacedVolumeId());
     return params_.volume_instances[ipv_id];
 }
 
@@ -336,8 +325,8 @@ CELER_FUNCTION VolumeLevelId VecgeomTrackView::volume_level() const
 /*!
  * Get the volume instance ID at each volume level.
  */
-CELER_FUNCTION void VecgeomTrackView::volume_instance_id(
-    Span<VolumeInstanceId> levels) const
+CELER_FUNCTION void
+VecgeomTrackView::volume_instance_id(Span<VolumeInstanceId> levels) const
 {
     this->foreach_volume_path(
         [levels](VolumeLevelId lev, VolumeInstanceId vol_inst) {
@@ -380,7 +369,7 @@ CELER_FORCEINLINE_FUNCTION ImplVolumeId VecgeomTrackView::impl_volume_id() const
 /*!
  * The current surface frame ID.
  */
-CELER_FORCEINLINE_FUNCTION ImplSurfaceId VecgeomTrackView::impl_surface_id() const
+CELER_FUNCTION ImplSurfaceId VecgeomTrackView::impl_surface_id() const
 {
     return {};
 }
@@ -389,8 +378,7 @@ CELER_FORCEINLINE_FUNCTION ImplSurfaceId VecgeomTrackView::impl_surface_id() con
 /*!
  * After 'find_next_step', the next straight-line surface.
  */
-CELER_FORCEINLINE_FUNCTION ImplSurfaceId
-VecgeomTrackView::next_impl_surface_id() const
+CELER_FUNCTION ImplSurfaceId VecgeomTrackView::next_impl_surface_id() const
 {
     return {};
 }
@@ -402,14 +390,14 @@ VecgeomTrackView::next_impl_surface_id() const
 CELER_FORCEINLINE_FUNCTION auto VecgeomTrackView::opaque_path() const
     -> OpaquePath
 {
-    return {};
+    return this->make_nav().GetOpaquePath();
 }
 
 //---------------------------------------------------------------------------//
 /*!
  * Whether the track is outside the valid geometry region.
  */
-CELER_FORCEINLINE_FUNCTION bool VecgeomTrackView::is_outside() const
+CELER_FUNCTION bool VecgeomTrackView::is_outside() const
 {
     return vgstate_.IsOutside();
 }
@@ -418,7 +406,7 @@ CELER_FORCEINLINE_FUNCTION bool VecgeomTrackView::is_outside() const
 /*!
  * Whether the track is on the boundary of a volume.
  */
-CELER_FORCEINLINE_FUNCTION bool VecgeomTrackView::is_on_boundary() const
+CELER_FUNCTION bool VecgeomTrackView::is_on_boundary() const
 {
     return vgstate_.IsOnBoundary();
 }
@@ -442,30 +430,45 @@ CELER_FUNCTION Propagation VecgeomTrackView::find_next_step(real_type max_step)
     CELER_EXPECT(!this->is_outside());
     CELER_EXPECT(max_step > 0);
 
-    // TODO: vgnext is simply copied and the boundary flag optionally set
-    next_step_ = Navigator::ComputeStepAndNextVolume(
-        to_vgvector(pos_), to_vgvector(dir_), max_step, vgstate_, vgnext_);
+    using Kind = vecgeom::NavFindResultKind;
 
-    next_step_ = max(next_step_, this->extra_push());
-
-    if (!this->is_next_boundary())
-    {
-        // Soft equivalence between distance and max step is because the
-        // BVH navigator subtracts and then re-adds a bump distance to the
-        // step
-        CELER_ASSERT(soft_equal(next_step_, max(max_step, this->extra_push())));
-        next_step_ = max_step;
-    }
+    auto found = this->make_nav().FindNextBoundary(max_step);
 
     Propagation result;
-    result.distance = next_step_;
-    result.boundary = this->is_next_boundary();
+    if (found.GetKind() == Kind::hit)
+    {
+        result.distance = found.GetDistance();
+        result.boundary = true;
+        CELER_ASSERT(found.GetDistance() < max_step);
+    }
+    else if (found.GetKind() == Kind::miss)
+    {
+        result.distance = max_step;
+        result.boundary = false;
+    }
+    else if (found.GetKind() == Kind::reentrant)
+    {
+        result.distance = 0;
+        result.boundary = true;
+    }
+    else if (CELER_UNLIKELY(found.GetKind() == Kind::error))
+    {
+#if !CELER_DEVICE_COMPILE
+        auto msg = CELER_LOG_LOCAL(debug);
+        msg << "Failed to find nexdt step at " << repr(pos_) << ' '
+            << lengthunits::native_label << " along " << repr(dir_);
+#endif
+        failed_ = true;
+        result.distance = 0;
+        result.boundary = true;
+    }
+    else
+    {
+        CELER_ASSERT_UNREACHABLE();
+    }
+    next_step_ = result.distance;
 
-    CELER_ENSURE(this->has_next_step());
-    CELER_ENSURE(result.distance > 0);
-    CELER_ENSURE(result.distance <= max(max_step, this->extra_push()));
-    CELER_ENSURE(result.boundary || result.distance == max_step
-                 || max_step < this->extra_push());
+    CELER_ENSURE(result.distance >= 0 && result.distance <= max_step);
     return result;
 }
 
@@ -473,7 +476,7 @@ CELER_FUNCTION Propagation VecgeomTrackView::find_next_step(real_type max_step)
 /*!
  * Find the safety at the current position.
  */
-CELER_FORCEINLINE_FUNCTION real_type VecgeomTrackView::find_safety()
+CELER_FUNCTION real_type VecgeomTrackView::find_safety()
 {
     return this->find_safety(vecgeom::kInfLength);
 }
@@ -491,13 +494,9 @@ CELER_FUNCTION real_type VecgeomTrackView::find_safety(real_type max_radius)
     CELER_EXPECT(!this->is_on_boundary());
     CELER_EXPECT(max_radius > 0);
 
-    real_type safety = Navigator::ComputeSafety(
-        to_vgvector(this->pos()), vgstate_, max_radius);
-    safety = min<real_type>(safety, max_radius);
-
-    // Since the reported "safety" is negative if we've moved slightly beyond
-    // the boundary of a solid without crossing it, we must clamp to zero.
-    return max<real_type>(safety, 0);
+    auto safety = this->make_nav().FindSafety(max_radius);
+    CELER_ENSURE(safety >= 0 && safety <= max_radius);
+    return safety;
 }
 
 //---------------------------------------------------------------------------//
@@ -510,11 +509,9 @@ CELER_FUNCTION void VecgeomTrackView::move_to_boundary()
     CELER_EXPECT(this->has_next_step());
     CELER_EXPECT(this->is_next_boundary());
 
-    // Move next step
-    axpy(next_step_, dir_, &pos_);
-    next_step_ = 0;
-    vgstate_.SetBoundaryState(true);
-
+    auto nav = this->make_nav();
+    nav.MoveToBoundary(next_step_);
+    pos_ = to_array(nav.GetPosition());
     CELER_ENSURE(this->is_on_boundary());
 }
 
@@ -530,15 +527,7 @@ CELER_FUNCTION void VecgeomTrackView::cross_boundary()
     CELER_EXPECT(this->is_on_boundary());
     CELER_EXPECT(this->is_next_boundary());
 
-    // Relocate to next tracking volume (maybe across multiple boundaries)
-    if (vgnext_.Top() != nullptr)
-    {
-        Navigator::RelocateToNextVolume(
-            to_vgvector(this->pos_), to_vgvector(this->dir_), vgnext_);
-    }
-
-    vgstate_ = vgnext_;
-
+    this->make_nav().CrossBoundary();
     CELER_ENSURE(this->is_on_boundary());
 }
 
@@ -554,10 +543,9 @@ CELER_FUNCTION void VecgeomTrackView::move_internal(real_type dist)
     CELER_EXPECT(dist > 0 && dist <= next_step_);
     CELER_EXPECT(dist != next_step_ || !this->is_next_boundary());
 
-    // Move and update next_step_
-    axpy(dist, dir_, &pos_);
-    next_step_ -= dist;
-    vgstate_.SetBoundaryState(false);
+    auto nav = this->make_nav();
+    nav.MoveInternal(next_step_);
+    pos_ = to_array(nav.GetPosition());
 
     CELER_ENSURE(!this->is_on_boundary());
 }
@@ -572,9 +560,9 @@ CELER_FUNCTION void VecgeomTrackView::move_internal(real_type dist)
 CELER_FUNCTION void VecgeomTrackView::move_internal(Real3 const& pos)
 {
     pos_ = pos;
-    next_step_ = 0;
-    vgstate_.SetBoundaryState(false);
-
+    auto nav = this->make_nav();
+    nav.MoveToBoundary(next_step_);
+    pos_ = to_array(nav.GetPosition());
     CELER_ENSURE(!this->is_on_boundary());
 }
 
@@ -588,7 +576,9 @@ CELER_FUNCTION void VecgeomTrackView::move_internal(Real3 const& pos)
 CELER_FUNCTION void VecgeomTrackView::set_dir(Real3 const& newdir)
 {
     CELER_EXPECT(is_soft_unit_vector(newdir));
-    dir_ = newdir;
+    auto nav = this->make_nav();
+    nav.ChangeDirection(to_vgvector(newdir));
+    dir_ = to_array(nav.GetDirection());
     next_step_ = 0;
 }
 
@@ -634,19 +624,10 @@ CELER_FUNCTION auto VecgeomTrackView::logical_volume() const -> VgLogVol const&
     return *this->physical_volume().GetLogicalVolume();
 }
 
-//---------------------------------------------------------------------------//
-/*!
- * If not using the surface model, return a bumped position.
- */
-CELER_FUNCTION VgReal3 VecgeomTrackView::make_bumped_pos(vg_real_type bump) const
+// Create a temporary navigator
+CELER_FUNCTION auto VecgeomTrackView::make_nav() const -> LocalNav
 {
-    CELER_EXPECT(bump >= 0);
-    VgReal3 bumped_pos;
-    for (auto i : range(3))
-    {
-        bumped_pos[i] = fma(bump, dir_[i], pos_[i]);
-    }
-    return bumped_pos;
+    return LocalNav{const_cast<VecgeomTrackView&>(*this)};
 }
 
 //---------------------------------------------------------------------------//

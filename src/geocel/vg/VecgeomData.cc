@@ -50,18 +50,6 @@ void resize(VecgeomStateData<Ownership::value, M>* data,
 #endif
     }
 
-    if constexpr (CELER_VGNAV != CELER_VGNAV_PATH)
-    {
-        // Unless using the 'path' navigator, boundary data is stored
-        // independently
-        resize(&data->boundary, size);
-    }
-    if constexpr (CELER_VGNAV != CELER_VGNAV_PATH)
-    {
-        // Path navigator stores the boundary, and surface model uses next_surf
-        resize(&data->next_boundary, size);
-    }
-
     CELER_ENSURE(data);
 }
 
