@@ -123,7 +123,7 @@ struct VecgeomStateData
 #if CELER_VGNAV == CELER_VGNAV_PATH
     using VgStateItems = detail::VecgeomNavCollection<W, M>;
 #else
-    using VgStateItems = StateItems<VgNavStateImpl>;
+    using VgStateItems = StateItems<VgOpaqueNavPath>;
 #endif
 
     //// DATA ////

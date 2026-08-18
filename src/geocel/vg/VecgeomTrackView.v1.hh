@@ -71,6 +71,7 @@ class VecgeomTrackView
     using Navigator = celeritas::detail::BVHNavigator;
     using ImplVolInstanceId = VgVolumeInstanceId;
     using real_type = vg_real_type;
+    using OpaquePath = int;
     //!@}
 
   public:
@@ -115,10 +116,13 @@ class VecgeomTrackView
     // After 'find_next_step', the next straight-line surface
     inline CELER_FUNCTION ImplSurfaceId next_impl_surface_id() const;
 
+    // Get the opaque nav path (index or tuple)
+    inline CELER_FUNCTION OpaquePath opaque_path() const;
+
     // Whether the track is outside the valid geometry region
-    CELER_FORCEINLINE_FUNCTION bool is_outside() const;
+    inline CELER_FUNCTION bool is_outside() const;
     // Whether the track is exactly on a surface
-    CELER_FORCEINLINE_FUNCTION bool is_on_boundary() const;
+    inline CELER_FUNCTION bool is_on_boundary() const;
     //! Whether the last operation resulted in an error
     CELER_FORCEINLINE_FUNCTION bool failed() const { return failed_; }
     // Get the normal vector of the current surface
@@ -156,10 +160,10 @@ class VecgeomTrackView
     using VgLogVol = VgLogicalVolume<MemSpace::native>;
     using VgPlacedVol = VgPlacedVolume<MemSpace::native>;
 
-#if CELER_VGNAV == CELER_VGNAV_PATH
-    using NavStateWrapper = vecgeom::NavStatePath&;
+#if CELER_VGNAV != CELER_VGNAV_PATH
+    using NavStateRef = detail::VgNavStateWrapper;
 #else
-    using NavStateWrapper = detail::VgNavStateWrapper;
+    using NavStateRef = vecgeom::NavStatePath&;
 #endif
 
     //// DATA ////
@@ -171,8 +175,8 @@ class VecgeomTrackView
 
     //!@{
     //! Referenced thread-local data
-    NavStateWrapper vgstate_;
-    NavStateWrapper vgnext_;
+    NavStateRef vgstate_;
+    NavStateRef vgnext_;
     Real3& pos_;
     Real3& dir_;
 
@@ -369,7 +373,7 @@ CELER_FORCEINLINE_FUNCTION ImplVolumeId VecgeomTrackView::impl_volume_id() const
 /*!
  * The current surface frame ID.
  */
-CELER_FUNCTION ImplSurfaceId VecgeomTrackView::impl_surface_id() const
+CELER_FORCEINLINE_FUNCTION ImplSurfaceId VecgeomTrackView::impl_surface_id() const
 {
     return {};
 }
@@ -378,7 +382,18 @@ CELER_FUNCTION ImplSurfaceId VecgeomTrackView::impl_surface_id() const
 /*!
  * After 'find_next_step', the next straight-line surface.
  */
-CELER_FUNCTION ImplSurfaceId VecgeomTrackView::next_impl_surface_id() const
+CELER_FORCEINLINE_FUNCTION ImplSurfaceId
+VecgeomTrackView::next_impl_surface_id() const
+{
+    return {};
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * After 'find_next_step', the next straight-line surface.
+ */
+CELER_FORCEINLINE_FUNCTION auto VecgeomTrackView::opaque_path() const
+    -> OpaquePath
 {
     return {};
 }
@@ -387,7 +402,7 @@ CELER_FUNCTION ImplSurfaceId VecgeomTrackView::next_impl_surface_id() const
 /*!
  * Whether the track is outside the valid geometry region.
  */
-CELER_FUNCTION bool VecgeomTrackView::is_outside() const
+CELER_FORCEINLINE_FUNCTION bool VecgeomTrackView::is_outside() const
 {
     return vgstate_.IsOutside();
 }
@@ -396,7 +411,7 @@ CELER_FUNCTION bool VecgeomTrackView::is_outside() const
 /*!
  * Whether the track is on the boundary of a volume.
  */
-CELER_FUNCTION bool VecgeomTrackView::is_on_boundary() const
+CELER_FORCEINLINE_FUNCTION bool VecgeomTrackView::is_on_boundary() const
 {
     return vgstate_.IsOnBoundary();
 }
@@ -451,7 +466,7 @@ CELER_FUNCTION Propagation VecgeomTrackView::find_next_step(real_type max_step)
 /*!
  * Find the safety at the current position.
  */
-CELER_FUNCTION real_type VecgeomTrackView::find_safety()
+CELER_FORCEINLINE_FUNCTION real_type VecgeomTrackView::find_safety()
 {
     return this->find_safety(vecgeom::kInfLength);
 }

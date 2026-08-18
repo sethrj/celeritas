@@ -124,12 +124,12 @@ using VgNavIndex = VECGEOM_PRECISION_NAMESPACE::NavIndex_t;
 
 //! Low-level (POD compatible) VecGeom navigation state
 #if CELER_VGNAV == CELER_VGNAV_INDEX || defined(__DOXYGEN__)
-using VgNavStateImpl = VgNavIndex;
+using VgOpaqueNavPath = VgNavIndex;
 #elif CELER_VGNAV == CELER_VGNAV_TUPLE
-using VgNavStateImpl = vecgeom::NavTuple<VECGEOM_NAVTUPLE_MAXDEPTH>;
+using VgOpaqueNavPath = vecgeom::NavTuple<VECGEOM_NAVTUPLE_MAXDEPTH>;
 #elif CELER_VGNAV == CELER_VGNAV_PATH
 // Only used clangd parsing of VgNavStateWrapper
-using VgNavStateImpl = VgNavIndex;
+using VgOpaqueNavPath = VgNavIndex;
 #endif
 
 //! High level VecGeom navigation state
