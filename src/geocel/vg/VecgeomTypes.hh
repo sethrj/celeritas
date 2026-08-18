@@ -57,7 +57,6 @@ namespace celeritas
 {
 //---------------------------------------------------------------------------//
 
-using VgSurfaceInt = long;
 using VgPlacedVolumeInt = int;
 using vg_real_type = VECGEOM_PRECISION_NAMESPACE::Precision;
 

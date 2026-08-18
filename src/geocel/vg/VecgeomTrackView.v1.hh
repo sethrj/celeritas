@@ -2,9 +2,14 @@
 // Copyright Celeritas contributors: see top-level COPYRIGHT file for details
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
-//! \file geocel/vg/VecgeomTrackView.hh
+//! \file geocel/vg/VecgeomTrackView.v1.hh
 //---------------------------------------------------------------------------//
 #pragma once
+
+#include "corecel/Config.hh"
+#if CELERITAS_VECGEOM_VERSION >= 0x020000
+#    error "This file requires VecGeom 1.x"
+#endif
 
 #include <VecGeom/base/Version.h>
 // NOTE: must include Global before most other vecgeom/veccore includes
@@ -25,11 +30,7 @@
 #include "VecgeomData.hh"
 #include "VecgeomTypes.hh"
 
-#if CELERITAS_VECGEOM_VERSION < 0x020000
-#    include "detail/BVHNavigator.hh"
-#else
-#    include "detail/SolidsNavigator.hh"
-#endif
+#include "detail/BVHNavigator.hh"
 
 #if CELER_VGNAV == CELER_VGNAV_PATH
 #    include <VecGeom/navigation/NavStatePath.h>
@@ -67,11 +68,7 @@ class VecgeomTrackView
     using Initializer_t = GeoTrackInitializer;
     using ParamsRef = NativeCRef<VecgeomParamsData>;
     using StateRef = NativeRef<VecgeomStateData>;
-#if CELERITAS_VECGEOM_VERSION < 0x020000
     using Navigator = celeritas::detail::BVHNavigator;
-#else
-    using Navigator = celeritas::detail::SolidsNavigator;
-#endif
     using ImplVolInstanceId = VgVolumeInstanceId;
     using real_type = vg_real_type;
     //!@}

@@ -18,13 +18,6 @@
 
 #include "VecgeomTypes.hh"
 
-#if CELERITAS_VECGEOM_VERSION >= 0x020000 && defined(VECGEOM_ENABLE_CUDA)
-// IWYU errors from navindex/tuple
-#    include <VecGeom/base/Cuda.h>
-#    include <VecGeom/base/Global.h>
-#    include <VecGeom/management/CudaManager.h>
-#endif
-
 #if CELER_VGNAV == CELER_VGNAV_PATH
 #    include "detail/VecgeomNavCollection.hh"
 #elif CELER_VGNAV == CELER_VGNAV_TUPLE
@@ -37,7 +30,6 @@ namespace celeritas
 {
 //---------------------------------------------------------------------------//
 
-inline constexpr VgSurfaceInt vg_null_surface{-1};
 inline constexpr VgNavIndex vg_outside_nav_index{0};
 
 //---------------------------------------------------------------------------//
