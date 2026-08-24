@@ -798,6 +798,8 @@ OpticalProblemLoaded problem(inp::OpticalProblem const& p,
     // Build optical params
     auto params = build_optical_params(p, std::move(loaded_model), imported);
     CELER_ASSERT(params);
+    // Set up output filename
+    params->output_reg()->output_filename(p.output_file);
 
     // Set up streams
     if (auto& device = celeritas::device())

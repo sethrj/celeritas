@@ -19,6 +19,7 @@
 #include "corecel/Assert.hh"
 #include "corecel/Macros.hh"
 #include "corecel/io/Logger.hh"
+#include "corecel/io/OutputRegistry.hh"  // IWYU pragma: keep
 #include "corecel/sys/ScopedProfiling.hh"
 #include "corecel/sys/Stopwatch.hh"
 #include "geocel/DetectorParams.hh"  // IWYU pragma: keep
@@ -113,7 +114,6 @@ auto LarStandaloneRunner::operator()(VecSED const& sim_energy_deposits)
     -> result_type
 {
     CELER_EXPECT(!sim_energy_deposits.empty());
-    CELER_EXPECT(lite_hits_.empty());
 
     // Allocate BTR helpers
     btr_helpers_.clear();
@@ -213,6 +213,11 @@ auto LarStandaloneRunner::operator()(VecSED const& sim_energy_deposits)
                      << result.counters.steps << " steps over "
                      << result.counters.step_iters << " step iterations in "
                      << get_transport_time() << "s";
+
+    // Save output
+    auto output = runner_->params()->output_reg();
+    CELER_ASSERT(output);
+    output->output();
 
     // Convert BTR helpers to BTRs in the LarSoft order
     // and convert SimPhotons from unordered to ordered map
