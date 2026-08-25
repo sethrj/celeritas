@@ -65,8 +65,13 @@ class OutputRegistry
     //! Close persistent file if open
     void close() { outf_ = nullptr; }
 
+    // Get persistent output filename (error if not open)
+    std::string const& output_filename() const;
+
     // Append a line of JSON output to the persistent output file
     void output() const;
+
+    // Get output filename if open
 
     //! Whether a persistent file is open
     bool is_open() const { return static_cast<bool>(outf_); }

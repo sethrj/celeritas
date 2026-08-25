@@ -13,6 +13,7 @@
 
 #include "corecel/Config.hh"
 
+#include "corecel/Assert.hh"
 #include "corecel/ScopedLogStorer.hh"
 #include "corecel/io/BuildOutput.hh"
 #include "corecel/io/ExceptionOutput.hh"
@@ -169,7 +170,7 @@ TEST_F(OutputRegistryTest, minimal)
     }
 }
 
-TEST_F(OutputRegistryTest, jsonl_file)
+TEST_F(OutputRegistryTest, persistent_output)
 {
     auto const filename = this->make_unique_filename(".jsonl");
     auto result_string = std::make_shared<std::string>("");
@@ -180,6 +181,11 @@ TEST_F(OutputRegistryTest, jsonl_file)
     ScopedLogStorer scoped_log_{&celeritas::world_logger(), LogLevel::info};
     OutputRegistry reg;
     reg.insert(std::make_shared<GlobalResultInterface>(result_string));
+    if (CELERITAS_DEBUG)
+    {
+        EXPECT_THROW(reg.output_filename(), DebugError);
+    }
+    EXPECT_THROW(reg.open(""), RuntimeError);
 
     // Default "open" for filename should truncate, but continue writing to
     // same file

@@ -67,16 +67,16 @@ class Runner
     void insert(SpanConstGenDist);
 
     // Generate optical photons and transport to completion
-    Result operator()() const;
+    Result operator()();
 
-    // Get accumulated track counters
-    CounterAccumStats get_counters() const;
+    // Get and reset accumulated track counters
+    CounterAccumStats exchange_counters();
 
-    // Get accumulated wall times for each action
-    ActionTimes::MapStrDbl get_action_times() const;
+    // Get and reset accumulated wall times for each action
+    ActionTimes::MapStrDbl exchange_action_times();
 
-    // Get the wall time for each step iteration
-    StepTimes::VecDbl get_step_times() const;
+    // Get and reset the wall time for each step iteration
+    StepTimes::VecDbl exchange_step_times();
 
     //! Access the shared params
     SPConstParams const& params() const

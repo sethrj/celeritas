@@ -78,7 +78,7 @@ class DuneCryoTest : public LarStandaloneRunnerTestBase
 auto DuneCryoTest::make_input() -> Input
 {
     Input result;
-    result.problem.output_file = this->make_unique_filename("out.json");
+    result.problem.output_file = this->make_unique_filename("out.jsonl");
     result.problem.model.geometry
         = this->test_data_path("geocel", "dune-cryostat.gdml");
     result.detectors = {"PhotonDetector"};

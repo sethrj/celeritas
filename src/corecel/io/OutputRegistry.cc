@@ -53,6 +53,8 @@ void OutputRegistry::open(std::string s)
  */
 void OutputRegistry::open(std::string s, OpenMode om)
 {
+    CELER_VALIDATE(!s.empty(),
+                   << "cannot open an empty filename for writing output");
     this->close();
     FileOrStdout::Mode m = [&] {
         switch (om)
@@ -66,6 +68,16 @@ void OutputRegistry::open(std::string s, OpenMode om)
         }
     }();
     outf_.reset(new FileOrStdout{std::move(s), m});
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Get persistent output filename (debug error if not open).
+ */
+std::string const& OutputRegistry::output_filename() const
+{
+    CELER_EXPECT(this->is_open());
+    return outf_->filename();
 }
 
 //---------------------------------------------------------------------------//

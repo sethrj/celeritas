@@ -6,6 +6,7 @@
 # NOTE: the library should *not* contain any `art` dependencies
 set(SOURCES)
 set(PRIVATE_DEPS
+  nlohmann_json::nlohmann_json
   lardataobj::Simulation
   Celeritas::geocel
   Celeritas::celeritas

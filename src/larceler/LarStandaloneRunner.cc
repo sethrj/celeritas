@@ -19,6 +19,7 @@
 #include "corecel/Assert.hh"
 #include "corecel/Macros.hh"
 #include "corecel/io/Logger.hh"
+#include "corecel/io/OutputInterfaceAdapter.hh"  // IWYU pragma: keep
 #include "corecel/io/OutputRegistry.hh"  // IWYU pragma: keep
 #include "corecel/sys/ScopedProfiling.hh"
 #include "corecel/sys/Stopwatch.hh"
@@ -33,6 +34,8 @@
 #include "celeritas/optical/Runner.hh"
 
 #include "Convert.hh"
+
+#include "detail/LarRunnerDiagnosticsIO.json.hh"  // IWYU pragma: keep
 
 namespace celeritas
 {
@@ -58,6 +61,7 @@ LarStandaloneRunner::LarStandaloneRunner(Input&& i, VecReal3 const& det_coords)
     CELER_EXPECT(!det_coords.empty());
     CELER_EXPECT(!i.detectors.empty());
 
+    Stopwatch get_setup_time;
     CELER_LOG(info) << "Setting up Celeritas optical standalone runner built "
                        "against LArSoft v"
                     << cmake::larsoft_version << " components";
@@ -65,6 +69,20 @@ LarStandaloneRunner::LarStandaloneRunner(Input&& i, VecReal3 const& det_coords)
     i.problem.detectors.callback
         = [this](SpanCelerHits h) { return this->hit(h); };
     runner_ = std::make_shared<optical::Runner>(std::move(i));
+
+    // Add diagnostics and save problem setup
+    output_ = runner_->params()->output_reg();
+    CELER_ASSERT(output_);
+    if (output_->is_open())
+    {
+        diagnostics_ = std::make_shared<detail::LarRunnerDiagnostics>();
+        output_->insert(
+            std::make_shared<
+                celeritas::OutputInterfaceAdapter<detail::LarRunnerDiagnostics>>(
+                OutputInterface::Category::result, "*", diagnostics_));
+        diagnostics_->time.setup = get_setup_time();
+    }
+    output_->output();
 
     ScopedProfiling profile_this("setup-channels");
     // Map detector coordinates
@@ -110,6 +128,7 @@ auto LarStandaloneRunner::operator()(VecSED const& sim_energy_deposits)
 {
     CELER_EXPECT(!sim_energy_deposits.empty());
 
+    Stopwatch get_time_delta;
     // Allocate BTR helpers
     btr_helpers_.clear();
     for (auto i : range(this->num_channels()))
@@ -197,7 +216,10 @@ auto LarStandaloneRunner::operator()(VecSED const& sim_energy_deposits)
 
     // Execute
     runner_->insert(make_span(std::as_const(gdd)));
-    Stopwatch get_transport_time;
+    if (diagnostics_)
+    {
+        diagnostics_->time.setup = std::move(get_time_delta)();
+    }
     auto result = (*runner_)();
 
     CELER_ASSERT(result.counters.generators.size() == 1);
@@ -207,12 +229,15 @@ auto LarStandaloneRunner::operator()(VecSED const& sim_energy_deposits)
                      << " sim energy deposits with a total of "
                      << result.counters.steps << " steps over "
                      << result.counters.step_iters << " step iterations in "
-                     << get_transport_time() << "s";
+                     << get_time_delta() << "s";
 
-    // Save output
-    auto output = runner_->params()->output_reg();
-    CELER_ASSERT(output);
-    output->output();
+    if (diagnostics_)
+    {
+        diagnostics_->time.run = std::move(get_time_delta)();
+        diagnostics_->time.actions = std::move(result.action_times);
+        diagnostics_->time.steps = std::move(result.step_times);
+        diagnostics_->counters = std::move(result.counters);
+    }
 
     // Convert BTR helpers to BTRs in the LarSoft order
     // and convert SimPhotons from unordered to ordered map
@@ -238,6 +263,13 @@ auto LarStandaloneRunner::operator()(VecSED const& sim_energy_deposits)
             CELER_ENSURE(btrs.back().OpDetNum()
                          == static_cast<int>(channel_id));
         }
+    }
+
+    if (diagnostics_)
+    {
+        // Save teardown time and write output
+        diagnostics_->time.teardown = std::move(get_time_delta)();
+        output_->output();
     }
 
     CELER_ENSURE(sim_photons.size() == this->num_channels());
