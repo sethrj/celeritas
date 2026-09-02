@@ -12,12 +12,18 @@ on:
     branches:
       - develop
       - backports/**
+      - ci-refactor-temp
 
 concurrency:
-  group: push-${{github.ref}}-${{github.run_number}}-${{github.workflow}}
+  group: push-${{github.ref_name}}-${{github.run_number}}
   cancel-in-progress: false
 
 jobs:
+  diagnostics:
+    name: "Print diagnostics"
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{toJSON(github)}}"
   build-ultralite:
     uses: ./.github/workflows/build-ultralite.yml
   build-fast:
