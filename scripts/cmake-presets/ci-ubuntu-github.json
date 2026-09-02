@@ -280,6 +280,11 @@
       "verbose": true
     },
     {
+      "name": "spack",
+      "configurePreset": "tool-spack",
+      "inherits": "base"
+    },
+    {
       "name": "doc",
       "inherits": "base"
     },

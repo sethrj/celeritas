@@ -110,7 +110,7 @@ jobs:
         uses: ./.github/actions/ccache-build
         with:
           name: ${{env.CELER_CMAKE_PRESET}}-${{matrix.geant}}
-          preset: ${{env.CELER_CMAKE_PRESET}}
+          preset: spack
           ccache-max-size: ${{matrix.build_type == 'reldeb' && '500' || '300'}}Mi
 
       ### TEST ###

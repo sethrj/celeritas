@@ -39,8 +39,8 @@ jobs:
       CELER_DISABLE_DEVICE: 1 # REQUIRED for GHA runners
       CELER_CMAKE_PRESET: >-
         ${{format('{0}-{1}-codecov',
-                matrix.buildtype,
-                matrix.geometry)}}
+                  matrix.buildtype,
+                  matrix.geometry)}}
     runs-on: ubuntu-24.04
     container:
       image: >-
