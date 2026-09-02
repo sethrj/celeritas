@@ -57,7 +57,7 @@ jobs:
         with:
           name: spack-${{env.CELER_CMAKE_PRESET}}
           preset: spack
-          ccache-max-size: 300Mi
+          ccache-max-size: 512Mi
 
       - name: Regenerate ROOT test data
         working-directory: build

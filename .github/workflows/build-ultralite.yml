@@ -48,7 +48,7 @@ jobs:
         with:
           name: ultralite-ubuntu
           preset: ${{env.CELER_CMAKE_PRESET}}
-          ccache-max-size: 100Mi
+          ccache-max-size: 128Mi
           ccache-debug: 1
 
       - name: Test
@@ -95,7 +95,7 @@ jobs:
         with:
           name: ultralite-windows
           preset: ${{env.CELER_CMAKE_PRESET}}
-          ccache-max-size: 50Mi
+          ccache-max-size: 64Mi
 
       - name: Test
         id: test

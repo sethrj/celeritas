@@ -73,6 +73,7 @@ runs:
       if: ${{ always() && steps.build.outcome == 'success' }}
       uses: actions/cache/save@v5
       with:
+        upload-chunk-size: 67108864 # 64MB
         path: ${{ inputs.ccache-dir }}
         key: ccache-${{ inputs.name }}-${{ github.run_id }}
 
@@ -81,7 +82,7 @@ runs:
       uses: actions/upload-artifact@v7
       with:
         path: ${{ inputs.ccache-debug-dir }}
-        name: debug-ccache-${{ github.job }}-${{ github.run_id }}
-        overwrite: true
+        name: debug-ccache-${{ inputs.name }}-${{ github.run_id }}
+        overwrite: false
         if-no-files-found: error
         retention-days: 7

@@ -55,7 +55,7 @@ jobs:
         with:
           name: ${{env.CELER_CMAKE_PRESET}}
           preset: spack
-          ccache-max-size: 500Mi
+          ccache-max-size: 512Mi
 
       - name: Run tests
         id: test
