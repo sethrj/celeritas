@@ -11,10 +11,6 @@ on:
   workflow_dispatch: {}
   workflow_call: {}
 
-concurrency:
-  group: build-dd4hep-integration-{{github.ref}}-${{github.event.pull_request.number || github.run_number}}-${{github.workflow}}
-  cancel-in-progress: true
-
 jobs:
   check-dd4hep-integration:
     container: ghcr.io/eic/eic_ci:nightly

@@ -24,9 +24,11 @@ on:
       - "!scripts/ci"
       - "!scripts/build.sh"
 
+# Only allow one PR action per PR, and cancel old ones when a new one (e.g. new commit)
+# is triggered
 concurrency:
-  group: pr-${{github.ref}}-${{github.event.number}}-${{github.workflow}}
-  cancel-in-progress: false
+  group: pr-${{github.event.number}}
+  cancel-in-progress: true
 
 jobs:
   metadata:

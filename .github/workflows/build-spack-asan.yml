@@ -8,10 +8,6 @@ on:
   workflow_dispatch: {}
   workflow_call: {}
 
-concurrency:
-  group: build-spack-asan-${{github.ref}}-${{github.event.pull_request.number || github.run_number}}-${{github.workflow}}
-  cancel-in-progress: false
-
 jobs:
   spack:
     name: reldeb-orange-asanlite

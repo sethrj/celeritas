@@ -13,10 +13,6 @@ on:
       CODECOV_TOKEN:
         required: true
 
-concurrency:
-  group: build-docker-codecov-${{github.ref}}-${{github.event.pull_request.number || github.run_number}}-${{github.workflow}}
-  cancel-in-progress: true
-
 jobs:
   # TODO: since we don't build on GPU systems with cuda/rocm docker,
   # none of the tests actually run on device

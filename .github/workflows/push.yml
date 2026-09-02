@@ -6,6 +6,9 @@
 #-----------------------------------------------------------------------------#
 
 name: push
+run-name: >-
+  ${{github.ref_name}}:
+  ${{github.event.head_commit.message}}
 
 on:
   push:
@@ -16,7 +19,7 @@ on:
 
 concurrency:
   group: push-${{github.ref_name}}-${{github.run_number}}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build-ultralite:

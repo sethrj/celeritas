@@ -10,10 +10,6 @@ on:
   workflow_dispatch: {}
   workflow_call: {}
 
-concurrency:
-  group: doc-${{github.ref}}-${{github.event.pull_request.number || github.run_number}}-${{github.workflow}}
-  cancel-in-progress: true
-
 env:
   # Turn warnings into errors only for PRs, and disable expensive graphs for PRs also
   CELER_CMAKE_PRESET: ${{ format('doc-{0}', github.workflow == 'pull_request' && 'check' || 'publish') }}
@@ -94,7 +90,7 @@ jobs:
           presets-file: ci-ubuntu-github.json
       - name: Build documentation
         run: |
-          cmake --build --preset=doc --target ${CELER_TARGET}
+          cmake --build --preset=${CELER_CMAKE_PRESET} --target ${CELER_TARGET}
           find ${CELER_UPLOAD_DIR} -name '*.md5' -exec rm {} +
 
       - name: Upload artifacts
