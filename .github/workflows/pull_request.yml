@@ -95,7 +95,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Decide whether the needed jobs succeeded or failed
-        uses: re-actors/alls-green@release/v1.3.0 # immutable
+        uses: re-actors/alls-green@v1.3.0 # immutable
         with:
           jobs: ${{toJSON(needs)}}
 

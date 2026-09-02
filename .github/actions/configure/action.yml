@@ -54,8 +54,8 @@ runs:
         echo "CELER_JOB_NAME=$CELER_JOB_NAME"
     - name: Upload CMakeCache.txt on configure failure
       if: ${{ failure() && steps.configure.outcome == 'failure' }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: CMakeCache.txt-${{env.CELER_JOB_NAME}}
         path: build/CMakeCache.txt
-        if-no-files-found: ignore
+        if-no-files-found: error
