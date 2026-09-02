@@ -77,9 +77,7 @@ jobs:
         id: build
         working-directory: build
         run: |
-          echo "::group::Build verbosely"
           ninja -v -k0
-          echo "::endgroup::"
 
       ### TEST ###
 

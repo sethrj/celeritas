@@ -81,10 +81,7 @@ jobs:
         id: build
         working-directory: build
         run: |
-          echo "::group::Build verbosely"
           ninja -v -k0
-          echo "::endgroup::"
-          # echo "::notice title=build-size::Build size is $(du -hs . | awk '{print $1}')"
 
       - name: Test Celeritas
         id: test

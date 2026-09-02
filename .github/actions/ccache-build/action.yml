@@ -46,7 +46,7 @@ runs:
         {
           echo "CCACHE_DIR=${{ inputs.ccache-dir }}"
           echo "CCACHE_MAXSIZE=${{ inputs.ccache-max-size }}"
-          echo "CCACHE_DEBUG=${{ inputs.ccache-debug == 'true' && '1' || '' }}"
+          echo "CCACHE_DEBUG=${{ fromJSON(inputs.ccache-debug) && '1' || '' }}"
           echo "CCACHE_DEBUGDIR=${{ inputs.ccache-dir }}/debug"
         } >> "$GITHUB_ENV"
 

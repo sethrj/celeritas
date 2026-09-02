@@ -41,21 +41,27 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: Set up test environment
+      shell: bash
+      run: |
+        {
+          echo "CELER_TEST_STRICT=${{ toJSON(inputs.strict) && '1' || '0' }}"
+        } >> "$GITHUB_ENV"
     - name: Run unit tests
       id: unit
-      if: ${{ inputs.split-app && inputs.filter-unit != 'none' }}
+      if: ${{ fromJSON(inputs.split-app) && inputs.filter-unit != 'none' }}
       shell: bash
       run: |
         ctest --preset=${{inputs.preset}}-unit \
           ${{inputs.filter-unit && format('-R "{0}"', inputs.filter-unit) || ''}}
     - name: Run app tests
       id: app
-      if: ${{ !cancelled() && inputs.split-app }}
+      if: ${{ !cancelled() && fromJSON(inputs.split-app) }}
       shell: bash
       run: ctest --preset=${{inputs.preset}}-app
     - name: Run all tests
       id: all
-      if: ${{ !inputs.split-app }}
+      if: ${{ !fromJSON(inputs.split-app) }}
       shell: bash
       run: ctest --preset=${{inputs.preset}}
     - name: Upload test results for pull_request_completed

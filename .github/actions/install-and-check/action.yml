@@ -25,11 +25,9 @@ runs:
       shell: bash
       working-directory: build
       run: |
-        echo "::group::Install"
         cmake --install .
-        echo "::endgroup::"
     - name: Clean build
-      if: ${{inputs.clean-build == 'true'}}
+      if: ${{ fromJSON(inputs.clean-build) }}
       shell: bash
       working-directory: build
       run: cmake --build . --target clean
