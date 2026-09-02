@@ -33,7 +33,7 @@ runs:
     - name: Set reproducible source date
       shell: bash
       run: |
-        REF=${{ github.event.pull_request && github.head_ref || github.ref_name }}
+        REF=${{ github.sha }}
         SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct ${REF})
         echo "SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}"
         echo "SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}" >> $GITHUB_ENV

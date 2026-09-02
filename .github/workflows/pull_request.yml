@@ -54,8 +54,10 @@ jobs:
   build-spack:
     needs: [all-prechecks]
     uses: ./.github/workflows/build-spack.yml
+
+  # Since docker builds aren't cached and are large, don't run on draft
+  # Also avoid coverage checks until ready (those are also expensive)
   build-docker:
-    # Since docker builds aren't cached and are large, don't run on draft
     if: ${{github.event.pull_request.draft == false}}
     needs: [all-prechecks]
     uses: ./.github/workflows/build-docker.yml
@@ -74,7 +76,6 @@ jobs:
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
   build-docker-codecov:
-    # Since docker builds aren't cached and are large, don't run on draft
     if: ${{github.event.pull_request.draft == false}}
     needs: [all-prechecks]
     uses: ./.github/workflows/build-docker-codecov.yml
@@ -94,7 +95,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Decide whether the needed jobs succeeded or failed
-        uses: re-actors/alls-green@release/v1
+        uses: re-actors/alls-green@release/v1.3.0 # immutable
         with:
           jobs: ${{toJSON(needs)}}
 
