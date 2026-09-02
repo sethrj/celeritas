@@ -53,16 +53,17 @@ jobs:
         id: build
         uses: ./.github/actions/ccache-build
         with:
-          preset: ${{env.CELER_CMAKE_PRESET}}
           name: ${{env.CELER_CMAKE_PRESET}}
+          preset: spack
           ccache-max-size: 500Mi
 
       - name: Run tests
         id: test
         uses: ./.github/actions/run-ctest
         with:
-          split-app: true
           name: spack-${{env.CELER_CMAKE_PRESET}}
+          preset: spack
+          split-app: true
           strict: false
 
 # vim: set nowrap tw=100:

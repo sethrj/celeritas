@@ -284,6 +284,10 @@
       "inherits": "base"
     },
     {
+      "name": "fast",
+      "inherits": "base"
+    },
+    {
       "name": "ultralite",
       "inherits": "base"
     }
@@ -339,6 +343,20 @@
       "name": "spack-app",
       "configurePreset": "tool-spack",
       "inherits": [".app", ".base"]
+    },
+    {
+      "name": "spack-codecov-unit",
+      "inherits": ["spack-unit"],
+      "execution": {
+        "timeout": 60
+      }
+    },
+    {
+      "name": "spack-codecov-app",
+      "inherits": ["spack-app"],
+      "execution": {
+        "timeout": 60
+      }
     },
     {
       "name": "fast-unit",

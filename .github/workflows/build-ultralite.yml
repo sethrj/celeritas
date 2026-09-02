@@ -46,8 +46,8 @@ jobs:
         id: build
         uses: ./.github/actions/ccache-build
         with:
-          preset: ${{env.CELER_CMAKE_PRESET}}
           name: ultralite-ubuntu
+          preset: ${{env.CELER_CMAKE_PRESET}}
           ccache-max-size: 100Mi
           ccache-debug: true
 
@@ -55,8 +55,8 @@ jobs:
         id: test
         uses: ./.github/actions/run-ctest
         with:
-          preset: ${{env.CELER_CMAKE_PRESET}}
           name: ultralite-ubuntu
+          preset: ${{env.CELER_CMAKE_PRESET}}
 
       - name: Install
         uses: ./.github/actions/install-and-check
@@ -93,16 +93,16 @@ jobs:
         id: build
         uses: ./.github/actions/ccache-build
         with:
-          preset: ${{env.CELER_CMAKE_PRESET}}
           name: ultralite-windows
+          preset: ${{env.CELER_CMAKE_PRESET}}
           ccache-max-size: 50Mi
 
       - name: Test
         id: test
         uses: ./.github/actions/run-ctest
         with:
-          preset: ${{env.CELER_CMAKE_PRESET}}
           name: ultralite-windows
+          preset: ${{env.CELER_CMAKE_PRESET}}
 
       - name: Install
         uses: ./.github/actions/install-and-check

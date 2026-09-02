@@ -109,8 +109,8 @@ jobs:
         id: build
         uses: ./.github/actions/ccache-build
         with:
-          preset: ${{env.CELER_CMAKE_PRESET}}
           name: ${{env.CELER_CMAKE_PRESET}}-${{matrix.geant}}
+          preset: ${{env.CELER_CMAKE_PRESET}}
           ccache-max-size: ${{matrix.build_type == 'reldeb' && '500' || '300'}}Mi
 
       ### TEST ###
@@ -130,8 +130,9 @@ jobs:
         if: ${{matrix.special != 'static'}}
         uses: ./.github/actions/run-ctest
         with:
-          split-app: true
           name: spack-${{env.CELER_CMAKE_PRESET}}-${{matrix.geant}}
+          preset: spack
+          split-app: true
           strict: ${{matrix.geant == '11.3' && matrix.geometry != 'vecgeom2'}}
           filter-unit: >-
             ${{
