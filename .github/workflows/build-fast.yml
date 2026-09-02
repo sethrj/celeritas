@@ -121,7 +121,7 @@ jobs:
     env:
       CELER_CMAKE_PRESET: fast
       CELER_JOB_NAME: windows
-    runs-on: windows-latest
+    runs-on: windows-2025
     steps:
       - name: Check out Celeritas
         uses: actions/checkout@v7
@@ -130,7 +130,7 @@ jobs:
         run: |
           choco install ninja ccache
       - name: Set up MSVC
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: TheMrMilchmann/msvc-dev-cmd@368ef7d1ee4d1171b31d4a7f67f4d954f903f5a9 # v4.1.0, 22 July 2026
 
       - name: Configure Celeritas
         uses: ./.github/actions/configure
