@@ -53,7 +53,7 @@ runs:
       shell: bash
       run: |
         ctest --preset=${{inputs.preset}}-unit \
-          ${{inputs.filter-unit && format('-R "{0}"', inputs.filter-unit) || ''}}
+          ${{fromJSON(inputs.filter-unit) && format('-R "{0}"', inputs.filter-unit) || ''}}
     - name: Run app tests
       id: app
       if: ${{ !cancelled() && fromJSON(inputs.split-app) }}
