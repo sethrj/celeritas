@@ -50,7 +50,7 @@ jobs:
 
       - name: Build documentation
         run: |
-          cmake --build --preset=${CELER_CMAKE_PRESET} --target ${CELER_TARGET}
+          cmake --build --preset=doc --target ${CELER_TARGET}
           find ${CELER_UPLOAD_DIR} -name '*.md5' -exec rm {} +
 
       - name: Upload artifacts
@@ -94,7 +94,7 @@ jobs:
           presets-file: ci-ubuntu-github.json
       - name: Build documentation
         run: |
-          cmake --build --preset=${CELER_CMAKE_PRESET} --target ${CELER_TARGET}
+          cmake --build --preset=doc --target ${CELER_TARGET}
           find ${CELER_UPLOAD_DIR} -name '*.md5' -exec rm {} +
 
       - name: Upload artifacts

@@ -80,6 +80,7 @@
     },
     {
       "name": ".doc",
+      "hidden": true,
       "inherits": [".nogtest"],
       "displayName": "CONFIG: build only documentation",
       "cacheVariables": {
@@ -91,6 +92,10 @@
         "CELERITAS_USE_covfie": { "type": "BOOL", "value": "OFF" },
         "CELERITAS_USE_PNG": { "type": "BOOL", "value": "OFF" }
       }
+    },
+    {
+      "name": "doc",
+      "inherits": [".doc", "tool-system"]
     },
     {
       "name": "doc-check",
@@ -108,9 +113,7 @@
       "inherits": [".doc", "tool-system"],
       "displayName": "FINAL: build docs after new develop is pushed",
       "cacheVariables": {
-        "DOXYGEN_WARN_AS_ERROR": "YES",
-        "DOXYGEN_HAVE_DOT": "NO",
-        "DOXYGEN_QUIET": "NO"
+        "DOXYGEN_WARN_AS_ERROR": "NO"
       }
     },
     {
