@@ -77,9 +77,9 @@ jobs:
     # Since docker builds aren't cached and are large, don't run on draft
     if: ${{github.event.pull_request.draft == false}}
     needs: [all-prechecks]
-    uses: ./.github/workflows/build-docker.yml
+    uses: ./.github/workflows/build-docker-codecov.yml
     secrets:
-      codecov_token: ${{ secrets.CODECOV_TOKEN }}
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   # Specifying a dependent job allows us to select a single "requires" check in the project GitHub settings
   all:
