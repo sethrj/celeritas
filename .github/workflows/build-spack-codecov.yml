@@ -13,6 +13,10 @@ on:
       CODECOV_TOKEN:
         required: true
 
+concurrency:
+  group: build-spack-codecov-${{github.event.number || github.ref_name}}
+  cancel-in-progress: true
+
 jobs:
   spack:
     name: codecov-vecgeom

@@ -13,6 +13,10 @@ on:
   workflow_dispatch: {}
   workflow_call: {}
 
+concurrency:
+  group: build-spack-${{github.event.number || github.ref_name}}
+  cancel-in-progress: true
+
 jobs:
   spack:
     name: >-

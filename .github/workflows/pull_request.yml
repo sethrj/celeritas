@@ -6,6 +6,7 @@
 #-----------------------------------------------------------------------------#
 
 name: pull_request
+# Run name renders as `#{PR number}: {PR title}`
 run-name: >-
   #${{github.event.number}}: ${{github.event.pull_request.title}}
 

@@ -10,6 +10,10 @@ on:
   workflow_dispatch: {}
   workflow_call: {}
 
+concurrency:
+  group: build-ultralite-${{github.event.number || github.ref_name}}
+  cancel-in-progress: true
+
 jobs:
   linux:
     name: ultralite-ubuntu
@@ -72,7 +76,7 @@ jobs:
         run: |
           choco install ninja ccache
       - name: Set up MSVC
-        uses: TheMrMilchmann/msvc-dev-cmd@368ef7d1ee4d1171b31d4a7f67f4d954f903f5a9 # v4.1.0, 22 July 2026
+        uses: TheMrMilchmann/setup-msvc-dev@368ef7d1ee4d1171b31d4a7f67f4d954f903f5a9 # v4.1.0, 22 July 2026
 
       - name: Configure
         uses: ./.github/actions/configure

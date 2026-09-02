@@ -10,6 +10,10 @@ on:
   workflow_dispatch: {}
   workflow_call: {}
 
+concurrency:
+  group: doc-${{github.event.number || github.ref_name}}
+  cancel-in-progress: true
+
 env:
   # Turn warnings into errors only for PRs, and disable expensive graphs for PRs also
   CELER_CMAKE_PRESET: ${{ format('doc-{0}', github.workflow == 'pull_request' && 'check' || 'publish') }}
