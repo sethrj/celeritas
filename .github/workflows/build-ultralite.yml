@@ -49,7 +49,7 @@ jobs:
           name: ultralite-ubuntu
           preset: ${{env.CELER_CMAKE_PRESET}}
           ccache-max-size: 100Mi
-          ccache-debug: true
+          ccache-debug: 1
 
       - name: Test
         id: test
