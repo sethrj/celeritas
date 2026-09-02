@@ -35,12 +35,10 @@ jobs:
       - name: Set up Spack environment
         uses: ./.github/actions/spack-setup
         with:
-          preset: ${{env.CELER_CMAKE_PRESET}}
           geometry: vecgeom
           geant: "11.2"
           cxxstd: ${{env.CXXSTD}}
-          add-root: "true"
-          fetch-depth: "0" # need full history to diff against the base branch
+          add-root: false
 
       - name: Configure Celeritas
         uses: ./.github/actions/configure
@@ -51,6 +49,6 @@ jobs:
       - name: Build changed files with clang-tidy
         id: tidy
         run: |
-          ./scripts/ci/clag-tidy-changed.sh "${{format('{0}', github.base_ref || 'develop')}}"
+          ./scripts/ci/clang-tidy-changed.sh "${{format('{0}', github.base_ref || 'develop')}}"
 
 # vim: set nowrap tw=100:

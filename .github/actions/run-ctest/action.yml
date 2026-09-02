@@ -30,7 +30,13 @@ inputs:
 outputs:
   outcome:
     description: "Outcome of the ctest step ('success' or 'failure')"
-    value: ${{steps.all.outcome || (steps.unit.outcome && steps.app.outcome)}}
+    value: >-
+      ${{
+        (
+          steps.all.outcome == 'success'
+          || (steps.unit.outcome == 'success' && steps.app.outcome == 'success')
+        ) && 'success' || 'failure'
+      }}
 
 runs:
   using: "composite"
@@ -53,6 +59,7 @@ runs:
       shell: bash
       run: ctest --preset=${{inputs.preset}}
     - name: Upload test results for pull_request_completed
+      id: upload
       uses: actions/upload-artifact@v7
       if: ${{ always() }}
       with:

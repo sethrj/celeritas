@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 #-----------------------------------------------------------------------------#
 
-name: build-spack
+name: build-spack-asan
 on:
   workflow_dispatch: {}
   workflow_call: {}
@@ -54,7 +54,7 @@ jobs:
         uses: ./.github/actions/ccache-build
         with:
           preset: ${{env.CELER_CMAKE_PRESET}}
-          name: ${{env.CELER_CMAKE_PRESET}}-${{matrix.geant}}
+          name: ${{env.CELER_CMAKE_PRESET}}
           ccache-max-size: 500Mi
 
       - name: Run tests

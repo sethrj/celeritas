@@ -16,7 +16,7 @@ concurrency:
 
 env:
   # Turn warnings into errors only for PRs, and disable expensive graphs for PRs also
-  CELER_CMAKE_PRESET: ${{ format('doc-{0}', github.workflow == 'pull_request' && '-check' || '-publish') }}
+  CELER_CMAKE_PRESET: ${{ format('doc-{0}', github.workflow == 'pull_request' && 'check' || 'publish') }}
   CELER_UPLOAD_DOC: >-
     ${{  github.ref_name == 'develop'
       || contains(github.ref_name, 'backports/')

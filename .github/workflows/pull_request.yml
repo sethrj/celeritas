@@ -33,8 +33,9 @@ jobs:
     name: "Save job metadata"
     runs-on: ubuntu-24.04
     steps:
-      # Event file is needed for EnricoMi/publish-unit-test-result-action
+      # Event file is needed for pull_request_completed.report-tests
       - name: Upload event file
+        id: upload
         uses: actions/upload-artifact@v7
         with:
           name: event-file

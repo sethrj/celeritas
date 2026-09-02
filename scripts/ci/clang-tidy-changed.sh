@@ -1,4 +1,4 @@
-#!/bin/sh -ex
+#!/bin/bash -ex
 #-------------------------------- -*- sh -*- ---------------------------------#
 # Copyright Celeritas contributors: see top-level COPYRIGHT file for details
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -22,13 +22,15 @@ if [ -z "$CLANG_TIDY" ]; then
 fi
 
 log info "Finding changes from ${BASE_REF}"
-BASE=$(git merge-base origin/${BASE_REF} HEAD)
+BASE=$(git merge-base "origin/${BASE_REF}" HEAD)
 ALL_FILES=$(git diff --name-only --diff-filter=ACM "$BASE" HEAD)
 set +e
 CC_FILES=$(grep -E '^(src|app)/.*\.cc$' - <<< "$ALL_FILES")
 
 # Get list of files from compile_commands.json and filter CC_FILES
-COMPILED_FILES=$(jq -r '.[].file' $BUILD_DIR/compile_commands.json)
+# (NOTE: this is O(N^2) for large commits: maybe this script should use python
+# and also fix the fact that .hh files are not checked)
+COMPILED_FILES=$(jq -r '.[].file' "$BUILD_DIR/compile_commands.json")
 CC_FILES=$(echo "$CC_FILES" | while read -r file; do
   if echo "$COMPILED_FILES" | grep -qE "^.*/${file}$"; then
     echo "$file"
