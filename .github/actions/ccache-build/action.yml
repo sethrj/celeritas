@@ -73,6 +73,7 @@ runs:
       if: ${{ always() && steps.build.outcome == 'success' }}
       uses: actions/cache/save@v5
       with:
+        enableCrossOsArchive: true # fix windows upload sizes
         upload-chunk-size: 67108864 # 64MB
         path: ${{ inputs.ccache-dir }}
         key: ccache-${{ inputs.name }}-${{ github.run_id }}
