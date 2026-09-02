@@ -29,11 +29,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  diagnostics:
-    name: "Print diagnostics"
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "${{toJSON(github)}}"
   metadata:
     name: "Save job metadata"
     runs-on: ubuntu-24.04

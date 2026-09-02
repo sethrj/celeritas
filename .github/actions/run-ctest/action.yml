@@ -45,7 +45,7 @@ runs:
       shell: bash
       run: |
         {
-          echo "CELER_TEST_STRICT=${{ toJSON(inputs.strict) && '1' || '0' }}"
+          echo "CELER_TEST_STRICT=${{ fromJSON(inputs.strict) && '1' || '0' }}"
         } >> "$GITHUB_ENV"
     - name: Run unit tests
       id: unit

@@ -26,6 +26,7 @@ jobs:
       CELER_CMAKE_PRESET: reldeb-orange-asanlite
       CC: "clang-18"
       CXX: "clang++-18"
+      CXXSTD: 20
     runs-on: ubuntu-24.04
     continue-on-error: false
     steps:
@@ -39,7 +40,7 @@ jobs:
         uses: ./.github/actions/spack-setup
         with:
           geometry: orange
-          cxxstd: 20
+          cxxstd: ${{env.CXXSTD}}
           add-root: false
 
       - name: Configure Celeritas

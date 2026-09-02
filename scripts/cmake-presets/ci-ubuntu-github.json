@@ -44,6 +44,7 @@
       "inherits": ["base", ".spack-base"],
       "displayName": "CONFIG: use full spack toolchain",
       "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "$env{CXXSTD}",
         "CELERITAS_USE_covfie": { "type": "BOOL", "value": "ON" },
         "CELERITAS_USE_Geant4": { "type": "BOOL", "value": "ON" },
         "CELERITAS_USE_HepMC3": { "type": "BOOL", "value": "ON" },
