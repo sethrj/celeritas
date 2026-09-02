@@ -11,7 +11,7 @@ on:
   workflow_call: {}
 
 concurrency:
-  group: build-${{github.ref}}-${{github.event.pull_request.number || github.run_number}}-${{github.workflow}}
+  group: build-fast-${{github.ref}}-${{github.event.pull_request.number || github.run_number}}-${{github.workflow}}
   cancel-in-progress: false
 
 env:
@@ -67,6 +67,10 @@ jobs:
         || matrix.runner == 'resolute-arm' && 'ubuntu-26.04-arm'
       }}
     steps:
+      - name: WTF group
+        run: |
+          echo "${{github.ref}}-${{github.event.pull_request.number || github.run_number}}-${{github.workflow}}"
+
       - name: Check out Celeritas
         uses: actions/checkout@v7
 
@@ -100,7 +104,7 @@ jobs:
         with:
           preset: ${{env.CELER_CMAKE_PRESET}}
           name: fast-${{env.CELER_JOB_NAME}}
-          ccache-max-size: 200Mi
+          ccache-max-size: 192Mi
 
       - name: Test
         id: test
@@ -144,7 +148,7 @@ jobs:
         with:
           preset: ${{env.CELER_CMAKE_PRESET}}
           name: fast-windows
-          ccache-max-size: 200Mi
+          ccache-max-size: 192Mi
 
       - name: Test
         id: test
