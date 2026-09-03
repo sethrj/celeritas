@@ -20,9 +20,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-docs:
+  docs:
     uses: ./.github/workflows/build-docs.yml
-  build-site:
+  site:
     runs-on: ubuntu-24.04
     needs: build-docs
     steps:

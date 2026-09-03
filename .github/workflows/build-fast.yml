@@ -24,7 +24,13 @@ env:
 
 jobs:
   linux:
-    name: "${{matrix.runner}}-${{matrix.compiler}}-${{matrix.version}}${{matrix.cxxstd && format('-c++{0}', matrix.cxxstd) || ''}}"
+    name: >-
+      ${{format('{0}-{1}-{2}{3}{4}',
+         matrix.runner,
+         matrix.compiler,
+         matrix.version,
+         matrix.cxxstd && '-c++' || ''
+         matrix.cxxstd}}
     strategy:
       matrix:
         include:
@@ -55,7 +61,13 @@ jobs:
             compiler: clang
             version: 22
     env:
-      CELER_JOB_NAME: "${{matrix.runner}}-${{matrix.compiler}}-${{matrix.version}}${{matrix.cxxstd && format('-c++{0}', matrix.cxxstd) || ''}}"
+      CELER_JOB_NAME: >-
+        ${{format('{0}-{1}-{2}{3}{4}',
+          matrix.runner,
+          matrix.compiler,
+          matrix.version,
+          matrix.cxxstd && '-c++' || ''
+          matrix.cxxstd}}
       CELER_CMAKE_PRESET: fast
       CC: ${{matrix.compiler}}-${{matrix.version}}
       CXX: ${{matrix.compiler == 'gcc' && 'g++' || 'clang++'}}-${{matrix.version}}
@@ -67,10 +79,6 @@ jobs:
         || matrix.runner == 'resolute-arm' && 'ubuntu-26.04-arm'
       }}
     steps:
-      - name: WTF group
-        run: |
-          echo "${{github.ref}}-${{github.event.pull_request.number || github.run_number}}-${{github.workflow}}"
-
       - name: Check out Celeritas
         uses: actions/checkout@v7
 
