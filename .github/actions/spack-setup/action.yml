@@ -44,7 +44,7 @@ runs:
           echo "SPACK_COLOR=always"
           echo "SPACK_DISABLE_LOCAL_CONFIG=1"
         } >> "$GITHUB_ENV"
-        echo "SPACK_ROOT=$GITHUB_WORKSPACE/spack-src" >> "$GITHUB_PATH"
+        echo "SPACK_ROOT/bin" >> "$GITHUB_PATH"
     - name: Checkout Spack
       uses: actions/checkout@v7
       with:
