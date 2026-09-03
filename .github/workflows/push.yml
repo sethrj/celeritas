@@ -47,7 +47,6 @@ jobs:
         build-docker,
         build-spack,
         build-spack-asan,
-        build-spack-tidy,
         build-spack-codecov,
       ]
     runs-on: ubuntu-24.04
