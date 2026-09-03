@@ -46,10 +46,10 @@ jobs:
     uses: ./.github/workflows/build-fast.yml
   build-ultralite:
     uses: ./.github/workflows/build-ultralite.yml
-  doc:
-    uses: ./.github/workflows/doc.yml
+  build-docs:
+    uses: ./.github/workflows/build-docs.yml
   all-prechecks:
-    needs: [build-fast, build-ultralite, doc]
+    needs: [build-fast, build-ultralite, build-docs]
     runs-on: ubuntu-24.04
     steps:
       - name: Success

@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   build-docs:
-    uses: ./.github/workflows/doc.yml
+    uses: ./.github/workflows/build-docs.yml
   build-site:
     runs-on: ubuntu-24.04
     needs: build-docs
