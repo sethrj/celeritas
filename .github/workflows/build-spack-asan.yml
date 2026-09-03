@@ -15,12 +15,6 @@ concurrency:
 jobs:
   spack:
     name: reldeb-orange-asanlite
-    strategy:
-      matrix:
-        include:
-          - build_type: "reldeb"
-            geometry: "orange"
-            special: "asanlite"
     env:
       CELER_CMAKE_PRESET: reldeb-orange-asanlite
       CC: "clang-18"
