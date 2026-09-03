@@ -25,12 +25,14 @@ env:
 jobs:
   linux:
     name: >-
-      ${{format('{0}-{1}-{2}{3}{4}',
-         matrix.runner,
-         matrix.compiler,
-         matrix.version,
-         matrix.cxxstd && '-c++' || ''
-         matrix.cxxstd}}
+      ${{format(
+        '{0}-{1}-{2}{3}{4}',
+        matrix.runner,
+        matrix.compiler,
+        matrix.version,
+        matrix.cxxstd && '-c++' || '',
+        matrix.cxxstd
+      )}}
     strategy:
       matrix:
         include:
