@@ -22,7 +22,7 @@ if [ -z "$CLANG_TIDY" ]; then
 fi
 
 log info "Finding changes from ${BASE_REF}"
-BASE=$(git merge-base "origin/${BASE_REF}" HEAD)
+BASE=$(git merge-base "${BASE_REF}" HEAD)
 ALL_FILES=$(git diff --name-only --diff-filter=ACM "$BASE" HEAD)
 set +e
 CC_FILES=$(grep -E '^(src|app)/.*\.cc$' - <<< "$ALL_FILES")

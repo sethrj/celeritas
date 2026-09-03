@@ -32,8 +32,6 @@ jobs:
     uses: ./.github/workflows/build-spack.yml
   build-spack-asan:
     uses: ./.github/workflows/build-spack-asan.yml
-  build-spack-tidy:
-    uses: ./.github/workflows/build-spack-tidy.yml
   build-docker-codecov:
     if: github.repository_owner == 'celeritas-project'
     uses: ./.github/workflows/build-docker-codecov.yml

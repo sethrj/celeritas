@@ -47,8 +47,13 @@ jobs:
           presets-file: "ci-ubuntu-github.json"
 
       - name: Build changed files with clang-tidy
-        id: tidy
+        if: ${{github.workflow == 'pull_request'}}
         run: |
-          ./scripts/ci/clang-tidy-changed.sh "${{format('{0}', github.base_ref || 'develop')}}"
+          ./scripts/ci/clang-tidy-changed.sh origin/"${{ github.base_ref }}"
+
+      # NOTE: this is not yet used but can be manually invoked
+      - name: Build all files with clang-tidy
+        if: ${{github.workflow != 'pull_request'}}
+        run: cmake --build --preset=spack
 
 # vim: set nowrap tw=100:

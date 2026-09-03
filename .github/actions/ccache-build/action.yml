@@ -63,7 +63,7 @@ runs:
     - name: Build
       id: build
       shell: bash
-      run: cmake --build --preset=${{ inputs.preset }} --verbose
+      run: cmake --build --preset=${{ inputs.preset }}
     - name: Show ccache stats
       if: ${{ !cancelled() }}
       shell: bash
