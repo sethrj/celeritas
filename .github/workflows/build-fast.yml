@@ -64,12 +64,14 @@ jobs:
             version: 22
     env:
       CELER_JOB_NAME: >-
-        ${{format('{0}-{1}-{2}{3}{4}',
+        ${{format(
+          '{0}-{1}-{2}{3}{4}',
           matrix.runner,
           matrix.compiler,
           matrix.version,
-          matrix.cxxstd && '-c++' || ''
-          matrix.cxxstd}}
+          matrix.cxxstd && '-c++' || '',
+          matrix.cxxstd
+        )}}
       CELER_CMAKE_PRESET: fast
       CC: ${{matrix.compiler}}-${{matrix.version}}
       CXX: ${{matrix.compiler == 'gcc' && 'g++' || 'clang++'}}-${{matrix.version}}
