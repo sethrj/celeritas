@@ -34,24 +34,29 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Set Spack environment variables
+    - name: Set environment variables
       shell: bash
       run: |
-        echo "SPACK_REF=760ccc43172ac3bf0d9a07b156f7b1f44c743677" >> "$GITHUB_ENV" # ci @ 11 Oct 2025
-        echo "SPACK_VIEW=/opt/spack-view" >> "$GITHUB_ENV"
-        echo "SPACK_BUILDCACHE=celer-buildcache" >> "$GITHUB_ENV" # see spack.yaml
-    - name: Check out Spack
-      uses: spack/setup-spack@b01309596568e0f36df3e38124601ed3327871ed
+        {
+          echo "CELER_SPACK_VIEW=/opt/view" # see spack.yaml
+          echo "SPACK_ROOT=$GITHUB_WORKSPACE/spack-src"
+          echo "SPACK_BUILDCACHE=celer-buildcache"
+          echo "SPACK_COLOR=always"
+          echo "SPACK_DISABLE_LOCAL_CONFIG=1"
+        } >> "$GITHUB_ENV"
+        echo "SPACK_ROOT=$GITHUB_WORKSPACE/spack-src" >> "$GITHUB_PATH"
+    - name: Checkout Spack
+      uses: actions/checkout@v7
       with:
         repository: celeritas-project/spack
-        ref: ${{env.SPACK_REF}}
-        buildcache: true
-        color: true
-        path: spack-src
+        path: ${{env.SPACK_ROOT}}
+        ref: 760ccc43172ac3bf0d9a07b156f7b1f44c743677 # ci @ 11 Oct 2025
+
+    # TODO when upgrading: checkout spack packages
     - name: Initialize spack environment
       shell: bash
       run: |
-        #echo "::notice title=spack-arch::Spack architecture is $(spack arch)"
+        echo "Spack architecture is $(spack arch)"
         sed -e 's/cxxstd=default/cxxstd=${{inputs.cxxstd}}/' \
           scripts/ci/spack.yaml > spack.yaml
         if [ "${{inputs.geometry}}" = "vecgeom" ]; then
@@ -74,6 +79,7 @@ runs:
         spack -vd -e . compiler find --mixed-toolchain
         echo "::endgroup::"
         # Add the spack ref so that updating spack will reconcretize
+        SPACK_REF=$(git -C "$SPACK_ROOT" log -1 pretty=%H)
         echo "# Concretized with ${SPACK_REF}" >> spack.yaml
     - name: Cache concretization
       uses: actions/cache@v5
@@ -110,7 +116,7 @@ runs:
     - name: Activate environment
       shell: bash
       run: |
-        test -d "${SPACK_VIEW}"
-        echo "${SPACK_VIEW}/bin" >> $GITHUB_PATH
-        echo "CMAKE_PREFIX_PATH=${SPACK_VIEW}:${CMAKE_PREFIX_PATH}" >> $GITHUB_ENV
-        spack env activate . --sh > "${SPACK_VIEW}/rc"
+        test -d "${CELER_SPACK_VIEW}"
+        echo "${CELER_SPACK_VIEW}/bin" >> $GITHUB_PATH
+        echo "CMAKE_PREFIX_PATH=${CELER_SPACK_VIEW}:${CMAKE_PREFIX_PATH}" >> $GITHUB_ENV
+        spack env activate . --sh > "${CELER_SPACK_VIEW}/rc"
