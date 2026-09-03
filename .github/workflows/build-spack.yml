@@ -65,6 +65,13 @@ jobs:
                   matrix.geometry,
                   matrix.special && '-' || '',
                   matrix.special)}}
+      CELER_RUN_NAME: >-
+        ${{format('spack-{0}{1}{2}{3}{4}',
+                  matrix.special,
+                  matrix.special && '-' || '',
+                  matrix.geometry,
+                  matrix.geant && '-g4@' || '',
+                  matrix.geant)}}
       CC: "clang-18"
       CXX: "clang++-18"
       CXXSTD: ${{(matrix.geant == '10.5' || matrix.geant == '10.6')
@@ -109,7 +116,7 @@ jobs:
         id: build
         uses: ./.github/actions/ccache-build
         with:
-          name: ${{env.CELER_CMAKE_PRESET}}-${{matrix.geant}}
+          name: ${{env.CELER_RUN_NAME}}
           preset: spack
           ccache-max-size: ${{matrix.build_type == 'reldeb' && '512Mi' || '320'}}Mi
 
@@ -130,7 +137,7 @@ jobs:
         if: ${{matrix.special != 'static'}}
         uses: ./.github/actions/run-ctest
         with:
-          name: spack-${{env.CELER_CMAKE_PRESET}}-${{matrix.geant}}
+          name: ${{env.CELER_RUN_NAME}}
           preset: spack
           split-app: true
           strict: ${{matrix.geant == '11.3' && matrix.geometry != 'vecgeom2'}}

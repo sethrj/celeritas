@@ -47,7 +47,7 @@ jobs:
         id: build
         uses: ./.github/actions/ccache-build
         with:
-          name: ${{env.CELER_CMAKE_PRESET}}
+          name: spack-${{env.CELER_CMAKE_PRESET}}
           preset: spack
           ccache-max-size: 512Mi
 
