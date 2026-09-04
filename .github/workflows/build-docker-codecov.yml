@@ -31,7 +31,7 @@ jobs:
         include:
           - buildtype: "ndebug"
             geometry: "vecgeom"
-            geant: "11.3"
+            add: "geant@11.3"
             image: "rocky-cuda"
 
     env:

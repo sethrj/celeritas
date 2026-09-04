@@ -26,6 +26,10 @@ spack:
   packages:
     root:
       variants: ~aqua ~davix ~examples ~opengl ~x ~tbb cxxstd=20
+    g4vg:
+      require: ["@1.0.5"]
+    vecgeom:
+      require: ["+gdml"]
     all:
       require:
         - "target=zen2 %clang@18" # FIXME: genericize on next rebuild

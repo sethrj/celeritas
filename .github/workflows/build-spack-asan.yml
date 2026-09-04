@@ -32,9 +32,7 @@ jobs:
       - name: Set up Spack environment
         uses: ./.github/actions/spack-setup
         with:
-          geometry: orange
           cxxstd: ${{env.CXXSTD}}
-          add-root: false
 
       - name: Configure Celeritas
         id: configure
