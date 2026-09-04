@@ -37,14 +37,15 @@ runs:
     - name: Set environment variables
       shell: bash
       run: |
+        SPACK_ROOT=$GITHUB_WORKSPACE/spack-src
+        echo "$SPACK_ROOT/bin" >> "$GITHUB_PATH"
         {
           echo "CELER_SPACK_VIEW=/opt/view" # see spack.yaml
-          echo "SPACK_ROOT=$GITHUB_WORKSPACE/spack-src"
+          echo "SPACK_ROOT=$SPACK_ROOT"
           echo "SPACK_BUILDCACHE=celer-buildcache"
           echo "SPACK_COLOR=always"
           echo "SPACK_DISABLE_LOCAL_CONFIG=1"
         } >> "$GITHUB_ENV"
-        echo "SPACK_ROOT/bin" >> "$GITHUB_PATH"
     - name: Checkout Spack
       uses: actions/checkout@v7
       with:
