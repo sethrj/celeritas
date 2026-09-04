@@ -30,7 +30,7 @@ runs:
     - name: Set environment variables
       shell: bash
       run: |
-        SPACK_ROOT="$(realpath GITHUB_WORKSPACE/spack-src)"
+        SPACK_ROOT="$(realpath $GITHUB_WORKSPACE)/spack-src"
         echo "$SPACK_ROOT/bin" >> "$GITHUB_PATH"
         {
           echo "CELER_SPACK_VIEW=/opt/view"
