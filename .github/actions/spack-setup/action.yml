@@ -80,7 +80,7 @@ runs:
         spack -vd -e . compiler find --mixed-toolchain
         echo "::endgroup::"
         # Add the spack ref so that updating spack will reconcretize
-        SPACK_REF=$(git -C "$SPACK_ROOT" log -1 pretty=%H)
+        SPACK_REF=$(git -C "${{env.SPACK_ROOT}}" log -1 --pretty=%H HEAD)
         echo "# Concretized with ${SPACK_REF}" >> spack.yaml
     - name: Cache concretization
       uses: actions/cache@v5
