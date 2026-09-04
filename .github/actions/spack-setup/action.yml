@@ -54,13 +54,12 @@ runs:
         sed -e 's/cxxstd=default/cxxstd=${{inputs.cxxstd}}/' \
           scripts/ci/spack.yaml > spack.yaml
 
-        spack env activate .
-        spack config add "view:${CELER_SPACK_VIEW}"
+        spack -e . config add "view:${CELER_SPACK_VIEW}"
         if [ -n "${{inputs.add}}" ]; then
-          spack add ${{inputs.add}}
+          spack -e . add ${{inputs.add}}
         fi
         echo "::group::Find compilers"
-        spack -vd compiler find --mixed-toolchain
+        spack -vd -e . compiler find clang # FIXME
         echo "::endgroup::"
         # Add the spack ref so that updating spack will reconcretize
         SPACK_REF=$(git -C "${{env.SPACK_ROOT}}" log -1 --pretty=%H HEAD)
@@ -99,8 +98,8 @@ runs:
       env:
         GITHUB_ACTOR: ${{github.actor}}
         GITHUB_TOKEN: ${{github.token}}
+      # TODO: avoid pushing in the future so that we don't overwrite the spack prefix stuff
       run: |
-        # TODO: avoid pushing in the future so that we don't overwrite the spack prefix stuff
         spack -e . mirror set --push --oci-username-variable GITHUB_ACTOR --oci-password-variable GITHUB_TOKEN ${SPACK_BUILDCACHE}
         spack -e . buildcache push -j $(($(nproc) + 1)) --base-image ubuntu:22.04 --unsigned --update-index ${SPACK_BUILDCACHE}
       if: ${{github.event_name == 'push' && !cancelled()}}
