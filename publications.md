@@ -17,11 +17,20 @@ These publications are extracted from the Celeritas team's Zotero database.
 
 ## Presentations
 
+- S. R. Johnson. "Celeritas SciDAC update 2026". *SciDAC PI meeting*, 01 Aug 2026.
+- S. Tognini. "Full-fidelity DUNE optical photon simulations on GPU with Celeritas". *American Physiacl Society Division of Particles and Fields 2026*, 20 Jul 2026. [presentation](https://indico.fnal.gov/event/72820/contributions/341182/)
+- H. Johnson. "Celeritas: Full-Fidelity Optical Photon Simulation on GPU". *New Perspectives 2026*, 17 Jul 2026. [presentation](https://indico.fnal.gov/event/73553/contributions/344392/)
+- S. Diedrichs, S. R. Johnson. "Production-quality, high-throughput detector simulation with GPUs". *CHEP 2026*, 28 May 2026. [presentation](https://indico.cern.ch/event/1471803/contributions/7018863/)
 - R. Gupta. "Celeritas: Accelerating HEP Simulations using GPU". *HSF-India Scientific Workshop*, 06 May 2026. [presentation](https://indico.cern.ch/event/1649033/timetable/#20260504)
 - R. Gupta. "Celeritas: Accelerating HEP Simulations using GPU". *HSF-India*, 28 Apr 2026. [presentation](https://indico.cern.ch/event/1649043/)
+- S. Johnson. "Computational Physics Isn't Just Coding Formulas". *Wayne State University*, 21 Apr 2026.
+- A. Lund. "Efficient GPU-Based Monte Carlo Transport for Detector Simulation". *Wayne State University*, 14 Apr 2026.
 - R. Gupta. "GPU-Accelerated Optical Physics in Celeritas". *APS Global Summit*, 18 Mar 2026.
-- J. Esseiva. "Energy eﬃciency of Full Simulation on GPUs". *WLCG Sustainability Forum Meeting #4: Detector Simulation*, 18 Feb 2026. [presentation](https://indico.cern.ch/event/1526077/contributions/6773808/attachments/3185466/5667936/celeritas-wlcg.pdf)
+- S. R. Johnson. "GPU simulation for space applications". *High Performance Monte-Carlo Radiation Simulations workshop*, 05 Mar 2026. [presentation](https://indico.esa.int/event/609/contributions/11890/)
+- J. Esseiva. "Energy eﬃciency of Full Simulation on GPUs". *WLCG Sustainability Forum Meeting #4: Detector Simulation*, 18 Feb 2026. [presentation](https://indico.cern.ch/event/1644632/#2-update-from-celeritas-tbc)
 - S. R. Johnson. "Celeritas for WLCG". *Heterogeneous Architectures in WLCG*, 03 Dec 2025. [presentation](https://indico.cern.ch/event/1526077/contributions/6773808/attachments/3185466/5667936/celeritas-wlcg.pdf)
+- S. R. Johnson. "Integrating Geant4 with GPUs: EM physics and beyond". *Geant4 Collaboration Meeting*, 23 Oct 2025. [presentation](https://indico.cern.ch/event/1554191/contributions/6741375/)
+- S. R. Johnson. "ORANGE geometry construction for Geant4". *Geant4 Collaboration Meeting*, 21 Oct 2025. [presentation](https://indico.cern.ch/event/1554191/contributions/6731700/)
 - S. R. Johnson. "New integrations and capabilities in Celeritas". *SciDAC PI meeting*, 16 Sep 2025.
 - S. Tognini. "Muon-catalyzed fusion beamline simulation using Celeritas". *SciDAC PI meeting*, 16 Sep 2025.
 - S. R. Johnson. "Celeritas SciDAC update: toward production use". *SciDAC PI meeting*, 16 Sep 2025.
@@ -109,15 +118,15 @@ These publications are extracted from the Celeritas team's Zotero database.
 
 ## Journal articles
 
-- E. Biondo, T. Evans, S. Johnson, S. Hamilton. "Comparison of nested geometry treatments within GPU-based Monte Carlo neutron transport simulations of fission reactors". *The International Journal of High Performance Computing Applications*, Sep 2025. [10.1177/10943420251377295](https://doi.org/10.1177/10943420251377295)
+- E. Biondo, T. Evans, S. Johnson, S. Hamilton. "Comparison of nested geometry treatments within GPU-based Monte Carlo neutron transport simulations of fission reactors". *The International Journal of High Performance Computing Applications*, 2026. [10.1177/10943420251377295](https://doi.org/10.1177/10943420251377295)
 - P. K. Romano, P. A. Myers, S. R. Johnson, A. Kols̆ek, P. C. Shriwise, *et al*. "Point containment algorithms for constructive solid geometry with unbounded primitives". *Computer-Aided Design*, Jan 2025. [10.1016/j.cad.2024.103803](https://doi.org/10.1016/j.cad.2024.103803)
 - J. Apostolakis, M. Bandieramonte, S. Banerjee, N. Bartosik, G. Corti, *et al*. "Detector simulation challenges for future accelerator experiments". *Frontiers in Physics*, Jun 2022. [10.3389/fphy.2022.913510](https://doi.org/10.3389/fphy.2022.913510)
 
 ## Technical reports
 
+- S. R. Johnson, R. Lefebvre, K. Bekar. "ORANGE: Oak Ridge Advanced Nested Geometry Engine". 2025.
 - O. Strong, E. Biondo, S. R. Johnson. "Comparing precision loss in ray-toroid intersections". Aug 2025.
 - S. Martinez, S. R. Johnson. "Parallelizing GPU-Accelerated Monte Carlo Transport in Celeritas Using NVIDIA CUDA Streams". Jul 2025.
-- S. R. Johnson, R. Lefebvre, K. Bekar. "ORANGE: Oak Ridge Advanced Nested Geometry Engine". 2025.
 - S. Johnson, S. Castro Tognini, T. Evans, A. Lund, M. Demarteau, *et al*. "Celeritas midterm SciDAC report". Nov 2024. [10.2172/2481196](https://doi.org/10.2172/2481196)
 - S. R. Johnson, S. Castro Tognini, E. Biondo, T. Evans, J. Esseiva, *et al*. "Celeritas R&D report: accelerating Geant4". Jan 2024. [10.2172/2281972](https://doi.org/10.2172/2281972)
 
