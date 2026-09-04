@@ -107,12 +107,13 @@ runs:
     - name: Create shell with Celeritas environment
       shell: sh
       run: |
-        cat > "${CELER_SPACK_VIEW}/sh" <<EOF
+        SHELL_WRAPPER="${SPACK_ROOT}/bin/celer-env-sh"
+        cat > "${SHELL_WRAPPER}" <<EOF
         #!/bin/sh -e
         $(spack env activate --sh .)
         . "\$1"
         EOF
-        chmod +x "${CELER_SPACK_VIEW}/sh"
-        echo "::group::Echo shell"
-        cat "${CELER_SPACK_VIEW}/sh"
+        chmod +x "${SHELL_WRAPPER}"
+        echo "::group::Dump shell wrapper at ${SHELL_WRAPPER}"
+        cat "${SHELL_WRAPPER}"
         echo "::endgroup::"
