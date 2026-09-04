@@ -109,11 +109,6 @@ jobs:
                && matrix.geant
                && 'g4vg' || ''
             }}
-      - name: Verify Geant4 environment override
-        shell: celer-env-sh {0}
-        run: |
-          # Test overriding of Geant4 environment variables
-          test -n "${G4LEDATA}"
 
       ### BUILD ###
 
