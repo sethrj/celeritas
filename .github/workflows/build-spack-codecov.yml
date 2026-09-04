@@ -40,7 +40,7 @@ jobs:
         uses: ./.github/actions/setup-spack
         with:
           preset: ${{env.CELER_CMAKE_PRESET}}
-          add: geant@11.3 root vecgeom
+          add: geant4@11.3 root vecgeom
           cxxstd: ${{env.CXXSTD}}
 
       - name: Configure Celeritas

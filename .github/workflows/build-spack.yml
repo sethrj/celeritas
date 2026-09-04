@@ -110,10 +110,9 @@ jobs:
                && 'g4vg' || ''
             }}
       - name: Verify Geant4 environment override
-        if: ${{matrix.geant == '11.0'}}
+        shell: ${{env.CELER_SPACK_VIEW}}/sh {0}
         run: |
           # Test overriding of Geant4 environment variables
-          . ${SPACK_VIEW}/rc
           test -n "${G4LEDATA}"
 
       ### BUILD ###
@@ -122,6 +121,7 @@ jobs:
         id: configure
         uses: ./.github/actions/configure
         with:
+          shell: ${{env.CELER_SPACK_VIEW}}/sh {0}
           preset: ${{env.CELER_CMAKE_PRESET}}
           presets-file: "ci-ubuntu-github.json"
 
@@ -129,6 +129,7 @@ jobs:
         id: build
         uses: ./.github/actions/ccache-build
         with:
+          shell: ${{env.CELER_SPACK_VIEW}}/sh {0}
           name: ${{env.CELER_RUN_NAME}}
           preset: spack
           ccache-max-size: ${{matrix.build_type == 'reldeb' && '512Mi' || '320'}}Mi
@@ -143,6 +144,7 @@ jobs:
             && matrix.special != 'static'
           }}
         working-directory: build
+        shell: ${{env.CELER_SPACK_VIEW}}/sh {0}
         run: |
           ninja -v -k0 update-root-test-data
       - name: Run tests
@@ -150,6 +152,7 @@ jobs:
         if: ${{matrix.special != 'static'}}
         uses: ./.github/actions/run-ctest
         with:
+          shell: ${{env.CELER_SPACK_VIEW}}/sh {0}
           name: ${{env.CELER_RUN_NAME}}
           preset: spack
           split-app: true
@@ -167,8 +170,8 @@ jobs:
           }}
         env:
           CELER_DISABLE_G4_EXAMPLES: 1 # Only test minimal example for this one
+        shell: ${{env.CELER_SPACK_VIEW}}/sh {0}
         run: |
-          . ${SPACK_VIEW}/rc
           CELER_INSTALL_DIR=${PWD}/build ./scripts/ci/test-examples.sh
 
       ### INSTALL ###
@@ -178,8 +181,10 @@ jobs:
         if: ${{!cancelled() && steps.build.outputs.build-outcome == 'success'}}
         uses: ./.github/actions/install-and-check
         with:
+          shell: ${{env.CELER_SPACK_VIEW}}/sh {0}
           binaries: orange-update celer-geo celer-export-geant celer-sim celer-g4
       - name: Build and run examples
+        shell: ${{env.CELER_SPACK_VIEW}}/sh {0}
         env:
           CELER_DISABLE_G4_EXAMPLES: ${{(!matrix.geant) && '1' || ''}}
         if: >-
@@ -187,7 +192,6 @@ jobs:
             steps.install.outcome == 'success'
           }}
         run: |
-          . ${SPACK_VIEW}/rc
           export G4VERSION_NUMBER=$(echo "${{matrix.geant}}" | awk '{printf "%.0f", $1 * 100}')
           ./scripts/ci/test-examples.sh
 

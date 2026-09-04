@@ -35,7 +35,7 @@ jobs:
       - name: Set up Spack environment
         uses: ./.github/actions/setup-spack
         with:
-          add: "geant@11.2 vecgeom@1.2.11:1"
+          add: "geant4@11.2 vecgeom@1.2.11:1"
           cxxstd: ${{env.CXXSTD}}
 
       - name: Configure Celeritas
