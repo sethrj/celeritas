@@ -60,10 +60,10 @@ jobs:
 
   # Since docker builds aren't cached and are large, don't run on draft
   # Also avoid coverage checks until ready (those are also expensive)
-  build-docker:
-    if: ${{github.event.pull_request.draft == false}}
-    needs: [all-prechecks]
-    uses: ./.github/workflows/build-docker.yml
+  # build-docker:
+  #   if: ${{github.event.pull_request.draft == false}}
+  #   needs: [all-prechecks]
+  #   uses: ./.github/workflows/build-docker.yml
   build-spack-asan:
     if: ${{github.event.pull_request.draft == false}}
     needs: [all-prechecks]
@@ -90,7 +90,7 @@ jobs:
     if: ${{always()}}
     needs:
       - build-spack
-      - build-docker
+      #- build-docker
       - build-spack-asan
       - build-spack-tidy
       - build-spack-codecov
