@@ -2,7 +2,6 @@
 # Most of these specs should correspond to
 # https://github.com/celeritas-project/spack-gha-buildcache/blob/main/spack.yaml
 spack:
-  view: /opt/spack-view
   specs:
     - "ccache@4.10:"
     - cli11 +pic ~ipo

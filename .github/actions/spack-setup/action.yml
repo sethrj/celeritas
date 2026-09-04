@@ -33,7 +33,7 @@ runs:
         SPACK_ROOT=$GITHUB_WORKSPACE/spack-src
         echo "$SPACK_ROOT/bin" >> "$GITHUB_PATH"
         {
-          echo "CELER_SPACK_VIEW=/opt/view" # see spack.yaml
+          echo "CELER_SPACK_VIEW=/opt/view"
           echo "SPACK_ROOT=$SPACK_ROOT"
           echo "SPACK_BUILDCACHE=celer-buildcache"
           echo "SPACK_COLOR=always"
@@ -53,11 +53,14 @@ runs:
         echo "Spack architecture is $(spack arch)"
         sed -e 's/cxxstd=default/cxxstd=${{inputs.cxxstd}}/' \
           scripts/ci/spack.yaml > spack.yaml
+
+        spack env activate .
+        spack config add "view:${CELER_SPACK_VIEW}"
         if [ -n "${{inputs.add}}" ]; then
-          spack -e . add ${{inputs.add}}
+          spack add ${{inputs.add}}
         fi
         echo "::group::Find compilers"
-        spack -vd -e . compiler find --mixed-toolchain
+        spack -vd compiler find --mixed-toolchain
         echo "::endgroup::"
         # Add the spack ref so that updating spack will reconcretize
         SPACK_REF=$(git -C "${{env.SPACK_ROOT}}" log -1 --pretty=%H HEAD)
