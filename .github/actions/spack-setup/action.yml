@@ -72,9 +72,10 @@ runs:
         if [ -n "${{inputs.geant}}" ]; then
           spack -e . add geant4@${{inputs.geant}}
         fi
-        if { [ "${{inputs.geometry}}" = "vecgeom" ] \
-             || [ "${{inputs.geometry}}" = "vecgeom2" ]; } \
-           && [ -n "${{inputs.geant}}" ]; then
+        if ${{ (inputs.geometry == "vecgeom"
+              || inputs.geometry == "vecgeom2")
+              && inputs.geant
+              && "true" || "false" }} ; then
           spack -e . add g4vg@1.0.5
         fi
         echo "::group::Find compilers"
@@ -83,22 +84,29 @@ runs:
         # Add the spack ref so that updating spack will reconcretize
         SPACK_REF=$(git -C "${{env.SPACK_ROOT}}" log -1 --pretty=%H HEAD)
         echo "# Concretized with ${SPACK_REF}" >> spack.yaml
-    - name: Cache concretization
-      uses: actions/cache@v5
+
+    - name: Restore cached lockfile
+      uses: actions/cache/restore@v5
       with:
         path: spack.lock
         key: lock-${{hashFiles('spack.yaml')}}-${{github.run_id}}
-        restore-keys: |
-          lock-${{hashFiles('spack.yaml')}}
+        restore-keys: lock-${{hashFiles('spack.yaml')}}
     - name: Concretize
       id: concretize
       shell: bash
       run: |
-        spack -e . -v concretize || (
+        if ! spack -e . -v concretize ; then
           ERR=$?
           cat spack.yaml
           exit $ERR
-        )
+        fi
+    - name: Cache lockfile
+      if: ${{ always() && steps.build.outcome == 'success' }}
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ env.CCACHE_DIR }}
+        key: lock-${{hashFiles('spack.yaml')}}-${{github.run_id}}
+
     - name: Install dependencies
       id: installdeps
       shell: bash
@@ -118,7 +126,10 @@ runs:
     - name: Activate environment
       shell: bash
       run: |
-        test -d "${CELER_SPACK_VIEW}"
+        if [ ! -d "${CELER_SPACK_VIEW}" ]; then
+          echo "Spack view does not exist at ${{CELER_SPACK_VIEW}}"
+          exit 1
+        fi
         echo "${CELER_SPACK_VIEW}/bin" >> $GITHUB_PATH
         echo "CMAKE_PREFIX_PATH=${CELER_SPACK_VIEW}:${CMAKE_PREFIX_PATH}" >> $GITHUB_ENV
         spack env activate . --sh > "${CELER_SPACK_VIEW}/rc"
