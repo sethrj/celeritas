@@ -29,10 +29,6 @@ inputs:
     description: "Save ccache debug logs to this directory when ccache-debug"
     required: false
     default: "${{runner.temp}}/ccache-debug"
-  shell:
-    description: "Shell to run"
-    required: false
-    default: bash
 outputs:
   build-outcome:
     description: "Outcome of the build step ('success' or 'failure')"
@@ -42,7 +38,7 @@ runs:
   using: "composite"
   steps:
     - name: Configure ccache environment
-      shell: ${{input.shell}}
+      shell: bash
       # github.workspace uses backslashes on Windows, so a naive
       # "${{github.workspace}}/.ccache" mixes separators and gets mangled
       run: |
@@ -62,15 +58,15 @@ runs:
         restore-keys: ccache-${{ inputs.name }}
 
     - name: Zero ccache stats
-      shell: ${{input.shell}}
+      shell: bash
       run: ccache -z
     - name: Build
       id: build
-      shell: ${{input.shell}}
+      shell: bash
       run: cmake --build --preset=${{ inputs.preset }}
     - name: Show ccache stats
       if: ${{ !cancelled() }}
-      shell: ${{input.shell}}
+      shell: bash
       run: ccache -s
 
     - name: Save ccache

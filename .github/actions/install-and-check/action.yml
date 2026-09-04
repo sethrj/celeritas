@@ -16,17 +16,13 @@ inputs:
     description: "Clean the build directory after installing"
     required: false
     default: "true"
-  shell:
-    description: "Shell to use for installing"
-    required: false
-    default: bash
 
 runs:
   using: "composite"
   steps:
     - name: Install
       id: install
-      shell: ${{input.shell}}
+      shell: bash
       working-directory: build
       run: |
         cmake --install .
@@ -43,7 +39,7 @@ runs:
         for exe in ${{inputs.binaries}}; do
           test -x "bin/${exe}"
         done
-    - name: Print version and config with default shell
+    - name: Print version and config
       shell: bash
       working-directory: install
       run: |

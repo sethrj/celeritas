@@ -121,7 +121,6 @@ jobs:
         id: configure
         uses: ./.github/actions/configure
         with:
-          shell: celer-env-sh {0}
           preset: ${{env.CELER_CMAKE_PRESET}}
           presets-file: "ci-ubuntu-github.json"
 
@@ -129,7 +128,6 @@ jobs:
         id: build
         uses: ./.github/actions/ccache-build
         with:
-          shell: celer-env-sh {0}
           name: ${{env.CELER_RUN_NAME}}
           preset: spack
           ccache-max-size: ${{matrix.build_type == 'reldeb' && '512Mi' || '320'}}Mi
@@ -144,7 +142,6 @@ jobs:
             && matrix.special != 'static'
           }}
         working-directory: build
-        shell: celer-env-sh {0}
         run: |
           ninja -v -k0 update-root-test-data
       - name: Run tests
@@ -152,7 +149,6 @@ jobs:
         if: ${{matrix.special != 'static'}}
         uses: ./.github/actions/run-ctest
         with:
-          shell: celer-env-sh {0}
           name: ${{env.CELER_RUN_NAME}}
           preset: spack
           split-app: true
@@ -170,7 +166,6 @@ jobs:
           }}
         env:
           CELER_DISABLE_G4_EXAMPLES: 1 # Only test minimal example for this one
-        shell: celer-env-sh {0}
         run: |
           CELER_INSTALL_DIR=${PWD}/build ./scripts/ci/test-examples.sh
 
@@ -181,10 +176,8 @@ jobs:
         if: ${{!cancelled() && steps.build.outputs.build-outcome == 'success'}}
         uses: ./.github/actions/install-and-check
         with:
-          shell: celer-env-sh {0}
           binaries: orange-update celer-geo celer-export-geant celer-sim celer-g4
       - name: Build and run examples
-        shell: celer-env-sh {0}
         env:
           CELER_DISABLE_G4_EXAMPLES: ${{(!matrix.geant) && '1' || ''}}
         if: >-

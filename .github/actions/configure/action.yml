@@ -23,10 +23,6 @@ inputs:
     description: "Value for -DCeleritas_VERSION_STRING"
     required: false
     default: ""
-  shell:
-    description: "Shell to use for configuring"
-    required: false
-    default: bash
 
 runs:
   using: "composite"
@@ -43,16 +39,16 @@ runs:
         echo "SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}" >> $GITHUB_ENV
     - name: Configure Celeritas
       id: configure
-      shell: ${{input.shell}}
+      shell: bash
       run: |
         cmake --preset=${{inputs.preset}} --log-level=VERBOSE \
           ${{inputs.extra-args}} \
           -DCeleritas_VERSION_STRING="${{inputs.version-string}}"
     - name: Print debug diagnostics on failure
       if: ${{ failure() && steps.configure.outcome == 'failure' }}
-      shell: ${{input.shell}}
+      shell: bash
       run: |
-        which -a cmake
+        which cmake
         cmake --version
         cmake --list-presets
         echo "CELER_JOB_NAME=$CELER_JOB_NAME"
