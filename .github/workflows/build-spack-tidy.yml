@@ -33,7 +33,7 @@ jobs:
           fetch-tags: true # to get version information
 
       - name: Set up Spack environment
-        uses: ./.github/actions/spack-setup
+        uses: ./.github/actions/setup-spack
         with:
           add: "geant@11.2 vecgeom@1.2.11:1"
           cxxstd: ${{env.CXXSTD}}
