@@ -30,6 +30,7 @@ inputs:
     description: "Whether to add the 'root' Spack package"
     required: false
     default: "true"
+  # TODO: add-gcovr option for codecov
 
 runs:
   using: "composite"
