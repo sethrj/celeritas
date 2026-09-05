@@ -44,14 +44,14 @@ runs:
       with:
         repository: spack/spack
         path: ${{env.SPACK_ROOT}}
-        ref: b495c19f9ee8280c4ef7a1d529a70ab4ba57a3ba
+        ref: 57f9c9504e7f2f30462d68e9c5f67a64ba8c87c8
 
     - name: Checkout Spack packages
       uses: actions/checkout@v7
       with:
         repository: celeritas-project/spack-packages
         path: ${{env.SPACK_PACKAGES}}
-        ref: 60424410eabd363e9754dd54a0b1e42c7ff5fe14
+        ref: 2c1c9409a3828d9d3a3985fd0ae200bd8bd82117
 
     - name: Initialize spack environment
       shell: sh
