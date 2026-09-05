@@ -9,9 +9,10 @@
 
 spack:
   include:
-    - $CELER_SOURCE_DIR/scripts/spack/reqs-ci.yaml
-    - $CELER_SOURCE_DIR/scripts/spack/hep-variants.yaml
-    - $CELER_SOURCE_DIR/scripts/spack/celer-requirements.yaml
+    - reqs-celer.yaml
+    - reqs-ci.yaml
+    - prefs-hep-nogui.yaml
+    - ext-ubuntu24.yaml
 
   specs:
     # Base packages
@@ -23,12 +24,4 @@ spack:
     - libpng
     - ninja
     - nlohmann-json
-
-  concretizer:
-    unify: true
-
-  config:
-    deprecated: True
-    install_tree:
-      projections:
-        all: "{name}/{version}/{hash:7}"
+    # Additional packages can be added with `spack add`

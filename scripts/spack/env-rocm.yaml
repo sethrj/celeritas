@@ -1,6 +1,6 @@
 spack:
   include:
-    - ./celer-requirements.yaml
+    - ./reqs-celer.yaml
   specs:
     - cli11
     - cmake

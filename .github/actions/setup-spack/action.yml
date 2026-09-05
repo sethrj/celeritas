@@ -28,14 +28,13 @@ runs:
   using: "composite"
   steps:
     - name: Set environment variables
-      shell: bash
+      shell: sh
       run: |
         SPACK_ROOT="$GITHUB_WORKSPACE/spack-src"
         echo "$SPACK_ROOT/bin" >> "$GITHUB_PATH"
         {
           echo "CELER_SPACK_VIEW=/opt/view"
-          echo "CELER_BUILDCACHE=sethrj"
-          echo "SPACK_PACKAGES_ROOT=$GITHUB_WORKSPACE/spack-pkg"
+          echo "SPACK_PACKAGES=$GITHUB_WORKSPACE/spack-pkg"
           echo "SPACK_ROOT=$SPACK_ROOT"
           echo "SPACK_COLOR=always"
           echo "SPACK_DISABLE_LOCAL_CONFIG=1"
@@ -51,24 +50,18 @@ runs:
       uses: actions/checkout@v7
       with:
         repository: celeritas-project/spack-packages
-        path: ${{env.SPACK_PACKAGES_ROOT}}
+        path: ${{env.SPACK_PACKAGES}}
         ref: 60424410eabd363e9754dd54a0b1e42c7ff5fe14
 
     - name: Initialize spack environment
-      shell: bash
+      shell: sh
       run: |
-        echo "Spack architecture is $(spack arch)"
-        cp scripts/ci/spack-ci-env.yaml .
+        ./scripts/ci/setup-spack-ci-env.sh ${{inputs.add}}
 
-        # Configure separate packages repository
-        spack repo set --destination "$(realpath "${{ env.SPACK_PACKAGES_ROOT }}")" builtin
-        spack -e . config add "view:${CELER_SPACK_VIEW}"
-        if [ -n "${{inputs.add}}" ]; then
-          spack -e . add ${{inputs.add}}
-        fi
-        # Add the spack ref so that updating spack will reconcretize
-        SPACK_REF=$(git -C "${{env.SPACK_ROOT}}" log -1 --pretty=%H HEAD)
-        echo "# Concretized with ${SPACK_REF}" >> spack.yaml
+    - name: Dump spack config
+      if: ${{runner.debug}}
+      run: |
+        spack -e . config blame
 
     - name: Restore cached lockfile
       uses: actions/cache/restore@v5
@@ -78,7 +71,7 @@ runs:
         restore-keys: lock-${{hashFiles('spack.yaml')}}
     - name: Concretize
       id: concretize
-      shell: bash
+      shell: sh
       run: |
         spack -e . -v concretize || {
           ERR=$?
@@ -93,21 +86,22 @@ runs:
         key: lock-${{hashFiles('spack.yaml')}}-${{github.run_id}}
 
     - name: Install dependencies
-      id: installdeps
-      shell: bash
+      shell: sh
       run: |
-        spack -e . env depfile -o Makefile
-        make -Orecurse -j $(($(nproc) + 1)) SPACK_INSTALL_FLAGS=--no-check-signature
-    - name: Save Spack installation to build cache
-      shell: bash
-      env:
-        GITHUB_ACTOR: ${{github.actor}}
-        GITHUB_TOKEN: ${{github.token}}
-      # TODO: avoid pushing in the future so that we don't overwrite the spack prefix stuff
-      run: |
-        spack -e . mirror set --push --oci-username-variable GITHUB_ACTOR --oci-password-variable GITHUB_TOKEN ${CELER_BUILDCACHE}
-        spack -e . buildcache push -j $(($(nproc) + 1)) --base-image ubuntu:22.04 --unsigned --update-index ${CELER_BUILDCACHE}
+        spack -e . install
+    - name: Push Spack installation to buildcache
       if: ${{github.event_name == 'push' && !cancelled()}}
+      shell: sh
+      env:
+        GITHUB_USER: ${{github.actor}}
+        GITHUB_TOKEN: ${{github.token}}
+        CELER_BASE_IMAGE: ubuntu:24.04
+        CELER_BUILDCACHE: sethrj
+      run: |
+        spack -e . buildcache push \
+          --base-image $CELER_BASE_IMAGE --update-index \
+          $CELER_BUILDCACHE
+
     - name: Create Celeritas rc file
       shell: sh
       run: |

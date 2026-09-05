@@ -8,7 +8,7 @@
 #-----------------------------------------------------------------------------#
 
 mirrors:
-  sethrj: # FIXME
+  sethrj:
     url: oci://ghcr.io/sethrj/spack-buildcache
     binary: true
     signed: false
@@ -25,6 +25,7 @@ config:
       all: "{name}/{version}/{hash:7}"
 
 concretizer:
+  unify: true
   targets:
     granularity: generic
     host_compatible: true
@@ -45,7 +46,3 @@ packages:
   python:
     version:
       - "3.14" # spack installation July 2026
-  all:
-    target: [x86_64_v3]
-    require:
-      - target=x86_64_v3
