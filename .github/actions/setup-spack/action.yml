@@ -34,6 +34,8 @@ runs:
         echo "$SPACK_ROOT/bin" >> "$GITHUB_PATH"
         {
           echo "CELER_SPACK_VIEW=/opt/view"
+          echo "CELER_BASE_IMAGE=ubuntu:24.04"
+          echo "CELER_BUILDCACHE=sethrj"
           echo "SPACK_PACKAGES=$GITHUB_WORKSPACE/spack-pkg"
           echo "SPACK_ROOT=$SPACK_ROOT"
           echo "SPACK_COLOR=always"
@@ -96,17 +98,19 @@ runs:
       env:
         GITHUB_USER: ${{github.actor}}
         GITHUB_TOKEN: ${{github.token}}
-        CELER_BASE_IMAGE: ubuntu:24.04
-        CELER_BUILDCACHE: sethrj
       run: |
         spack -e . buildcache push \
           --base-image $CELER_BASE_IMAGE --update-index \
           $CELER_BUILDCACHE
 
-    - name: Create Celeritas rc file
+    - name: Update environment and create rc file
       shell: sh
       run: |
+        echo "$CELER_SPACK_VIEW/bin" >> "$GITHUB_PATH"
         spack env activate --sh . > "${CELER_SPACK_VIEW}/rc"
-        echo "::group::Dump shell wrapper at ${SHELL_WRAPPER}"
+        grep '^export ' "${CELER_SPACK_VIEW}/rc" \
+          | grep -v '^export PATH=' \
+          | sed 's/^export //' >> "$GITHUB_ENV"
+        echo "::group::Dump ${CELER_SPACK_VIEW}/rc"
         cat "${CELER_SPACK_VIEW}/rc"
         echo "::endgroup::"

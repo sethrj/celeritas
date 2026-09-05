@@ -19,7 +19,8 @@ if [ -z "$SPACK" ]; then
 fi
 
 # Create environment in current working directory
-$SPACK env create . "${CELER_SOURCE_DIR}/scripts/spack/env-ci-base.yaml"
+echo "Creating environment"
+GIT_TRACE=1 $SPACK env create . "${CELER_SOURCE_DIR}/scripts/spack/env-ci-base.yaml"
 
 # Configure separate packages repository
 if [ -n "${SPACK_PACKAGES}" ]; then
