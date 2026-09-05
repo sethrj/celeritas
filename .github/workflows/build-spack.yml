@@ -97,6 +97,10 @@ jobs:
                 && env.CXXSTD == '20')
                && 'root' || ''
             }}
+            ${{(matrix.special != 'minimal'
+                && env.CXXSTD == '20')
+               && 'covfie' || ''
+            }}
             ${{matrix.geant
                && format('geant4@{0}', matrix.geant) || ''
             }}
