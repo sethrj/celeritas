@@ -11,8 +11,6 @@ packages:
   dd4hep:
     require:
       - "@1.33:"
-    variants:
-      - ~utilityapps ~ddeve
   g4vg:
     require: "@1.0.3:"
   geant4:
@@ -21,12 +19,6 @@ packages:
       - "11.3"
   googletest:
     require: "@1.10:"
-  hepmc3:
-    variants: # allpix2 requires ROOT IO
-      - +rootio
-  llvm:
-    variants:
-      - +python
   nlohmann-json:
     require: "@3.7.0:"
   py-identify: # needed by py-pre-commit
@@ -36,11 +28,6 @@ packages:
   root:
     require:
       - "@6.28:"
-    variants:
-      # These are "default starting values", not required:
-      # some related packages require root7, geom, math;
-      # and we prefer not having GUI for a lighter build
-      - ~aqua ~davix ~examples ~opengl ~x ~tbb ~webgui +root7 +geom +math
   vecgeom:
     require:
       - "@1.2.10:"

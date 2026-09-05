@@ -60,6 +60,7 @@ runs:
 
     - name: Dump spack config
       if: ${{runner.debug}}
+      shell: sh
       run: |
         spack -e . config blame
 

@@ -1,10 +1,12 @@
-#!/bin/sh -ex
+#!/bin/sh
 #-------------------------------- -*- sh -*- ---------------------------------#
 # Copyright Celeritas contributors: see top-level COPYRIGHT file for details
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 #-----------------------------------------------------------------------------#
 # Run on excl (or any ubuntu24 system) to build and upload
 #-----------------------------------------------------------------------------#
+
+set -e
 
 if [ -z "${GITHUB_TOKEN}" ]; then
   echo "error: GITHUB_USER and GITHUB_TOKEN must be set (see scripts/spack/reqs-ci.yaml)"
@@ -14,11 +16,17 @@ fi
 CELER_BASE_IMAGE=ubuntu:24.04
 CELER_BUILDCACHE=sethrj
 
-
 export CELER_SPACK_VIEW=false
+CELER_SPACK_OPT=/scratch/celeritas/opt
+if [ -d "$CELER_SPACK_OPT" ]; then
+  export CELER_SPACK_OPT
+fi
 
+WORK_DIR=$PWD
 SCRIPT_DIR=$(cd "$(dirname $0)" && pwd)
 export CELER_SOURCE_DIR=$(cd $SCRIPT_DIR/../.. && pwd)
+
+update_index=false
 
 # Each line is: CXXSTD, followed by the spack packages to add, based on the
 # matrix (and its "include" entries) from .github/workflows/build-spack.yml
@@ -43,18 +51,26 @@ echo "$matrix" | while read -r line; do
   shift
 
   # Create temporary directory
-  envdir="spack-${CXXSTD}-$(echo "$*" | tr ' @' '--')"
+  envdir="$WORK_DIR/local-spack-${CXXSTD}-$(echo "$*" | tr ' @' '--')"
+  if [ -d $envdir ]; then
+    echo "Skipping existing env: $line"
+    continue
+  fi
   mkdir -p "$envdir"
-  (
-    cd "$envdir"
-    # Delete stale spack yaml if any
-    rm -f spack.yaml 2>/dev/null
-    # Create environment
-    "${SCRIPT_DIR}/setup-spack-ci-env.sh" "$@"
-    spack -e . -v concretize --non-defaults --fresh
-    spack -e . install
-    spack -e . buildcache push \
-          --base-image $CELER_BASE_IMAGE --update-index \
-          $CELER_BUILDCACHE
-  )
+  cd "$envdir"
+
+  # Create environment
+  "${SCRIPT_DIR}/setup-spack-ci-env.sh" "$@"
+  # Install and push
+  spack -e . -v concretize --non-defaults --fresh
+  spack -e . install
+  spack -e . buildcache push \
+    --base-image $CELER_BASE_IMAGE \
+    $CELER_BUILDCACHE
+  update_index=true
 done
+
+if $update_index; then
+  # Should be inside a valid environment
+  spack -e . buildcache update-index $CELER_BUILDCACHE
+fi

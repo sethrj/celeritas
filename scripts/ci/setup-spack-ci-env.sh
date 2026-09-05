@@ -18,8 +18,6 @@ if [ -z "$SPACK" ]; then
   exit 1
 fi
 
-SPACK="$SPACK -vd"
-
 # Create environment in current working directory
 $SPACK env create . "${CELER_SOURCE_DIR}/scripts/spack/env-ci-base.yaml"
 

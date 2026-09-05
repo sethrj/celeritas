@@ -34,6 +34,7 @@ packages:
   geant4:
     variants:
       - generator=ninja
+  # TODO: use ninja with g4vg: CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND
   covfie:
     variants:
       - generator=ninja
