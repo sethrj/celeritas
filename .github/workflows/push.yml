@@ -15,7 +15,6 @@ on:
     branches:
       - develop
       - backports/**
-      - ci-refactor-temp
 
 concurrency:
   group: push-${{github.ref_name}}-${{github.run_number}}
@@ -32,9 +31,9 @@ jobs:
     uses: ./.github/workflows/build-spack.yml
   build-spack-asan:
     uses: ./.github/workflows/build-spack-asan.yml
-  build-docker-codecov:
-    uses: ./.github/workflows/build-docker-codecov.yml
-    secrets: inherit
+  #build-docker-codecov:
+  #  uses: ./.github/workflows/build-docker-codecov.yml
+  #  secrets: inherit
   build-spack-codecov:
     uses: ./.github/workflows/build-spack-codecov.yml
     secrets: inherit

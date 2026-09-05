@@ -59,7 +59,9 @@ runs:
 
     - name: Zero ccache stats
       shell: bash
-      run: ccache -z
+      run: |
+        which -a ccache
+        ccache -z
     - name: Build
       id: build
       shell: bash

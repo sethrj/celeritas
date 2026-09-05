@@ -45,10 +45,10 @@ runs:
           ${{inputs.extra-args}} \
           -DCeleritas_VERSION_STRING="${{inputs.version-string}}"
     - name: Print debug diagnostics on failure
-      if: ${{ failure() && steps.configure.outcome == 'failure' }}
+      #if: ${{ failure() && steps.configure.outcome == 'failure' }}
       shell: bash
       run: |
-        which cmake
+        which -a cmake
         cmake --version
         cmake --list-presets
         echo "CELER_JOB_NAME=$CELER_JOB_NAME"

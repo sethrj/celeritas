@@ -37,13 +37,11 @@ jobs:
           fetch-tags: true # to get version information
 
       - name: Set up Spack environment
-        uses: ./.github/actions/spack-setup
+        uses: ./.github/actions/setup-spack
         with:
           preset: ${{env.CELER_CMAKE_PRESET}}
-          geometry: vecgeom
-          geant: "11.3"
+          add: geant4@11.3 root vecgeom
           cxxstd: ${{env.CXXSTD}}
-          add-root: "true"
 
       - name: Configure Celeritas
         uses: ./.github/actions/configure
