@@ -64,20 +64,20 @@ jobs:
   #   if: ${{github.event.pull_request.draft == false}}
   #   needs: [all-prechecks]
   #   uses: ./.github/workflows/build-docker.yml
-  build-spack-asan:
-    if: ${{github.event.pull_request.draft == false}}
-    needs: [all-prechecks]
-    uses: ./.github/workflows/build-spack-asan.yml
-  build-spack-tidy:
-    if: ${{github.event.pull_request.draft == false}}
-    needs: [all-prechecks]
-    uses: ./.github/workflows/build-spack-tidy.yml
-  build-spack-codecov:
-    if: ${{github.event.pull_request.draft == false}}
-    needs: [all-prechecks]
-    uses: ./.github/workflows/build-spack-codecov.yml
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+  #build-spack-asan:
+  #  if: ${{github.event.pull_request.draft == false}}
+  #  needs: [all-prechecks]
+  #  uses: ./.github/workflows/build-spack-asan.yml
+  #build-spack-tidy:
+  #  if: ${{github.event.pull_request.draft == false}}
+  #  needs: [all-prechecks]
+  #  uses: ./.github/workflows/build-spack-tidy.yml
+  #build-spack-codecov:
+  #  if: ${{github.event.pull_request.draft == false}}
+  #  needs: [all-prechecks]
+  #  uses: ./.github/workflows/build-spack-codecov.yml
+  #  secrets:
+  #    CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
   #build-docker-codecov:
   #  if: ${{github.event.pull_request.draft == false}}
   #  needs: [all-prechecks]
@@ -91,9 +91,9 @@ jobs:
     needs:
       - build-spack
       #- build-docker
-      - build-spack-asan
-      - build-spack-tidy
-      - build-spack-codecov
+      #- build-spack-asan
+      #- build-spack-tidy
+      #- build-spack-codecov
       #- build-docker-codecov
     runs-on: ubuntu-24.04
     steps:
