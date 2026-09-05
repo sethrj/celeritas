@@ -1,0 +1,35 @@
+#-------------------------------- -*- yaml -*- ---------------------------------#
+# Copyright Celeritas contributors: see top-level COPYRIGHT file for details
+# SPDX-License-Identifier: (Apache-2.0 OR MIT)
+#-----------------------------------------------------------------------------#
+# This file is copied into the top-level directory of Celeritas during individual
+# CI build jobs. It's then modified to add packages to the environment
+# in `.github/actions/setup-spack/action.yml`.
+#-----------------------------------------------------------------------------#
+
+spack:
+  include:
+    - scripts/spack/ci-config.yaml
+    - scripts/spack/hep-variants.yaml
+    - scripts/spack/celer-requirements.yaml
+
+  specs:
+    # Base packages
+    - ccache
+    - cli11
+    - covfie
+    - googletest
+    - hepmc3
+    - libpng
+    - ninja
+    - nlohmann-json
+
+  concretizer:
+    unify: true
+
+  config:
+    deprecated: True
+    install_tree:
+      root: /opt/spack
+      projections:
+        all: "{name}/{version}/{hash:7}"

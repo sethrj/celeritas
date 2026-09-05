@@ -100,7 +100,7 @@ jobs:
             ${{matrix.geant
                && format('geant4@{0}', matrix.geant) || ''
             }}
-            ${{matrix.geometry == 'vecgeom' && 'vecgeom@1.2.11:1'
+            ${{matrix.geometry == 'vecgeom' && 'vecgeom@1.2.11'
                || matrix.geometry == 'vecgeom2' && 'vecgeom@2.0.0-rc.7'
                || ''
             }}

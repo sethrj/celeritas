@@ -30,37 +30,42 @@ runs:
     - name: Set environment variables
       shell: bash
       run: |
-        SPACK_ROOT="$(realpath $GITHUB_WORKSPACE)/spack-src"
+        SPACK_ROOT="$GITHUB_WORKSPACE/spack-src"
         echo "$SPACK_ROOT/bin" >> "$GITHUB_PATH"
         {
           echo "CELER_SPACK_VIEW=/opt/view"
+          echo "CELER_BUILDCACHE=sethrj"
+          echo "SPACK_PACKAGES_ROOT=$GITHUB_WORKSPACE/spack-pkg"
           echo "SPACK_ROOT=$SPACK_ROOT"
-          echo "SPACK_BUILDCACHE=celer-buildcache"
           echo "SPACK_COLOR=always"
           echo "SPACK_DISABLE_LOCAL_CONFIG=1"
         } >> "$GITHUB_ENV"
     - name: Checkout Spack
       uses: actions/checkout@v7
       with:
-        repository: celeritas-project/spack
+        repository: spack/spack
         path: ${{env.SPACK_ROOT}}
-        ref: 760ccc43172ac3bf0d9a07b156f7b1f44c743677 # ci @ 11 Oct 2025
+        ref: b495c19f9ee8280c4ef7a1d529a70ab4ba57a3ba
 
-    # TODO when upgrading: checkout spack packages
+    - name: Checkout Spack packages
+      uses: actions/checkout@v7
+      with:
+        repository: celeritas-project/spack-packages
+        path: ${{env.SPACK_PACKAGES_ROOT}}
+        ref: 60424410eabd363e9754dd54a0b1e42c7ff5fe14
+
     - name: Initialize spack environment
       shell: bash
       run: |
         echo "Spack architecture is $(spack arch)"
-        sed -e 's/cxxstd=default/cxxstd=${{inputs.cxxstd}}/' \
-          scripts/ci/spack.yaml > spack.yaml
+        cp scripts/ci/spack-ci-env.yaml .
 
+        # Configure separate packages repository
+        spack repo set --destination "$(realpath "${{ env.SPACK_PACKAGES_ROOT }}")" builtin
         spack -e . config add "view:${CELER_SPACK_VIEW}"
         if [ -n "${{inputs.add}}" ]; then
           spack -e . add ${{inputs.add}}
         fi
-        echo "::group::Find compilers"
-        spack -vd -e . compiler find clang # FIXME
-        echo "::endgroup::"
         # Add the spack ref so that updating spack will reconcretize
         SPACK_REF=$(git -C "${{env.SPACK_ROOT}}" log -1 --pretty=%H HEAD)
         echo "# Concretized with ${SPACK_REF}" >> spack.yaml
@@ -75,11 +80,11 @@ runs:
       id: concretize
       shell: bash
       run: |
-        if ! spack -e . -v concretize ; then
+        spack -e . -v concretize || {
           ERR=$?
           cat spack.yaml
           exit $ERR
-        fi
+        }
     - name: Cache lockfile
       if: ${{ always() && steps.build.outcome == 'success' }}
       uses: actions/cache/save@v5
@@ -100,20 +105,13 @@ runs:
         GITHUB_TOKEN: ${{github.token}}
       # TODO: avoid pushing in the future so that we don't overwrite the spack prefix stuff
       run: |
-        spack -e . mirror set --push --oci-username-variable GITHUB_ACTOR --oci-password-variable GITHUB_TOKEN ${SPACK_BUILDCACHE}
-        spack -e . buildcache push -j $(($(nproc) + 1)) --base-image ubuntu:22.04 --unsigned --update-index ${SPACK_BUILDCACHE}
+        spack -e . mirror set --push --oci-username-variable GITHUB_ACTOR --oci-password-variable GITHUB_TOKEN ${CELER_BUILDCACHE}
+        spack -e . buildcache push -j $(($(nproc) + 1)) --base-image ubuntu:22.04 --unsigned --update-index ${CELER_BUILDCACHE}
       if: ${{github.event_name == 'push' && !cancelled()}}
-    # NOTE: set downstream shells to `${CELER_SPACK_VIEW}/sh {0}`
-    - name: Create shell with Celeritas environment
+    - name: Create Celeritas rc file
       shell: sh
       run: |
-        SHELL_WRAPPER="${SPACK_ROOT}/bin/celer-env-sh"
-        cat > "${SHELL_WRAPPER}" <<EOF
-        #!/bin/sh -e
-        $(spack env activate --sh .)
-        . "\$1"
-        EOF
-        chmod +x "${SHELL_WRAPPER}"
+        spack env activate --sh . > "${CELER_SPACK_VIEW}/rc"
         echo "::group::Dump shell wrapper at ${SHELL_WRAPPER}"
-        cat "${SHELL_WRAPPER}"
+        cat "${CELER_SPACK_VIEW}/rc"
         echo "::endgroup::"

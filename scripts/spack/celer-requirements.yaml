@@ -21,16 +21,14 @@ packages:
       - "11.3"
   googletest:
     require: "@1.10:"
-  llvm: # for lldb-dap compatibility
+  hepmc3:
+    variants: # allpix2 requires ROOT IO
+      - +rootio
+  llvm:
     variants:
       - +python
-    version:
-      - "20:"
   nlohmann-json:
     require: "@3.7.0:"
-  openmpi:
-    variants:
-      - ~fortran
   py-identify: # needed by py-pre-commit
     require: "@2.6:"
   python:
@@ -39,9 +37,10 @@ packages:
     require:
       - "@6.28:"
     variants:
-      # These are "default starting values", not required
-      # using it rather than `prefer` prevents `all:prefer:` from being overwritten
-      - ~aqua ~davix ~examples ~opengl ~x ~tbb ~webgui +root7
+      # These are "default starting values", not required:
+      # some related packages require root7, geom, math;
+      # and we prefer not having GUI for a lighter build
+      - ~aqua ~davix ~examples ~opengl ~x ~tbb ~webgui +root7 +geom +math
   vecgeom:
     require:
       - "@1.2.10:"

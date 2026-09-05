@@ -1,12 +1,12 @@
 spack:
   include:
-    - ./packages.yaml
+    - ./celer-requirements.yaml
   specs:
-    # Packages required for a *truly minimal* build
+    # celer-requirements required for a *truly minimal* build
     - cli11
     - cmake
     - nlohmann-json
-    # ... plus packages required for *basic* realistic development
+    # ... plus celer-requirements required for *basic* realistic development
     - geant4
     - git
     - googletest
