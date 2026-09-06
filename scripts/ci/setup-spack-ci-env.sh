@@ -23,11 +23,7 @@ if [ -n "$SPACK_ENV" ]; then
   exit 1
 fi
 
-# Create environment in current working directory
-echo "Creating environment"
-$SPACK env create . "${CELER_SOURCE_DIR}/scripts/spack/env-ci-base.yaml"
-
-# Configure separate packages repository
+# Configure separate packages repository *first*
 if [ -n "${SPACK_PACKAGES}" ]; then
   echo "Using custom builtin spack package repo: ${SPACK_PACKAGES}"
   $SPACK repo set --destination "${SPACK_PACKAGES}" builtin
@@ -35,6 +31,11 @@ else
   SPACK_PACKAGES=$(spack location -P builtin)
   echo "Using default builtin spack repo: ${SPACK_PACKAGES}"
 fi
+
+# Create environment in current working directory
+echo "Creating environment"
+# NOTE: debug how creating environment forces a long spack checkout
+GIT_TRACE=1 $SPACK -vd env create . "${CELER_SOURCE_DIR}/scripts/spack/env-ci-base.yaml"
 
 # Configure install prefix
 if [ -n "${CELER_SPACK_OPT}" ]; then
