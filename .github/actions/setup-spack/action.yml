@@ -93,6 +93,13 @@ runs:
       shell: sh
       run: |
         spack -e . install
+
+    - name: List installed dependencies
+      if: ${{runner.debug}}
+      shell: sh
+      run: |
+        spack -e . find -lv
+
     - name: Push Spack installation to buildcache
       if: ${{ !cancelled() && github.event_name == 'push' }}
       shell: sh
@@ -114,20 +121,4 @@ runs:
           | sed 's/^export //' >> "$GITHUB_ENV"
         echo "::group::Dump ${CELER_SPACK_VIEW}/rc"
         cat "${CELER_SPACK_VIEW}/rc"
-        echo "::endgroup::"
-
-    - name: Debug environment
-      shell: sh
-      run: |
-        echo "::group::Echo PATH"
-        echo $PATH
-        echo "::endgroup::"
-        echo "::group::List PATH contents"
-        old_ifs=$IFS
-        IFS=:
-        for dir in $PATH; do
-          echo "--- $dir ---"
-          ls -la "$dir"
-        done
-        IFS=$old_ifs
         echo "::endgroup::"
