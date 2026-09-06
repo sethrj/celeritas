@@ -192,6 +192,7 @@
       "description": "FINAL: VecGeom and code coverage",
       "inherits": [".vecgeom", ".gcov", "type-reldeb", "tool-spack"],
       "cacheVariables": {
+        "CELERITAS_USE_ROOT": { "type": "BOOL", "value": "ON" },
         "CMAKE_CXX_FLAGS": null
       }
     },
