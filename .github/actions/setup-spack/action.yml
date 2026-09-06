@@ -82,10 +82,10 @@ runs:
           exit $ERR
         }
     - name: Cache lockfile
-      if: ${{ always() && steps.build.outcome == 'success' }}
+      if: ${{ always() && steps.concretize.outcome == 'success' }}
       uses: actions/cache/save@v5
       with:
-        path: ${{ env.CCACHE_DIR }}
+        path: spack.lock
         key: lock-${{hashFiles('spack.yaml')}}-${{github.run_id}}
 
     - name: Install dependencies
