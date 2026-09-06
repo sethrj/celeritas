@@ -83,7 +83,7 @@ runs:
           exit $ERR
         }
     - name: Cache lockfile
-      if: ${{ !steps.restore.cache-hit && steps.concretize.outcome == 'success' }}
+      if: ${{ !steps.restore.outputs.cache-matched-key && steps.concretize.outcome == 'success' }}
       uses: actions/cache/save@v6
       with:
         path: spack.lock

@@ -16,13 +16,13 @@ spack:
 
   specs:
     # Base packages
+    - cmake
+    - ninja
     - ccache
     - cli11
     - googletest
     - hepmc3
     - libpng
-    - ninja
     - nlohmann-json
     - covfie
-    - libpng
     # Additional packages can be added with `spack add`
