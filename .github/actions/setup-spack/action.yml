@@ -136,8 +136,3 @@ runs:
         echo "::group::Dump ${CELER_SPACK_VIEW}/rc"
         cat "${CELER_SPACK_VIEW}/rc"
         echo "::endgroup::"
-
-    - name: "DELETEME: dump file listing"
-      shell: sh
-      run: |
-        find /opt/view -type f
