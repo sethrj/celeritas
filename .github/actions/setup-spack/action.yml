@@ -22,7 +22,6 @@ inputs:
     description: "Space-separated list of additional spack packages to add"
     required: false
     default: ""
-  # TODO: add-gcovr option for codecov
 
 runs:
   using: "composite"
