@@ -84,11 +84,15 @@ jobs:
         uses: ./.github/actions/run-ctest
         with:
           name: ${{matrix.image}}-${{env.CELER_CMAKE_PRESET}}
-      - name: Install dependencies
+      - name: Install coverage dependencies
+        id: cov-install
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         shell: bash
         run: |
           dnf -y install lcov
+          pip install gcovr
       - name: Generate and upload coverage report
+        if: ${{ !cancelled() && steps.cov-install.outcome == 'success' }}
         uses: ./.github/actions/process-coverage
         with:
           name: spack-${{env.CELER_CMAKE_PRESET}}

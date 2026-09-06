@@ -71,7 +71,7 @@ jobs:
       - name: Set up Spack environment
         uses: ./.github/actions/setup-spack
         with:
-          add: "geant4@11.2 vecgeom@1.2.11:1"
+          add: "geant4@11.2 vecgeom@1.2.11:1 g4vg"
           cxxstd: ${{env.CXXSTD}}
       - name: Configure Celeritas
         uses: ./.github/actions/configure
@@ -101,7 +101,7 @@ jobs:
       - name: Set up Spack environment
         uses: ./.github/actions/setup-spack
         with:
-          add: vecgeom@1.2.11 geant4@11.4 g4vg root py-gcovr
+          add: vecgeom@1.2.11 geant4@11.3 g4vg root py-gcovr
           cxxstd: ${{env.CXXSTD}}
       - name: Configure Celeritas
         uses: ./.github/actions/configure
@@ -123,6 +123,7 @@ jobs:
           preset: spack-codecov
           split-app: true
       - name: Generate and upload coverage report
+        if: ${{ !cancelled() && steps.build.outputs.build-outcome == 'success' }}
         uses: ./.github/actions/process-coverage
         with:
           name: spack-${{env.CELER_CMAKE_PRESET}}
