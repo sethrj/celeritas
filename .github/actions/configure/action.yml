@@ -44,6 +44,23 @@ runs:
       # reduce after the next release
       run: |
         git fetch --depth 600
+
+    - name: Debug environment
+      shell: bash
+      run: |
+        echo "::group::Echo PATH"
+        echo $PATH
+        env | grep PATH
+        echo "::endgroup::"
+
+        echo "::group::Cat GITHUB_ENV file"
+        cat "$GITHUB_ENV"
+        echo "::endgroup::"
+
+        echo "::group::Cat GITHUB_PATH file"
+        cat "$GITHUB_PATH"
+        echo "::endgroup::"
+
     - name: Configure Celeritas
       id: configure
       shell: bash
