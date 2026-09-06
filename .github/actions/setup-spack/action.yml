@@ -67,7 +67,8 @@ runs:
         spack -e . config blame
 
     - name: Restore cached lockfile
-      uses: actions/cache/restore@v5
+      id: restore
+      uses: actions/cache/restore@v6
       with:
         path: spack.lock
         key: lock-${{hashFiles('spack.yaml')}}-${{github.run_id}}
@@ -82,8 +83,8 @@ runs:
           exit $ERR
         }
     - name: Cache lockfile
-      if: ${{ always() && steps.concretize.outcome == 'success' }}
-      uses: actions/cache/save@v5
+      if: ${{ !steps.restore.cache-hit && steps.concretize.outcome == 'success' }}
+      uses: actions/cache/save@v6
       with:
         path: spack.lock
         key: lock-${{hashFiles('spack.yaml')}}-${{github.run_id}}

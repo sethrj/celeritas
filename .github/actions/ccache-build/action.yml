@@ -51,7 +51,7 @@ runs:
         } >> "$GITHUB_ENV"
 
     - name: Restore ccache
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@v6
       with:
         path: ${{ env.CCACHE_DIR }}
         key: ccache-${{ inputs.name }}-${{ github.run_id }}
@@ -73,7 +73,7 @@ runs:
 
     - name: Save ccache
       if: ${{ always() && steps.build.outcome == 'success' }}
-      uses: actions/cache/save@v5
+      uses: actions/cache/save@v6
       with:
         upload-chunk-size: 67108864 # 64MB
         path: ${{ env.CCACHE_DIR }}
