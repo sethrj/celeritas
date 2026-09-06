@@ -108,7 +108,7 @@ runs:
     - name: Install dependencies
       shell: sh
       run: |
-        spack -e . install -p 16 --use-buildcache=${{ github.event_name == 'pull_request' && 'only' : 'auto' }}
+        spack -e . install -p 16 --use-buildcache=${{ github.event_name == 'pull_request' && 'only' || 'auto' }}
     - name: List installed dependencies
       if: ${{runner.debug}}
       shell: sh
