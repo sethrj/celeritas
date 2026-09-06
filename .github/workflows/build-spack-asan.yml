@@ -41,7 +41,7 @@ jobs:
 
       - name: Build all
         id: build
-        uses: ./.github/actions/ccache-build
+        uses: ./.github/actions/build-cached
         with:
           name: spack-${{env.CELER_CMAKE_PRESET}}
           preset: spack

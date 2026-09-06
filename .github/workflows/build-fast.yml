@@ -112,7 +112,7 @@ jobs:
 
       - name: Build
         id: build
-        uses: ./.github/actions/ccache-build
+        uses: ./.github/actions/build-cached
         with:
           preset: ${{env.CELER_CMAKE_PRESET}}
           name: fast-${{env.CELER_JOB_NAME}}
@@ -158,7 +158,7 @@ jobs:
           version-string: ${{env.CELER_VERSION_STRING}}
       - name: Build
         id: build
-        uses: ./.github/actions/ccache-build
+        uses: ./.github/actions/build-cached
         with:
           preset: ${{env.CELER_CMAKE_PRESET}}
           name: fast-windows

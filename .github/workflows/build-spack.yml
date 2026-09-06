@@ -119,7 +119,7 @@ jobs:
 
       - name: Build all
         id: build
-        uses: ./.github/actions/ccache-build
+        uses: ./.github/actions/build-cached
         with:
           name: ${{env.CELER_RUN_NAME}}
           preset: spack

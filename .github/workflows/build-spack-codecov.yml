@@ -32,33 +32,24 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-tags: true # to get version information
-
       - name: Set up Spack environment
         uses: ./.github/actions/setup-spack
         with:
           preset: ${{env.CELER_CMAKE_PRESET}}
           add: vecgeom@1.2.11 geant4@11.4 g4vg root py-gcovr
           cxxstd: ${{env.CXXSTD}}
-
       - name: Configure Celeritas
         uses: ./.github/actions/configure
         with:
           preset: ${{env.CELER_CMAKE_PRESET}}
           presets-file: "ci-ubuntu-github.json"
-
       - name: Build all
         id: build
-        uses: ./.github/actions/ccache-build
+        uses: ./.github/actions/build-cached
         with:
           name: spack-${{env.CELER_CMAKE_PRESET}}
           preset: spack
           ccache-max-size: 512Mi
-
-      - name: Regenerate ROOT test data
-        working-directory: build
-        run: |
-          ninja -v -k0 update-root-test-data
-
       - name: Run tests
         id: test
         uses: ./.github/actions/run-ctest
@@ -66,7 +57,6 @@ jobs:
           name: spack-${{env.CELER_CMAKE_PRESET}}
           preset: spack-codecov
           split-app: true
-
       - name: Generate and upload coverage report
         uses: ./.github/actions/generate-coverage
         with:
