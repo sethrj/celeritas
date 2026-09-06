@@ -108,8 +108,7 @@ runs:
     - name: Install dependencies
       shell: sh
       run: |
-        spack -e . install
-        spack -vd -e . env view regenerate
+        spack -e . install -p 16 --use-buildcache=${{ github.event_name == 'pull_request' && 'only' : 'auto' }}
     - name: List installed dependencies
       if: ${{runner.debug}}
       shell: sh
@@ -143,4 +142,5 @@ runs:
       shell: sh
       run: |
         find /opt/view -type f
-        find /opt/spack -type f
+        find /opt/view -type l
+        ls -alF /opt/view/lib*
