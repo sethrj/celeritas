@@ -23,4 +23,5 @@ spack:
     - libpng
     - ninja
     - nlohmann-json
+    - covfie
     # Additional packages can be added with `spack add`

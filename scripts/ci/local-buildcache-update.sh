@@ -31,16 +31,16 @@ update_index=false
 # Each line is: CXXSTD, followed by the spack packages to add, based on the
 # matrix (and its "include" entries) from .github/workflows/build-spack.yml
 matrix="
-CXXSTD=20 vecgeom@2.1.0 geant4@11.4 g4vg root covfie
-CXXSTD=20 vecgeom@2.0.0-rc.7 geant4@11.3 g4vg root covfie
-CXXSTD=20 vecgeom@1.2.11 geant4@11.4 g4vg root covfie py-gcovr
-CXXSTD=20 vecgeom@1.2.11 geant4@11.0 g4vg root covfie
-CXXSTD=20 vecgeom@1.2.11 geant4@11.1 g4vg root covfie
-CXXSTD=20 vecgeom@1.2.11 geant4@11.2 g4vg root covfie
-CXXSTD=20 vecgeom@1.2.11 geant4@11.3 g4vg root covfie
+CXXSTD=20 vecgeom@2.1.0 geant4@11.4 g4vg root
+CXXSTD=20 vecgeom@2.0.0-rc.7 geant4@11.3 g4vg root
+CXXSTD=20 vecgeom@1.2.11 geant4@11.4 g4vg root py-gcovr
+CXXSTD=20 vecgeom@1.2.11 geant4@11.0 g4vg root
+CXXSTD=20 vecgeom@1.2.11 geant4@11.1 g4vg root
+CXXSTD=20 vecgeom@1.2.11 geant4@11.2 g4vg root
+CXXSTD=20 vecgeom@1.2.11 geant4@11.3 g4vg root
 CXXSTD=17 vecgeom@1.2.11 geant4@10.5 g4vg
 CXXSTD=17 vecgeom@1.2.11 geant4@10.6 g4vg
-CXXSTD=20 vecgeom@1.2.11 geant4@10.7 g4vg root covfie
+CXXSTD=20 vecgeom@1.2.11 geant4@10.7 g4vg root
 "
 
 echo "$matrix" | while read -r line; do
