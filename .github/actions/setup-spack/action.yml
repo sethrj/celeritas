@@ -57,8 +57,17 @@ runs:
 
     - name: Initialize spack environment
       shell: sh
+      # NOTE: padding CANNOT be disabled if pushing to buildcache
       run: |
+        if [ "${{github.event_name}}" = "push" ]; then
+          export CELER_SPACK_DISABLE_PADDING=1
+        fi
         "${{github.workspace}}/scripts/ci/setup-spack-ci-env.sh" ${{inputs.add}}
+
+        if [ -n "${CELER_SPACK_DISABLE_PADDING}" ]; then
+          echo "Disabling install prefix padding"
+          $SPACK -e . config rm "config:install_tree:padded_length"
+        fi
 
     - name: Dump spack config
       if: ${{runner.debug}}
@@ -66,6 +75,7 @@ runs:
       run: |
         spack -e . config blame
 
+    # TODO: since the spack yaml includes files maybe we should be caching the merged config??
     - name: Restore cached lockfile
       id: restore
       uses: actions/cache/restore@v6
@@ -101,6 +111,7 @@ runs:
         spack -e . find -lv
 
     - name: Push Spack installation to buildcache
+      id: push-buildcache
       if: ${{ !cancelled() && github.event_name == 'push' }}
       shell: sh
       env:

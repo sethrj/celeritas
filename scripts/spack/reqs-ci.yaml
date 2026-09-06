@@ -18,8 +18,10 @@ mirrors:
       secret_variable: GITHUB_TOKEN
 
 config:
-  deprecated: True
+  deprecated: True # needed for old vecgeom rc7
   install_tree:
+    # NOTE: use padded_length when pushing to buildcache, but it can be
+    # avoided when installing as part of CI
     padded_length: 128
     projections:
       all: "{name}/{version}/{hash:7}"
