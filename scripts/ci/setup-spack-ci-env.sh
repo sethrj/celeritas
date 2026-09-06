@@ -69,7 +69,6 @@ fi
 
 # Add the spack ref so that updating spack will reconcretize
 cat >> spack.yaml <<EOF
-# system: $(spack arch --generic)
 # spack: $(git -C "${SPACK_ROOT}" log -1 --pretty=%H HEAD)
 # packages: $(git -C "${SPACK_PACKAGES}" log -1 --pretty=%H HEAD)
 EOF

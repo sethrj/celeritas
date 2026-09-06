@@ -81,16 +81,18 @@ runs:
         key: lock-${{hashFiles('spack.yaml')}}-${{github.run_id}}
         restore-keys: lock-${{hashFiles('spack.yaml')}}
     - name: Concretize
+      if: ${{ !steps.restore.outputs.cache-matched-key }}
       id: concretize
       shell: sh
       run: |
+        spack arch --generic
         spack -e . -v concretize || {
           ERR=$?
           cat spack.yaml
           exit $ERR
         }
     - name: Cache lockfile
-      if: ${{ !steps.restore.outputs.cache-matched-key && steps.concretize.outcome == 'success' }}
+      if: ${{ steps.concretize.outcome == 'success' }}
       uses: actions/cache/save@v6
       with:
         path: spack.lock
