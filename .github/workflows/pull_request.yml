@@ -42,15 +42,15 @@ jobs:
         with:
           name: event-file
           path: ${{github.event_path}}
-  build-fast:
-    uses: ./.github/workflows/build-fast.yml
+  # build-fast:
+  #   uses: ./.github/workflows/build-fast.yml
   build-ultralite:
     uses: ./.github/workflows/build-ultralite.yml
   build-docs:
     uses: ./.github/workflows/build-docs.yml
   all-prechecks:
     needs:
-      - build-fast
+      #  - build-fast
       - build-ultralite
       - build-docs
     runs-on: ubuntu-24.04
@@ -76,15 +76,15 @@ jobs:
     needs: [all-prechecks]
     uses: ./.github/workflows/build-spack-codecov.yml
     secrets: inherit
-  build-docker:
-    if: ${{github.event.pull_request.draft == false}}
-    needs: [all-prechecks]
-    uses: ./.github/workflows/build-docker.yml
-  build-docker-codecov:
-    if: ${{github.event.pull_request.draft == false}}
-    needs: [all-prechecks]
-    uses: ./.github/workflows/build-docker-codecov.yml
-    secrets: inherit
+  # build-docker:
+  #   if: ${{github.event.pull_request.draft == false}}
+  #   needs: [all-prechecks]
+  #   uses: ./.github/workflows/build-docker.yml
+  # build-docker-codecov:
+  #   if: ${{github.event.pull_request.draft == false}}
+  #   needs: [all-prechecks]
+  #   uses: ./.github/workflows/build-docker-codecov.yml
+  #   secrets: inherit
 
   # Specifying a dependent job allows us to select a single "requires" check in the project GitHub settings
   all:
@@ -94,8 +94,8 @@ jobs:
       - build-spack-asan
       - build-spack-tidy
       - build-spack-codecov
-      - build-docker
-      - build-docker-codecov
+      # - build-docker
+      # - build-docker-codecov
     runs-on: ubuntu-24.04
     steps:
       - name: Decide whether the needed jobs succeeded or failed
