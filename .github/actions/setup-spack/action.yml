@@ -65,7 +65,7 @@ runs:
           echo "Disabling install prefix padding"
           spack -e . config add "config:install_tree:padded_length:False"
         fi
-        spack -e . config get --json > spack-config.json
+        spack -e . config get --json > spack.config.json
     - name: Dump spack config blame
       if: ${{runner.debug}}
       shell: sh
