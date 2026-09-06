@@ -130,19 +130,13 @@ runs:
 
     - name: Update environment and create rc file
       shell: sh
+      # NOTE: the env transformation might be sensitive to spack version changes
       run: |
         echo "$CELER_SPACK_VIEW/bin" >> "$GITHUB_PATH"
         spack env activate --sh . > "${CELER_SPACK_VIEW}/rc"
         grep '^export ' "${CELER_SPACK_VIEW}/rc" \
           | grep -v '^export PATH=' \
-          | sed 's/^export //' >> "$GITHUB_ENV"
+          | sed 's/^export \(.*\);\s*$/\1/' >> "$GITHUB_ENV"
         echo "::group::Dump ${CELER_SPACK_VIEW}/rc"
         cat "${CELER_SPACK_VIEW}/rc"
         echo "::endgroup::"
-
-    - name: "DELETEME: dump file listing"
-      shell: sh
-      run: |
-        find /opt/view -type f
-        find /opt/view -type l
-        ls -alF /opt/view/lib*

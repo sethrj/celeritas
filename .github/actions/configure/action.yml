@@ -45,15 +45,6 @@ runs:
       run: |
         git fetch --depth 600
 
-    - name: Debug environment
-      shell: bash
-      run: |
-        echo "::group::Echo PATH"
-        echo $PATH
-        echo "::endgroup::"
-        which -a cmake
-        hash
-        which -a cmake
     - name: Configure Celeritas
       id: configure
       shell: bash
