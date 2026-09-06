@@ -18,6 +18,7 @@ spack:
     - ninja
     - vecgeom
     - root
+    - libpng
     # documentation
     - doxygen
     - py-breathe

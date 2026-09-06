@@ -51,7 +51,7 @@ echo "$matrix" | while read -r line; do
   shift
 
   # Create temporary directory
-  envdir="$WORK_DIR/local-spack-${CXXSTD}-$(echo "$*" | tr ' @' '--')"
+  envdir="$WORK_DIR/temp-spack-${CXXSTD}-$(echo "$*" | tr ' @' '--')"
   if [ -d $envdir ]; then
     echo "Skipping existing env: $line"
     continue

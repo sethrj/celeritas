@@ -57,7 +57,6 @@ jobs:
       - name: Check out Celeritas
         uses: actions/checkout@v7
         with:
-          fetch-depth: 383
           fetch-tags: true
 
       - name: Trust checked-out repo

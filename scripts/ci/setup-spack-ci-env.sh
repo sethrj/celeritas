@@ -18,9 +18,14 @@ if [ -z "$SPACK" ]; then
   exit 1
 fi
 
+if [ -n "$SPACK_ENV" ]; then
+  echo "error: another spack environment is active: run despacktivate first"
+  exit 1
+fi
+
 # Create environment in current working directory
 echo "Creating environment"
-GIT_TRACE=1 $SPACK env create . "${CELER_SOURCE_DIR}/scripts/spack/env-ci-base.yaml"
+$SPACK env create . "${CELER_SOURCE_DIR}/scripts/spack/env-ci-base.yaml"
 
 # Configure separate packages repository
 if [ -n "${SPACK_PACKAGES}" ]; then
