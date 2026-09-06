@@ -50,17 +50,10 @@ runs:
       run: |
         echo "::group::Echo PATH"
         echo $PATH
-        env | grep PATH
         echo "::endgroup::"
-
-        echo "::group::Cat GITHUB_ENV file"
-        cat "$GITHUB_ENV"
-        echo "::endgroup::"
-
-        echo "::group::Cat GITHUB_PATH file"
-        cat "$GITHUB_PATH"
-        echo "::endgroup::"
-
+        which -a cmake
+        hash
+        which -a cmake
     - name: Configure Celeritas
       id: configure
       shell: bash
