@@ -85,15 +85,14 @@ jobs:
         uses: ./.github/actions/run-ctest
         with:
           name: ${{matrix.image}}-${{env.CELER_CMAKE_PRESET}}
+      - name: Install dependencies
+        shell: bash
+        run: |
+          dnf -y install lcov
       - name: Generate and upload coverage report
         uses: ./.github/actions/generate-coverage
-        if: >-
-          ${{
-            !cancelled()
-            && steps.test.outcome == 'success'
-          }}
         with:
-          codecov_token: ${{secrets.CODECOV_TOKEN}}
-          fail_ci_if_error: true
+          name: spack-${{env.CELER_CMAKE_PRESET}}
+          token: ${{secrets.CODECOV_TOKEN}}
 
 # vim: set nowrap tw=100:

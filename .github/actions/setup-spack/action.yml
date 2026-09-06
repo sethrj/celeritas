@@ -58,7 +58,7 @@ runs:
     - name: Initialize spack environment
       shell: sh
       run: |
-        ./scripts/ci/setup-spack-ci-env.sh ${{inputs.add}}
+        "${{github.workspace}}/scripts/ci/setup-spack-ci-env.sh" ${{inputs.add}}
 
     - name: Dump spack config
       if: ${{runner.debug}}
@@ -94,7 +94,7 @@ runs:
       run: |
         spack -e . install
     - name: Push Spack installation to buildcache
-      if: ${{github.event_name == 'push' && !cancelled()}}
+      if: ${{ !cancelled() && github.event_name == 'push' }}
       shell: sh
       env:
         GITHUB_USER: ${{github.actor}}

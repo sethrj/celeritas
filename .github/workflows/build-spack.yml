@@ -79,7 +79,6 @@ jobs:
       CXXSTD: ${{(matrix.geant == '10.5' || matrix.geant == '10.6')
         && 17 || 20}}
     runs-on: ubuntu-24.04
-    continue-on-error: false
     steps:
       - name: Check out Celeritas
         uses: actions/checkout@v7
@@ -154,11 +153,7 @@ jobs:
               || (matrix.geant && fromJSON(matrix.geant) < 11) && '^accel/'
              }}
       - name: Test basic downstream compilation against build dir
-        if: >-
-          ${{
-            !cancelled()
-            && steps.build.outputs.build-outcome == 'success'
-          }}
+        if: ${{ !cancelled() && steps.build.outputs.build-outcome == 'success' }}
         env:
           CELER_DISABLE_G4_EXAMPLES: 1 # Only test minimal example for this one
         run: |
@@ -168,19 +163,16 @@ jobs:
 
       - name: Install
         id: install
-        if: ${{!cancelled() && steps.build.outputs.build-outcome == 'success'}}
+        if: ${{ !cancelled() && steps.build.outputs.build-outcome == 'success' }}
         uses: ./.github/actions/install-and-check
         with:
           binaries: orange-update celer-geo celer-export-geant celer-sim celer-g4
       - name: Build and run examples
         env:
           CELER_DISABLE_G4_EXAMPLES: ${{(!matrix.geant) && '1' || ''}}
-        if: >-
-          ${{
-            steps.install.outcome == 'success'
-          }}
+        if: ${{ steps.install.outcome == 'success' }}
         run: |
           export G4VERSION_NUMBER=$(echo "${{matrix.geant}}" | awk '{printf "%.0f", $1 * 100}')
-          ./scripts/ci/test-examples.sh
+          "${{github.workspace}}/scripts/ci/test-examples.sh"
 
 # vim: set nowrap tw=100:

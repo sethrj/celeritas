@@ -38,7 +38,7 @@ jobs:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   all:
-    if: ${{always()}}
+    if: ${{!cancelled()}}
     needs:
       - build-fast
       - build-spack

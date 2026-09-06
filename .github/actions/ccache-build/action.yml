@@ -31,7 +31,7 @@ inputs:
     default: "${{runner.temp}}/ccache-debug"
 outputs:
   build-outcome:
-    description: "Outcome of the build step ('success' or 'failure')"
+    description: "Outcome of the build step ('success', 'failure', 'cancelled', 'skipped')"
     value: ${{steps.build.outcome}}
 
 runs:
@@ -67,19 +67,19 @@ runs:
       shell: bash
       run: cmake --build --preset=${{ inputs.preset }}
     - name: Show ccache stats
-      if: ${{ !cancelled() }}
+      if: ${{ !cancelled() && steps.build.outcome != 'skipped' }}
       shell: bash
       run: ccache -s
 
     - name: Save ccache
-      if: ${{ always() && steps.build.outcome == 'success' }}
+      if: ${{ steps.build.outcome == 'success' }}
       uses: actions/cache/save@v6
       with:
         upload-chunk-size: 67108864 # 64MB
         path: ${{ env.CCACHE_DIR }}
         key: ccache-${{ inputs.name }}-${{ github.run_id }}
     - name: Upload ccache debug
-      if: ${{ fromJSON(inputs.ccache-debug) > 0 && !cancelled() }}
+      if: ${{ !cancelled()  && fromJSON(inputs.ccache-debug) > 0 }}
       uses: actions/upload-artifact@v7
       with:
         path: ${{ env.CCACHE_DEBUGDIR }}

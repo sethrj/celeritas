@@ -24,7 +24,6 @@ jobs:
       CXX: "clang++-18"
       CXXSTD: 20
     runs-on: ubuntu-24.04
-    continue-on-error: false
     steps:
       - name: Check out Celeritas
         uses: actions/checkout@v7
@@ -47,7 +46,7 @@ jobs:
       - name: Build changed files with clang-tidy
         if: ${{github.workflow == 'pull_request'}}
         run: |
-          ./scripts/ci/clang-tidy-changed.sh origin/"${{ github.base_ref }}"
+          "${{github.workspace}}/scripts/ci/clang-tidy-changed.sh" origin/"${{ github.base_ref }}"
 
       # NOTE: this is not yet used but can be manually invoked
       - name: Build all files with clang-tidy

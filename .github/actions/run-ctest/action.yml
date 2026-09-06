@@ -68,7 +68,7 @@ runs:
     - name: Upload test results for pull_request_completed
       id: upload
       uses: actions/upload-artifact@v7
-      if: ${{ always() }}
+      if: ${{ !cancelled() }}
       with:
         # NOTE: these must be compatible with pull_request_completed.yml
         name: test-results-${{inputs.name}}

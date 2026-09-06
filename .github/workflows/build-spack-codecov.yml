@@ -25,10 +25,8 @@ jobs:
       CC: "clang-18"
       CXX: "clang++-18"
       LLVM_COV: "llvm-cov-18"
-      GCOV: "${{github.workspace}}/scripts/ci/llvm-gcov.sh"
       CXXSTD: 20
     runs-on: ubuntu-24.04
-    continue-on-error: false
     steps:
       - name: Check out Celeritas
         uses: actions/checkout@v7
@@ -40,7 +38,7 @@ jobs:
         uses: ./.github/actions/setup-spack
         with:
           preset: ${{env.CELER_CMAKE_PRESET}}
-          add: geant4@11.3 root vecgeom
+          add: vecgeom@1.2.11 geant4@11.4 g4vg root py-gcovr
           cxxstd: ${{env.CXXSTD}}
 
       - name: Configure Celeritas
@@ -72,15 +70,9 @@ jobs:
 
       - name: Generate and upload coverage report
         uses: ./.github/actions/generate-coverage
-        if: >-
-          ${{
-            !cancelled()
-            && steps.unittest.outcome == 'success'
-            && steps.apptest.outcome == 'success'
-          }}
         with:
-          codecov_token: ${{secrets.CODECOV_TOKEN}}
-          fail_ci_if_error: true
-          gcov_executable: ${{env.GCOV}}
+          name: spack-${{env.CELER_CMAKE_PRESET}}
+          token: ${{secrets.CODECOV_TOKEN}}
+          gcov-exe: "${{github.workspace}}/scripts/ci/llvm-gcov.sh"
 
 # vim: set nowrap tw=100:
