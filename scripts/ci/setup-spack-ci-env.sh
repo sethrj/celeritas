@@ -44,10 +44,6 @@ if [ -n "${CELER_SPACK_OPT}" ]; then
 else
   echo "Omitting spack install prefix: CELER_SPACK_OPT is not set"
 fi
-if [ -n "${CELER_SPACK_DISABLE_PADDING}" ]; then
-  echo "Disabling install prefix padding"
-  $SPACK -e . config rm "config:install_tree:padded_length"
-fi
 
 # Configure view
 if [ -n "${CELER_SPACK_VIEW}" ]; then

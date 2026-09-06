@@ -59,12 +59,9 @@ runs:
       shell: sh
       # NOTE: padding CANNOT be disabled if pushing to buildcache
       run: |
-        if [ "${{github.event_name}}" != "push" ]; then
-          export CELER_SPACK_DISABLE_PADDING=1
-        fi
         "${{github.workspace}}/scripts/ci/setup-spack-ci-env.sh" ${{inputs.add}}
 
-        if [ -n "${CELER_SPACK_DISABLE_PADDING}" ]; then
+        if [ "${{github.event_name}}" != "push" ]; then
           echo "Disabling install prefix padding"
           spack -e . config rm "config:install_tree:padded_length"
         fi
