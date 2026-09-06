@@ -34,13 +34,13 @@ matrix="
 CXXSTD=20 vecgeom@2.1.0 geant4@11.4 g4vg root
 CXXSTD=20 vecgeom@2.0.0-rc.7 geant4@11.3 g4vg root
 CXXSTD=20 vecgeom@1.2.11 geant4@11.4 g4vg root py-gcovr
-CXXSTD=20 vecgeom@1.2.11 geant4@11.0 g4vg root
-CXXSTD=20 vecgeom@1.2.11 geant4@11.1 g4vg root
-CXXSTD=20 vecgeom@1.2.11 geant4@11.2 g4vg root
 CXXSTD=20 vecgeom@1.2.11 geant4@11.3 g4vg root
-CXXSTD=17 vecgeom@1.2.11 geant4@10.5 g4vg
-CXXSTD=17 vecgeom@1.2.11 geant4@10.6 g4vg
+CXXSTD=20 vecgeom@1.2.11 geant4@11.2 g4vg root
+CXXSTD=20 vecgeom@1.2.11 geant4@11.1 g4vg root
+CXXSTD=20 vecgeom@1.2.11 geant4@11.0 g4vg root
 CXXSTD=20 vecgeom@1.2.11 geant4@10.7 g4vg root
+CXXSTD=17 vecgeom@1.2.11 geant4@10.6 g4vg
+CXXSTD=17 vecgeom@1.2.11 geant4@10.5 g4vg
 "
 
 echo "$matrix" | while read -r line; do
@@ -62,8 +62,11 @@ echo "$matrix" | while read -r line; do
   # Create environment
   "${SCRIPT_DIR}/setup-spack-ci-env.sh" "$@"
   # Install and push
+  echo "Concretizing $envdir..."
   spack -e . -v concretize --non-defaults --fresh
+  echo "Installing  $envdir..."
   spack -e . install
+  echo "Pushing  $envdir..."
   spack -e . buildcache push \
     --base-image $CELER_BASE_IMAGE \
     $CELER_BUILDCACHE
