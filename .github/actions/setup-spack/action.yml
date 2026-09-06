@@ -63,15 +63,15 @@ runs:
 
         if [ "${{github.event_name}}" != "push" ]; then
           echo "Disabling install prefix padding"
-          spack -e . config rm "config:install_tree:padded_length"
+          spack -e . config add "config:install_tree:padded_length:False"
         fi
-    - name: Dump spack config
+        spack -e . config get --json > spack-config.json
+    - name: Dump spack config blame
       if: ${{runner.debug}}
       shell: sh
       run: |
         spack -e . config blame
 
-    # TODO: since the spack yaml includes files maybe we should be caching the merged config??
     - name: Restore cached lockfile
       id: restore
       uses: actions/cache/restore@v6
@@ -94,6 +94,15 @@ runs:
       with:
         path: spack.lock
         key: lock-${{hashFiles('spack.yaml')}}-${{github.run_id}}
+
+    - name: Upload spack config and lockfile
+      id: upload
+      uses: actions/upload-artifact@v7
+      if: ${{ !cancelled() }}
+      with:
+        name: spack-${{hashFiles('spack.yaml')}}-${{github.run_id}}
+        path: "spack.*"
+        retention-days: 1
 
     - name: Install dependencies
       shell: sh
