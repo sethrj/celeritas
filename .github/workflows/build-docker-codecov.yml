@@ -89,7 +89,7 @@ jobs:
         run: |
           dnf -y install lcov
       - name: Generate and upload coverage report
-        uses: ./.github/actions/generate-coverage
+        uses: ./.github/actions/process-coverage
         with:
           name: spack-${{env.CELER_CMAKE_PRESET}}
           token: ${{secrets.CODECOV_TOKEN}}
