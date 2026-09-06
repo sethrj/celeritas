@@ -41,13 +41,13 @@ runs:
           echo "SPACK_COLOR=always"
           echo "SPACK_DISABLE_LOCAL_CONFIG=1"
         } >> "$GITHUB_ENV"
+
     - name: Checkout Spack
       uses: actions/checkout@v7
       with:
         repository: spack/spack
         path: ${{env.SPACK_ROOT}}
         ref: 57f9c9504e7f2f30462d68e9c5f67a64ba8c87c8
-
     - name: Checkout Spack packages
       uses: actions/checkout@v7
       with:
@@ -68,7 +68,6 @@ runs:
           echo "Disabling install prefix padding"
           $SPACK -e . config rm "config:install_tree:padded_length"
         fi
-
     - name: Dump spack config
       if: ${{runner.debug}}
       shell: sh
@@ -103,13 +102,11 @@ runs:
       shell: sh
       run: |
         spack -e . install
-
     - name: List installed dependencies
       if: ${{runner.debug}}
       shell: sh
       run: |
         spack -e . find -lv
-
     - name: Push Spack installation to buildcache
       id: push-buildcache
       if: ${{ !cancelled() && github.event_name == 'push' }}

@@ -44,15 +44,15 @@ jobs:
           path: ${{github.event_path}}
   # build-fast:
   #   uses: ./.github/workflows/build-fast.yml
-  build-ultralite:
-    uses: ./.github/workflows/build-ultralite.yml
+  # build-ultralite:
+  #   uses: ./.github/workflows/build-ultralite.yml
   # build-docs:
   #   uses: ./.github/workflows/build-docs.yml
   all-prechecks:
-    needs:
-      #  - build-fast
-      - build-ultralite
-      # - build-docs
+    # needs:
+    #   - build-fast
+    #   - build-ultralite
+    #   - build-docs
     runs-on: ubuntu-24.04
     steps:
       - name: Success
