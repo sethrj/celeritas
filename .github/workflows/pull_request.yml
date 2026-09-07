@@ -67,15 +67,14 @@ jobs:
     if: ${{github.event.pull_request.draft == false}}
     needs: [all-prechecks]
     uses: ./.github/workflows/build-spack-extra.yml
-    secrets: inherit
   #build-docker:
   #  if: ${{github.event.pull_request.draft == false}}
   #  needs: [all-prechecks]
   #  uses: ./.github/workflows/build-docker.yml
-  build-docker-codecov:
+  build-codecov:
     if: ${{github.event.pull_request.draft == false}}
     needs: [all-prechecks]
-    uses: ./.github/workflows/build-docker-codecov.yml
+    uses: ./.github/workflows/build-codecov.yml
     secrets: inherit
 
   # Specifying a dependent job allows us to select a single "requires" check in the project GitHub settings

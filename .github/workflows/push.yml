@@ -25,14 +25,14 @@ jobs:
     uses: ./.github/workflows/build-ultralite.yml
   build-fast:
     uses: ./.github/workflows/build-fast.yml
-  # build-docker:
-  #   uses: ./.github/workflows/build-docker.yml
+  build-docker:
+    uses: ./.github/workflows/build-docker.yml
   build-spack:
     uses: ./.github/workflows/build-spack.yml
   build-spack-extra:
     uses: ./.github/workflows/build-spack-extra.yml
-  #build-docker-codecov:
-  #  uses: ./.github/workflows/build-docker-codecov.yml
-  #  secrets: inherit
+  build-codecov:
+    uses: ./.github/workflows/build-codecov.yml
+    secrets: inherit
 
 # vim: set nowrap tw=100:
