@@ -84,7 +84,7 @@ jobs:
       #- build-spack
       - build-spack-extra
       #- build-docker
-      - build-docker-codecov
+      - build-codecov
     runs-on: ubuntu-24.04
     steps:
       - name: Decide whether the needed jobs succeeded or failed
