@@ -81,7 +81,7 @@ jobs:
       - name: Build changed files with clang-tidy
         if: ${{github.workflow == 'pull_request'}}
         run: |
-          "${{github.workspace}}/scripts/ci/clang-tidy-changed.sh" origin/"${{ github.base_ref }}"
+          "${{github.workspace}}/scripts/ci/clang-tidy-changed.sh" "${{ github.event.pull_request.base.sha }}"
       # NOTE: this is not yet used but can be manually invoked
       - name: Build all files with clang-tidy
         if: ${{github.workflow != 'pull_request'}}
