@@ -109,7 +109,7 @@ runs:
     - name: Install dependencies
       shell: sh
       run: |
-        spack -e . install -p 16 --use-buildcache=${{ github.event_name == 'pull_request' && 'only' || 'auto' }}
+        spack -e . install -p 8 --use-buildcache=${{ github.event_name == 'pull_request' && 'only' || 'auto' }}
     - name: List installed dependencies
       if: ${{runner.debug}}
       shell: sh
@@ -122,9 +122,12 @@ runs:
       env:
         GITHUB_USER: ${{github.actor}}
         GITHUB_TOKEN: ${{github.token}}
+      # NOTE: build-only specs that had dependents available through the
+      # buildcache may not be locally available: so allow missing
       run: |
         spack -e . buildcache push \
           --base-image $CELER_BASE_IMAGE --update-index \
+          --allow-missing \
           $CELER_BUILDCACHE
 
     - name: Update environment and create rc file
