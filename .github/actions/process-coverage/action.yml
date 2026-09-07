@@ -14,10 +14,6 @@ inputs:
   token:
     description: "Codecov token"
     required: true
-  working-directory:
-    description: "Working directory for coverage generation"
-    required: false
-    default: "."
   name:
     description: "Name for the codecov upload"
     required: true
@@ -25,20 +21,16 @@ inputs:
     description: "Path to gcov executable (if using llvm, set to llvm-gcov)"
     required: false
     default: "gcov"
-  gcovr-config-path:
-    description: "Path to gcovr config file"
-    required: false
-    default: "${{github.workspace}}/scripts/ci/gcovr.cfg"
 
 runs:
   using: "composite"
   steps:
     - name: Generate coverage report
       shell: sh
-      working-directory: ${{inputs.working-directory}}
+      # NOTE: config file must be relative path
       run: |
         gcovr \
-          --config=${{inputs.gcovr-config-path}} \
+          --config=scripts/ci/gcovr.cfg \
           --gcov-executable=${{inputs.gcov-exe}} \
           -j $(($(nproc) + 1)) \
           --output=cobertura-cov.xml --cobertura-pretty \
@@ -48,8 +40,8 @@ runs:
       uses: codecov/codecov-action@v7.0.0 # immutable, 6 June 2026
       with:
         token: ${{inputs.token }}
-        fail_ci_if_error: ${{inputs.fail_ci_if_error}}
+        fail_ci_if_error: false
         name: ${{inputs.name}}
-        files: ${{inputs.working-directory}}/cobertura-cov.xml
+        files: cobertura-cov.xml
         verbose: true
-        gcov-exe: ${{inputs.gcov-exe}}
+        gcov_executable: ${{inputs.gcov-exe}}
