@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/bash -e
 #-------------------------------- -*- sh -*- ---------------------------------#
 # Copyright Celeritas contributors: see top-level COPYRIGHT file for details
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -8,7 +8,6 @@ log() {
   printf "%s: %s\n" "$1" "$2" >&2
 }
 
-SOURCE_DIR="$PWD"
 BUILD_DIR="$PWD/build"
 REMOTE="$1"
 BASE_SHA="$2"
@@ -28,8 +27,10 @@ log info "Fetching base commit ${BASE_SHA} from ${REMOTE}"
 git fetch --depth 1 "${REMOTE}" "${BASE_SHA}"
 
 ALL_FILES=$(git diff --name-only --diff-filter=ACM "$BASE_SHA" "$HEAD_SHA")
-set +e
-CC_FILES=$(grep -E '^(src|app)/.*\.cc$' - <<< "$ALL_FILES")
+CC_FILES=$(grep -E '^(src|app)/.*\.cc$' - <<< "$ALL_FILES") || {
+  log info "No *.cc files have changed."
+  exit 0
+}
 
 # Get list of files from compile_commands.json and filter CC_FILES
 # (NOTE: this is O(N^2) for large commits: maybe this script should use python
@@ -40,7 +41,6 @@ CC_FILES=$(echo "$CC_FILES" | while read -r file; do
     echo "$file"
   fi
 done)
-set -e
 if [ -z "$CC_FILES" ]; then
   log info "No files to run clang-tidy on."
   exit 0
