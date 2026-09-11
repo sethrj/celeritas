@@ -61,6 +61,7 @@ ${DOCKER} tag ${BASE_TAG} base-${CONFIG}
 ${DOCKER} build -t dev-${CONFIG} \
   --build-arg CONFIG=${CONFIG} \
   --build-arg SPACK_VERSION=${SPACK_VERSION} \
+  --build-arg SPACK_PACKAGES_VERSION=${SPACK_VERSION} \
   --build-arg DOCKERFILE_DISTRO=${DOCKERFILE_DISTRO} \
   ${BUILDARGS} \
   dev
