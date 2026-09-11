@@ -1,12 +1,8 @@
 ARG CONFIG
-FROM base-${CONFIG} as builder
+FROM base-${CONFIG} as parent
 LABEL maintainer="Seth Johnson <johnsonsr@ornl.gov>" \
       description="Celeritas prerequisites built with Spack"
 
-###############################################################################
-# Based on /dnf spack dockerfile:
-# https://hub.docker.com/layers/spack/ubuntu-jammy/0.22
-# and https://hub.docker.com/layers/spack/rockylinux9/0.22
 ###############################################################################
 
 # General environment for docker
@@ -41,8 +37,12 @@ fi
 
 # XXX replaced COPY commands with this
 ARG SPACK_VERSION
-RUN mkdir -p $SPACK_ROOT \
-  && curl -s -L https://api.github.com/repos/spack/spack/tarball/${SPACK_VERSION} \
+RUN git clone --depth 1 $SPACK_ROOT \
+  && curl -s -L https://github.com/spack/spack/ ${SPACK_VERSION} \
+  | tar xzC $SPACK_ROOT --strip 1
+ARG SPACK_PACKAGES_VERSION
+RUN mkdir -p $SPACK_PACKAGES_VERSION \
+  && curl -s -L https://api.github.com/repos/spack/spack-packages/tarball/${SPACK_PACKAGES_VERSION} \
   | tar xzC $SPACK_ROOT --strip 1
 
 RUN ln -s $SPACK_ROOT/share/spack/docker/entrypoint.bash \

@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname $0)" && pwd)"
 SOURCE_DIR="$(cd "${SCRIPT_DIR}" && git rev-parse --show-toplevel)"
 COMMIT=HEAD
 
-if ! hash cloc ; then
+if ! command -v cloc 2>/dev/null; then
   echo "This script requires https://github.com/AlDanial/cloc"
   exit 1
 fi
