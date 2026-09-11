@@ -6,7 +6,9 @@
 # configure Celeritas against it.
 #
 # NOTE: run scripts/ci/update-spack-buildcache-local.sh
-# on a non-github machine to setup the spack buildcache.
+# on a non-github machine (with the same spack versions) to setup the spack buildcache.
+#
+# NOTE: also keep spack versions synced with scripts/docker/build.sh
 #-----------------------------------------------------------------------------#
 
 name: "Set up Spack environment"

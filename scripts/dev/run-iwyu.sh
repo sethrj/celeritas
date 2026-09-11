@@ -6,7 +6,7 @@
 # NOTE: this is recommended to be run on a build without debug assertions,
 # tests, or demos.
 
-if ! hash include-what-you-use ; then
+if ! command -v include-what-you-use  2>/dev/null; then
   echo "This script requires https://github.com/include-what-you-use/include-what-you-use"
   exit 1
 fi

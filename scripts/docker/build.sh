@@ -9,15 +9,16 @@ if [ -z "$1" ]; then
 fi
 
 # Note: when changing spack version, UPDATE PATCHES in dev/Dockerfile
-SPACK_VERSION=develop-2024-12-22
+SPACK_VERSION=c3426684351723f819abca7335fafd99ffe7c1ef
+SPACK_PACKAGES_VERSION=2c1c9409a3828d9d3a3985fd0ae200bd8bd82117
 CONFIG=$1
 DOCKER=docker
 BUILDARGS=
-if ! hash ${DOCKER} 2>/dev/null; then
+if ! command -v ${DOCKER} 2>/dev/null; then
   # see https://blog.christophersmart.com/2021/01/26/user-ids-and-rootless-containers-with-podman/
   DOCKER=podman
   BUILDARGS="--format docker"
-  if ! hash ${DOCKER} 2>/dev/null; then
+  if ! command -v ${DOCKER} 2>/dev/null; then
     echo "Docker (or podman) is not available"
     exit 1
   fi
