@@ -1,6 +1,7 @@
 # Celeritas AI Agent Instructions
 Celeritas is a particle physics library for detector simulation. It's a C++17 codebase with CUDA/HIP device support and integrates with Geant4.
 
+
 ## File Organization
 
 - `corecel/`: GPU abstractions, data structures, utilities
