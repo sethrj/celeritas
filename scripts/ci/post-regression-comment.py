@@ -14,17 +14,10 @@ import os
 import re
 import sys
 from collections.abc import Sequence
-from enum import StrEnum
 from pathlib import Path
 
-from github import Github
-
-
-class Status(StrEnum):
-    FAILURE = "failure"
-    CHANGED = "changed"
-    SUCCESS = "success"
-
+import github as gh
+from _regression_utils import LogLevel, Status, log
 
 BOT_MARKER = "<!-- celeritas-regression-bot -->"
 STATUS_MARKER_RE = re.compile(r"<!-- celeritas-regression-status: (\w+) -->")
@@ -37,6 +30,7 @@ STATUS_STR = {
 
 
 def find_bot_comment(pull_request):
+    assert pull_request is not None
     for comment in pull_request.get_issue_comments():
         if comment.body.startswith(BOT_MARKER):
             return comment
@@ -90,14 +84,15 @@ def main(argv: Sequence[str]) -> int:
     parser.add_argument("--artifact-url", default="")
     args = parser.parse_args(argv)
 
-    if args.status == "cancelled":
-        # Already logged as a workflow warning by process-regression.py
-        return 0
-
     status = Status(args.status)
 
-    gh = Github(os.environ["GITHUB_TOKEN"])
-    github_repo = gh.get_repo(args.repo)
+    if args.status == Status.CANCELLED:
+        # Already logged as a workflow warning by process-regression.py
+        log(LogLevel.WARNING, "Skipping comment update: workflow was cancelled")
+        return 0
+
+    api = gh.Github(auth=gh.Auth.Token(os.environ["GITHUB_TOKEN"]))
+    github_repo = api.get_repo(args.repo)
     pull_request = github_repo.get_pull(args.pr_number)
 
     existing = find_bot_comment(pull_request)
@@ -105,6 +100,7 @@ def main(argv: Sequence[str]) -> int:
 
     if existing is None and status == Status.SUCCESS:
         # Nothing to report and nothing to clean up
+        log(LogLevel.DEBUG, "Successful run with no existing comment")
         return 0
 
     body = build_body(
@@ -115,8 +111,10 @@ def main(argv: Sequence[str]) -> int:
     )
 
     if existing is not None:
+        log(LogLevel.DEBUG, "Updating existing comment")
         existing.edit(body=body)
     else:
+        log(LogLevel.DEBUG, "Creating issue comment")
         pull_request.create_issue_comment(body=body)
     return 0
 

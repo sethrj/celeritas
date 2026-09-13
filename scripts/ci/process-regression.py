@@ -25,67 +25,19 @@ step can produce the patch download URL referenced by the comment.
 """
 
 import argparse
-import inspect
 import json
 import os
-import subprocess
 import sys
 import tempfile
 from collections.abc import Sequence
-from enum import StrEnum
 from pathlib import Path
 
-from github import Github
+import github as gh
+from _regression_utils import LogLevel, Status, log, run_git
 
 REGRESSION = "regression"
 TEST = "test"
 MAX_DIFF_CHARS = 40_000
-
-
-class Status(StrEnum):
-    FAILURE = "failure"
-    CHANGED = "changed"
-    SUCCESS = "success"
-    CANCELLED = "cancelled"
-
-
-class LogLevel(StrEnum):
-    DEBUG = "debug"
-    NOTICE = "notice"
-    WARNING = "warning"
-
-
-def log(level: str | LogLevel, what: str) -> None:
-    """Emit a GitHub Actions log annotation with caller filename and line number."""
-    if not isinstance(level, LogLevel):
-        level = LogLevel(level.lower())
-
-    if level not in LogLevel:
-        raise ValueError(f"unsupported log level: {level!r}")
-
-    frame = inspect.currentframe()
-    caller = frame.f_back if frame is not None else None
-    filename = "<unknown>"
-    lineno = 0
-    if caller is not None:
-        filename = caller.f_code.co_filename
-        lineno = caller.f_lineno
-
-    msg = str(what).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-    print(f"::{level} file={filename},line={lineno}::{msg}")
-
-
-def run_git(repo_root: Path, *args: str, check: bool = True) -> str:
-    log(LogLevel.DEBUG, f"Calling git {args!r}")
-    result = subprocess.run(
-        ["git", "-C", str(repo_root), *args],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if check and result.returncode != 0:
-        raise RuntimeError(f"git {' '.join(args)} failed: {result.stderr}")
-    return result.stdout
 
 
 def find_result_dirs(artifacts_dir: Path, prefix: str) -> list[Path]:
@@ -154,6 +106,9 @@ def build_patch(
             run_git(
                 worktree, "format-patch", "-1", "HEAD", "-o", str(patch_dir.resolve())
             )
+        except Exception as e:
+            log(LogLevel.ERROR, f"Failure during patch build: {e}")
+            raise
         finally:
             run_git(
                 repo_root, "worktree", "remove", "--force", str(worktree), check=False
@@ -245,8 +200,8 @@ def main(argv: Sequence[str]) -> int:
     if failure_dirs:
         log(LogLevel.DEBUG, "Found regression failures")
         status = Status.FAILURE
-        gh = Github(os.environ["GITHUB_TOKEN"])
-        github_repo = gh.get_repo(args.repo)
+        api = gh.Github(auth=gh.Auth.Token(os.environ["GITHUB_TOKEN"]))
+        github_repo = api.get_repo(args.repo)
         author_name, author_email = get_commit_identity(github_repo, args.pr_number)
         updated_files = build_patch(
             repo_root=repo_root,
