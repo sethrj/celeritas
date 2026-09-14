@@ -240,7 +240,6 @@ TEST_F(LarSphere, run)
     auto& rm = this->run_manager();
     TMI::Instance().SetOptions(this->make_setup_options());
 
-    CELER_LOG(status) << "Run initialization";
     rm.Initialize();
 
     CELER_LOG(status) << "Beam on (first run)";
