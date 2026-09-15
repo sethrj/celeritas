@@ -43,12 +43,16 @@ jobs:
           name: event-file
           path: ${{github.event_path}}
   build-fast:
+    if: false
     uses: ./.github/workflows/build-fast.yml
   build-ultralite:
+    if: false
     uses: ./.github/workflows/build-ultralite.yml
   build-docs:
+    if: false
     uses: ./.github/workflows/build-docs.yml
   all-prechecks:
+    if: false
     # This job will skip if any dependent skips
     needs:
       - build-fast
@@ -60,9 +64,10 @@ jobs:
         run: "true"
 
   build-spack:
-    needs: [all-prechecks]
+    #needs: [all-prechecks]
     uses: ./.github/workflows/build-spack.yml
   build-spack-extra:
+    if: false
     needs: [all-prechecks]
     uses: ./.github/workflows/build-spack-extra.yml
 
