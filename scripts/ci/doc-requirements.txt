@@ -1,6 +1,6 @@
 # NOTE: these specifications are only for the CI, not the
 # actual requirements to run sphinx with correct documentation.
 Sphinx >= 9.1
-breathe @ git+https://github.com/celeritas-project/py-breathe.git@be631f55f44f25c5d2eddba0ce400d0dad0cc67e # 4.36.0 with mods
+breathe @ git+https://github.com/breathe-doc/breathe.git@011367982d3dc36fc48993a04af758c4d887586d # v5.0.0a2 with mods
 furo >= 2025.12.19
 sphinxcontrib-bibtex
