@@ -201,6 +201,7 @@ G4WT0 > [W] debug@IntegrationTestBase.cc: Environment variables after setup: {
 }
 debug: Generated 128 primaries for event 0
 debug: EventAction::BeginOfEventAction
+status: Executing the first Celeritas stepping loop
 debug: Reconstituted 26 hits for event 0
 debug: Reconstituted 44 hits for event 0
 debug: Reconstituted 88 hits for event 0
@@ -352,6 +353,7 @@ G4WT0 > [W] debug@IntegrationTestBase.cc: Environment variables after setup: {
 }
 G4WT0 > [1/1] debug@PGPrimaryGeneratorAction.cc: Generated 128 primaries for event 0
 G4WT0 > [1/1] debug@IntegrationTestBase.cc: EventAction::BeginOfEventAction
+G4WT0 > [1/1] status@LocalTransporter.cc: Executing the first Celeritas stepping loop
 G4WT0 > [1/1] debug@LocalTransporter.cc: Reconstituted 26 hits for event 0
 G4WT0 > [1/1] debug@LocalTransporter.cc: Reconstituted 44 hits for event 0
 G4WT0 > [1/1] debug@LocalTransporter.cc: Reconstituted 88 hits for event 0

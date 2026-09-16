@@ -226,6 +226,7 @@ G4WT0 > [W] debug@IntegrationTestBase.cc: Environment variables after setup: {
 G4WT0 > [1/1] debug@PGPrimaryGeneratorAction.cc: Generated 10 primaries for event 0
 G4WT0 > [1/1] debug@IntegrationTestBase.cc: EventAction::BeginOfEventAction
 G4WT0 > [1/1] debug@IntegrationTestBase.cc: EventAction::EndOfEventAction
+G4WT0 > [1/1] status@LocalTransporter.cc: Executing the first Celeritas stepping loop
 G4WT0 > [1/1] status@Transporter.cc: Transporting on host
 G4WT0 > [1/1] debug@PGPrimaryGeneratorAction.cc: Generated 10 primaries for event 1
 G4WT0 > [1/1] debug@IntegrationTestBase.cc: EventAction::BeginOfEventAction
