@@ -78,6 +78,17 @@ jobs:
                 || matrix.geometry == 'vecgeom2')
                && 'g4vg' || ''
             }}
+      - name: Touch Geant4 data
+        id: warmup-cvmfs
+        background: true
+        run: |
+          datadir="$(spack -e $CELER_SPACK_ENV location -i geant4-data)"
+          echo "Data links in ${datadir}:"
+          for src in $(find "${datadir}" -type l); do
+            tgt=$(readlink "$src")
+            printf "%s -> %s ..." "$src" "$tgt"
+            printf " %d\n" "$(ls "$tgt" | wc -l)"
+          done
 
       ### BUILD ###
 
@@ -98,6 +109,8 @@ jobs:
 
       ### TEST ###
 
+      - name: Wait for CVMFS to finish warming up
+        wait: warmup-cvmfs
       - name: Regenerate ROOT test data
         if: >-
           ${{
