@@ -31,21 +31,7 @@ jobs:
       fail-fast: false
       matrix:
         geometry: ["vecgeom"]
-        geant: ["10.5", "10.6", "10.7", "11.0", "11.1", "11.2", "11.3"]
-        include:
-          - geometry: "orange"
-            special: "float"
-            geant: "11.3"
-          - geometry: "orange"
-            special: "static"
-            geant: "11.3"
-          - geometry: "vecgeom"
-            special: "clhep"
-            geant: "11.3"
-          - geometry: "vecgeom2"
-            geant: "11.3"
-          - geometry: "geant4"
-            geant: "11.3"
+        geant: ["11.3"]
     env:
       CELER_CMAKE_PRESET: >-
         ${{format(
@@ -70,6 +56,10 @@ jobs:
         with:
           fetch-tags: true # to get version information
 
+      - name: Set up CVMFS
+        uses: cvmfs-contrib/github-action-cvmfs@v5
+        with:
+          cvmfs_repositories: "geant4.cern.ch"
       - name: Set up Spack environment
         uses: ./.github/actions/setup-spack
         with:

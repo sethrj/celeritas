@@ -31,6 +31,8 @@ fi
 # Report git sha of spack repo and builtin:
 # these should be kept up-to-date with setup-spack/action.yml
 spack debug report
+# Bootstrap before any concretize
+spack bootstrap now
 
 CELER_BASE_IMAGE=ubuntu:24.04
 CELER_BUILDCACHE=celeritas
@@ -91,13 +93,19 @@ printf "%s" "$matrix" | while read -r line; do
   SPACK_ENV_FILE="env-ci-${envbase}.yaml" \
   CXXSTD=${cxxstd} \
     "${SCRIPT_DIR}/setup-spack-ci-env.sh" "$@"
+  # Sanity check mirror and buildcache before concreization
+  spack -e . mirror list
+  spack -e . buildcache list -a -l cxxstd=$cxxstd
   # Install and push
   log status "Concretizing $envdir"
   spack -e . -v concretize --non-defaults --fresh
   log status "Installing $envdir"
   spack -e . install
+done
+
+for envdir in "$WORK_DIR/temp-spack-*"; do
   log status "Pushing $envdir"
-  spack -e . buildcache push \
+  spack -e $envdir buildcache push \
     --base-image $CELER_BASE_IMAGE \
     --update-index \
     --allow-missing \

@@ -57,6 +57,16 @@ packages:
   vecgeom:
     variants:
       - generator=ninja
+  # Prevent large g4 data that isn't used by our simulations:
+  # use in conjunction with ext-cvmfs
+  g4ndl:
+    buildable: False
+  g4nudexlib:
+    buildable: False
+  g4tendl:
+    buildable: False
+  g4urrpt:
+    buildable: False
   # Compilers
   c:
     require: "llvm@18"
