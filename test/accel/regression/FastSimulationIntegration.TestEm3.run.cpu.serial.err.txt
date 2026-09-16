@@ -141,7 +141,6 @@ debug@IntegrationTestBase.cc: Environment variables after setup: {
 }
 debug@PGPrimaryGeneratorAction.cc: Generated 1 primaries for event 0
 debug@IntegrationTestBase.cc: EventAction::BeginOfEventAction
-status@LocalTransporter.cc: Executing the first Celeritas stepping loop
 debug@LocalTransporter.cc: Reconstituted 70 hits for event 0
 debug@IntegrationTestBase.cc: EventAction::EndOfEventAction
 debug@PGPrimaryGeneratorAction.cc: Generated 1 primaries for event 1
