@@ -59,6 +59,8 @@ jobs:
             -am "Update publications"
           git push
 
+  build-docs:
+
   build-jekyll:
     runs-on: ubuntu-24.04
     needs: update-pubs
