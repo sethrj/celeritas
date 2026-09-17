@@ -80,6 +80,9 @@ inp = {
     "sd_type": "simple_calo",
     "step_diagnostic": ext == "none",
     "step_diagnostic_bins": 8,
+    "physics_options": {
+        "decay": False,
+    },
 }
 
 if ext == "cpu-nonfatal":

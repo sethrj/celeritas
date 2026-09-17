@@ -192,7 +192,7 @@ struct GeantPhysicsOptions
     //! Step limit algorithm for muon/hadron MSC models
     MscStepLimitAlgorithm msc_muhad_step_algorithm{
         MscStepLimitAlgorithm::minimal};
-    //! Nuclear form factor model for Coulomm scattering
+    //! Nuclear form factor model for Coulomb scattering
     NuclearFormFactorType form_factor{NuclearFormFactorType::exponential};
     //!@}
 
@@ -202,11 +202,14 @@ struct GeantPhysicsOptions
     //! Muon EM physics (null: disabled)
     std::optional<MuonSetup> muon;
 
+    //! Optical physics options (null: disabled)
+    std::optional<OpticalSetup> optical;
+
     //! Muon-catalyzed fusion physics
     bool mucf_physics{false};
 
-    //! Optical physics options (null: disabled)
-    std::optional<OpticalSetup> optical;
+    //! Decay physics (ignored unless FtfpBertPhysicsList)
+    bool decay{true};
 
     //! True if any EM process is activated
     bool em() const
@@ -239,6 +242,7 @@ struct GeantPhysicsOptions
         opt.relaxation = RelaxationSelection::none;
         // Muon and Optical default to nullopt (disabled)
         opt.mucf_physics = false;
+        opt.decay = false;
         return opt;
     }
 };
@@ -268,6 +272,7 @@ constexpr bool operator==(GeantPhysicsOptions const& a,
         && a.muon == b.muon
         // Muon-catalyzed fusion physics
         && a.mucf_physics == b.mucf_physics
+        && a.decay == b.decay
         // Physics options
         && a.em_bins_per_decade == b.em_bins_per_decade
         && a.eloss_fluctuation == b.eloss_fluctuation

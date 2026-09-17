@@ -136,6 +136,7 @@ void from_json(nlohmann::json const& j, GeantPhysicsOptions& options)
 
     CELER_JSON_LOAD_OPTIONAL(j, options, muon);
     GPO_LOAD_OPTION(mucf_physics);
+    GPO_LOAD_OPTION(decay);
 
     GPO_LOAD_OPTION(em_bins_per_decade);
     GPO_LOAD_OPTION(eloss_fluctuation);
@@ -193,6 +194,7 @@ void to_json(nlohmann::json& j, GeantPhysicsOptions const& inp)
 
         CELER_JSON_PAIR_OPTIONAL(inp, muon),
         CELER_JSON_PAIR(inp, mucf_physics),
+        CELER_JSON_PAIR(inp, decay),
 
         CELER_JSON_PAIR(inp, em_bins_per_decade),
         CELER_JSON_PAIR(inp, eloss_fluctuation),
