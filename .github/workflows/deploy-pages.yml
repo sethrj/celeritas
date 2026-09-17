@@ -25,7 +25,6 @@ concurrency:
 jobs:
   update-pubs:
     runs-on: ubuntu-24.04
-    continue-on-error: true
     steps:
       - name: Check out Celeritas doc base
         uses: actions/checkout@v7
@@ -52,12 +51,37 @@ jobs:
         if: >-
           ${{ steps.update.outcome != 'failure'
               && fromJSON(steps.update.outputs.DIFF_COUNT) > 0 }}
+        continue-on-error: true
         run: |
           git commit \
             -c user.name="Github Action" \
             -c user.email="${{github.triggering_actor}}@users.noreply.github.com" \
             -am "Update publications"
           git push
+
+  build-jekyll:
+    runs-on: ubuntu-24.04
+    needs: update-pubs
+    env:
+      CELER_UPLOAD_DIR: build-jekyll
+      CELER_DOC_NAME: doc-jekyll
+    steps:
+      - name: Check out Celeritas doc base
+        uses: actions/checkout@v7
+        with:
+          ref: doc/gh-pages-base
+      - name: Build with Jekyll
+        uses: actions/jekyll-build-pages@v1
+        with:
+          destination: jekyll-build
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          path: ${{env.CELER_UPLOAD_DIR}}
+          name: ${{env.CELER_DOC_NAME}}
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 1
 
   build-site:
     runs-on: ubuntu-24.04
@@ -72,14 +96,12 @@ jobs:
       - name: Download doc and user artifacts
         uses: actions/download-artifact@v8
         with:
-          pattern: "doc-*" # see build-docs.yml
+          pattern: "doc-*" # see build-docs.yml and build-jekyll
           run-id: ${{inputs.workflow_run_id || github.event.workflow_run.id}}
       - name: Rename artifacts
         run: |
           mv doc-dev dev
           mv doc-user user
-      - name: Build with Jekyll
-        uses: actions/jekyll-build-pages@v1
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
 
