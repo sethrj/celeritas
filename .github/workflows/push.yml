@@ -36,5 +36,7 @@ jobs:
   build-codecov:
     uses: ./.github/workflows/build-codecov.yml
     secrets: inherit
+  build-docs:
+    uses: ./.github/workflows/build-docs.yml
 
 # vim: set nowrap tw=100:

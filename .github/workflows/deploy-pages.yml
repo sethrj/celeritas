@@ -7,10 +7,13 @@
 
 name: deploy-pages
 on:
-  push:
-    branches:
-      - develop
-  workflow_dispatch: {}
+  # Enable testing via workflow dispatch
+  workflow_dispatch:
+    inputs:
+      workflow_run_id:
+        description: "Run ID from build-docs workflow to test"
+        required: true
+        type: number
   workflow_call: {}
 
 # Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
@@ -20,11 +23,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  docs:
-    uses: ./.github/workflows/build-docs.yml
-  site:
+  update-pubs:
     runs-on: ubuntu-24.04
-    needs: docs
+    continue-on-error: true
     steps:
       - name: Check out Celeritas doc base
         uses: actions/checkout@v7
@@ -41,27 +42,38 @@ jobs:
           pip install -r scripts/requirements.txt
       - name: Update publications
         id: update
-        continue-on-error: true
         env:
           ZOTERO_TOKEN: ${{secrets.ZOTERO_TOKEN}}
           ZOTERO_GROUP: 2380941
         run: |
           python scripts/generate-pubs.py -g $ZOTERO_GROUP
           echo "DIFF_COUNT=$(git diff -- publications.md | wc -l)" >> $GITHUB_OUTPUT
-      - name: Push updated publications
+      - name: Push updated publications to doc branch
         if: >-
           ${{ steps.update.outcome != 'failure'
               && fromJSON(steps.update.outputs.DIFF_COUNT) > 0 }}
-        continue-on-error: true
         run: |
-          git config --global user.name "Github Actions"
-          git config --global user.email "${{github.triggering_actor}}@users.noreply.github.com"
-          git commit -am "Update publications"
+          git commit \
+            -c user.name="Github Action" \
+            -c user.email="${{github.triggering_actor}}@users.noreply.github.com" \
+            -am "Update publications"
           git push
+
+  build-site:
+    runs-on: ubuntu-24.04
+    needs: update-pubs
+    steps:
+      - name: Check out Celeritas doc base
+        uses: actions/checkout@v7
+        with:
+          ref: doc/gh-pages-base
       - name: Setup Pages
         uses: actions/configure-pages@v6
       - name: Download doc and user artifacts
         uses: actions/download-artifact@v8
+        with:
+          pattern: "doc-*" # see build-docs.yml
+          run-id: ${{inputs.workflow_run_id || github.event.workflow_run.id}}
       - name: Rename artifacts
         run: |
           mv doc-dev dev
@@ -70,9 +82,10 @@ jobs:
         uses: actions/jekyll-build-pages@v1
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
+
   deploy:
     runs-on: ubuntu-24.04
-    needs: site
+    needs: build-site
     permissions:
       contents: read
       deployments: write
