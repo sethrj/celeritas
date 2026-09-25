@@ -21,22 +21,55 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check-ci-vars:
+    # See e.g. https://github.com/celeritas-project/celeritas/settings/variables/actions
+    name: Skip unless CELER_CI Github Actions variable is set
+    if: ${{ vars.CELER_CI }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Success
+        run: |
+          echo "Running on repository ${{ github.repository }}"
   build-ultralite:
+    needs: [check-ci-vars]
     uses: ./.github/workflows/build-ultralite.yml
   build-fast:
+    needs: [check-ci-vars]
     uses: ./.github/workflows/build-fast.yml
   build-docker:
+    needs: [check-ci-vars]
     uses: ./.github/workflows/build-docker.yml
   build-spack:
+    needs: [check-ci-vars]
     uses: ./.github/workflows/build-spack.yml
   build-spack-extra:
+    needs: [check-ci-vars]
     uses: ./.github/workflows/build-spack-extra.yml
   build-regression:
+    needs: [check-ci-vars]
     uses: ./.github/workflows/build-regression.yml
   build-codecov:
+    needs: [check-ci-vars]
     uses: ./.github/workflows/build-codecov.yml
     secrets: inherit
-  build-docs:
-    uses: ./.github/workflows/build-docs.yml
+  build-pages:
+    needs: [check-ci-vars]
+    uses: ./.github/workflows/build-pages.yml
+    secrets: inherit
+  deploy-pages:
+    needs: [build-pages]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      deployments: write
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+    environment:
+      name: github-pages
+      url: ${{steps.deployment.outputs.page_url}}
 
 # vim: set nowrap tw=100:

@@ -5,7 +5,7 @@
 # Deploy documentation after pushes to develop.
 #-----------------------------------------------------------------------------#
 
-name: deploy-pages
+name: build-pages
 on:
   # Enable testing via workflow dispatch
   workflow_dispatch:
@@ -14,7 +14,11 @@ on:
         description: "Run ID from build-docs workflow to test"
         required: true
         type: number
-  workflow_call: {}
+  workflow_call:
+    outputs:
+      artifact-id:
+        description: "The ID of the pages artifact that was uploaded."
+        value: ${{ jobs.assemble.outputs.artifact-id }}
 
 # Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
 # However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
@@ -23,6 +27,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  build-docs:
+    uses: ./.github/workflows/build-docs.yml
+
   update-pubs:
     runs-on: ubuntu-24.04
     steps:
@@ -59,14 +66,11 @@ jobs:
             -am "Update publications"
           git push
 
-  build-docs:
-
   build-jekyll:
     runs-on: ubuntu-24.04
     needs: update-pubs
-    env:
-      CELER_UPLOAD_DIR: build-jekyll
-      CELER_DOC_NAME: doc-jekyll
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
     steps:
       - name: Check out Celeritas doc base
         uses: actions/checkout@v7
@@ -77,50 +81,56 @@ jobs:
         with:
           destination: jekyll-build
       - name: Upload artifact
+        id: upload
         uses: actions/upload-artifact@v7
         with:
-          path: ${{env.CELER_UPLOAD_DIR}}
-          name: ${{env.CELER_DOC_NAME}}
+          path: jekyll-build
           if-no-files-found: error
           overwrite: true
           retention-days: 1
 
-  build-site:
+  assemble:
     runs-on: ubuntu-24.04
-    needs: update-pubs
+    needs: [build-docs, build-jekyll]
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
     steps:
-      - name: Check out Celeritas doc base
-        uses: actions/checkout@v7
-        with:
-          ref: doc/gh-pages-base
       - name: Setup Pages
         uses: actions/configure-pages@v6
-      - name: Download doc and user artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
-          pattern: "doc-*" # see build-docs.yml and build-jekyll
+          path: _site
+          artifact-ids: >-
+            ${{ jobs.build-docs.outputs.artifact-id-user }}
+            ${{ jobs.build-docs.outputs.artifact-id-dev }}
+            ${{ jobs.build-jekyll.outputs.artifact-id }}
+          merge-multiple: true
           run-id: ${{inputs.workflow_run_id || github.event.workflow_run.id}}
-      - name: Rename artifacts
+      - name: Find everything
         run: |
-          mv doc-dev dev
-          mv doc-user user
+          # echo ::group::Find everything
+           find .
+          #  echo ::endgroup::
+      - name: Archive artifact
+        shell: sh
+        run: |
+          echo ::group::Archive artifact
+          tar \
+            --dereference --hard-dereference \
+            --directory "_site" \
+            -cvf "$RUNNER_TEMP/artifact.tar" \
+            --exclude=.git \
+            --exclude=.github \
+            .
+          echo ::endgroup::
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v5
-
-  deploy:
-    runs-on: ubuntu-24.04
-    needs: build-site
-    permissions:
-      contents: read
-      deployments: write
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{steps.deployment.outputs.page_url}}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
+        id: upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: github-pages
+          path: ${{ runner.temp }}/artifact.tar
+          retention-days: 1
+          if-no-files-found: error
 
 # vim: set nowrap tw=100:
