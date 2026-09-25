@@ -2,18 +2,14 @@
 # Copyright Celeritas contributors: see top-level COPYRIGHT file for details
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 #-----------------------------------------------------------------------------#
-# Deploy documentation after pushes to develop.
+# Build pages to be deployed.
 #-----------------------------------------------------------------------------#
 
 name: build-pages
 on:
   # Enable testing via workflow dispatch
-  workflow_dispatch:
-    inputs:
-      workflow_run_id:
-        description: "Run ID from build-docs workflow to test"
-        required: true
-        type: number
+  workflow_dispatch: {}
+  # Output artifact ID for publishing when called from pull_request
   workflow_call:
     outputs:
       artifact-id:
@@ -102,11 +98,10 @@ jobs:
         with:
           path: _site
           artifact-ids: >-
-            ${{ jobs.build-docs.outputs.artifact-id-user }}
-            ${{ jobs.build-docs.outputs.artifact-id-dev }}
-            ${{ jobs.build-jekyll.outputs.artifact-id }}
+            ${{ needs.jobs.build-docs.outputs.artifact-id-user }}
+            ${{ needs.jobs.build-docs.outputs.artifact-id-dev }}
+            ${{ needs.jobs.build-jekyll.outputs.artifact-id }}
           merge-multiple: true
-          run-id: ${{inputs.workflow_run_id || github.event.workflow_run.id}}
       - name: Find everything
         run: |
           # echo ::group::Find everything
