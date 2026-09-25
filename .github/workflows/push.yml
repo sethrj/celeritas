@@ -22,8 +22,11 @@ concurrency:
 
 jobs:
   check-ci-vars:
-    # See e.g. https://github.com/celeritas-project/celeritas/settings/variables/actions
-    name: Skip unless CELER_CI Github Actions variable is set
+    # See https://github.com/celeritas-project/celeritas/settings/variables/actions
+    # or  https://github.com/{user}/celeritas/settings/variables/actions
+    # This should be set to a "truthy" value for celeritas-project and any fork that
+    # wants to do regular testing.
+    name: Check CELER_CI variable
     if: ${{ vars.CELER_CI }}
     runs-on: ubuntu-latest
     steps:
