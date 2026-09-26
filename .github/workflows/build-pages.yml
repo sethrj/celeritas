@@ -80,6 +80,7 @@ jobs:
         id: upload
         uses: actions/upload-artifact@v7
         with:
+          name: doc-jekyll
           path: jekyll-build
           if-no-files-found: error
           overwrite: true
@@ -96,17 +97,23 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
-          path: _site
           artifact-ids: >-
             ${{ needs.jobs.build-docs.outputs.artifact-id-user }}
             ${{ needs.jobs.build-docs.outputs.artifact-id-dev }}
             ${{ needs.jobs.build-jekyll.outputs.artifact-id }}
-          merge-multiple: true
+          merge-multiple: false
       - name: Find everything
+        #if: ${{ runner.debug }}
         run: |
           # echo ::group::Find everything
            find .
           #  echo ::endgroup::
+      - name: Move into place
+        # NOTE: this uses the 'name' from the different artifacts
+        run: |
+          mv doc-jekyll _site
+          mv doc-user _site/user
+          mv doc-dev _site/dev
       - name: Archive artifact
         shell: sh
         run: |
