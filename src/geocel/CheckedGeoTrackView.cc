@@ -22,7 +22,6 @@
 #include "GeoInterface.hh"
 #include "GeoParamsInterface.hh"  // IWYU pragma: keep
 #include "UnitLength.hh"
-#include "VolumeParams.hh"
 
 using namespace celeritas::literals;
 
@@ -139,9 +138,9 @@ CheckedGeoTrackView& CheckedGeoTrackView::operator=(
     GeoTrackInitializer const& init)
 {
     CELER_EXPECT(t_);
-    CGTV_LOG(debug) << "Initializing at "
+    CGTV_LOG(debug) << "Initializing at " << full_precision
                     << StreamableLength{init.pos, unit_length_} << " along "
-                    << repr(init.dir);
+                    << init.dir;
     CELER_VALIDATE(is_soft_unit_vector(init.dir),
                    << "cannot initialize with a non-unit direction "
                    << repr(init.dir));
@@ -156,21 +155,7 @@ CheckedGeoTrackView& CheckedGeoTrackView::operator=(
     {
         CGTV_LOG(warning) << "Started on a boundary: " << *this;
     }
-    else if (log_.level() > LogLevel::debug)
-    {
-        auto msg = CGTV_LOG(status);
-        msg << "Initialized";
-        if (this->volumes())
-        {
-            msg << " in " << StreamableUniqueVolName{*this, *this->volumes()};
-        }
-        msg << " at " << StreamableLength{t_->pos(), unit_length_} << " along "
-            << t_->dir();
-    }
-    else
-    {
-        CGTV_LOG(debug) << "Initialized: " << *this;
-    }
+    CGTV_LOG(status) << "Initialized " << *this;
     return *this;
 }
 
@@ -204,6 +189,7 @@ real_type CheckedGeoTrackView::find_safety()
  */
 real_type CheckedGeoTrackView::find_safety(real_type max_safety)
 {
+    CGTV_LOG(debug) << "Finding safety up to " << full_precision << max_safety;
     CELER_VALIDATE(max_safety > 0,
                    << "invalid safety maximum " << repr(max_safety)
                    << NativeLength{});
@@ -250,6 +236,7 @@ real_type CheckedGeoTrackView::find_safety(real_type max_safety)
  */
 void CheckedGeoTrackView::set_dir(Real3 const& newdir)
 {
+    CGTV_LOG(debug) << "Changing direction to " << newdir;
     CELER_VALIDATE(is_soft_unit_vector(newdir),
                    << "cannot change to a non-unit direction " << repr(newdir));
     CELER_VALIDATE(!this->failed() || !check_failure_, << "failure exists");
@@ -268,7 +255,7 @@ void CheckedGeoTrackView::set_dir(Real3 const& newdir)
                   << "volume changed during set_dir");
     next_step_.reset();
 
-    CGTV_LOG(status) << "Set direction to " << repr(newdir);
+    CGTV_LOG(status) << "Set direction to " << repr(t_->dir());
 }
 
 //---------------------------------------------------------------------------//
@@ -281,7 +268,7 @@ void CheckedGeoTrackView::set_dir(Real3 const& newdir)
  */
 Propagation CheckedGeoTrackView::find_next_step(real_type distance)
 {
-    CGTV_LOG(debug) << "Finding next step";
+    CGTV_LOG(debug) << full_precision << "Finding next step up to " << distance;
     CELER_VALIDATE(distance > 0,
                    << "invalid step maximum " << repr(distance)
                    << NativeLength{});
@@ -367,7 +354,8 @@ Propagation CheckedGeoTrackView::find_next_step(real_type distance)
  */
 void CheckedGeoTrackView::move_internal(real_type step)
 {
-    CGTV_LOG(debug) << "Moving " << StreamableLength{step, unit_length_};
+    CGTV_LOG(debug) << "Moving " << full_precision
+                    << StreamableLength{step, unit_length_};
     CELER_VALIDATE(!this->failed() || !check_failure_, << "failure exists");
     CELER_VALIDATE(!this->is_outside(), << "cannot move while outside");
     CELER_VALIDATE(next_step_, << "tried to move before finding the next step");
@@ -408,7 +396,8 @@ void CheckedGeoTrackView::move_internal(real_type step)
  */
 void CheckedGeoTrackView::move_internal(Real3 const& pos)
 {
-    CGTV_LOG(debug) << "Moving to " << StreamableLength{pos, unit_length_};
+    CGTV_LOG(debug) << "Moving to " << full_precision
+                    << StreamableLength{pos, unit_length_};
     CELER_VALIDATE(!this->failed() || !check_failure_, << "failure exists");
     CELER_VALIDATE(!this->is_outside(), << "cannot move while outside");
     // TODO: store and check last found safety
@@ -559,7 +548,6 @@ void CheckedGeoTrackView::cross_boundary()
             msg << " with post-crossing normal " << *post_norm;
         }
     }
-    CGTV_LOG(debug) << "Post-crossing state: " << *this;
 }
 
 //---------------------------------------------------------------------------//
@@ -571,9 +559,8 @@ std::ostream& operator<<(std::ostream& os, CheckedGeoTrackView const& geo)
     // Print high-precision pos/dir with desired units
     auto const& units = geo.unit_length();
     auto const orig_precision = os.precision();
-    os.precision(CELERITAS_REAL_TYPE == CELERITAS_REAL_TYPE_FLOAT ? 7 : 14);
-    os << "at " << StreamableLength{geo.pos(), units} << " along " << geo.dir()
-       << ", ";
+    os << full_precision << "at " << StreamableLength{geo.pos(), units}
+       << " along " << geo.dir() << ", ";
     os.precision(orig_precision);
 
     // Flags and states
