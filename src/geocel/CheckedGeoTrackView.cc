@@ -30,9 +30,11 @@ namespace celeritas
 {
 namespace
 {
-std::ostream* full_precision(std::ostream* os)
+//---------------------------------------------------------------------------//
+
+std::ostream& full_precision(std::ostream& os)
 {
-    os->precision(CELERITAS_REAL_TYPE == CELERITAS_REAL_TYPE_FLOAT ? 7 : 14);
+    os.precision(CELERITAS_REAL_TYPE == CELERITAS_REAL_TYPE_FLOAT ? 7 : 14);
     return os;
 }
 
