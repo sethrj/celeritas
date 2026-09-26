@@ -30,6 +30,12 @@ namespace celeritas
 {
 namespace
 {
+std::ostream* full_precision(std::ostream* os)
+{
+    os->precision(CELERITAS_REAL_TYPE == CELERITAS_REAL_TYPE_FLOAT ? 7 : 14);
+    return os;
+}
+
 //---------------------------------------------------------------------------//
 //! Print a label with the native unit length
 struct NativeLength
@@ -141,13 +147,28 @@ CheckedGeoTrackView& CheckedGeoTrackView::operator=(
     *t_ = init;
     CGTV_VALIDATE_NOT_FAILED(*this, "initialization");
     CGTV_VALIDATE(*this, !t_->is_outside(), << "initialized outside");
+    count_ = {};
+    next_step_.reset();
+
     if (t_->is_on_boundary())
     {
         CGTV_LOG(warning) << "Started on a boundary: " << *this;
     }
-    count_ = {};
-    next_step_.reset();
-    CGTV_LOG(status) << "Initialized: " << *this;
+    else if (log_.level() > LogLevel::debug)
+    {
+        auto msg = CGTV_LOG(status);
+        msg << "Initialized";
+        if (this->volumes())
+        {
+            msg << " in " << StreamableUniqueVolName{*this, *this->volumes()};
+        }
+        msg << " at " << StreamableLength{t_->pos(), unit_length_} << " along "
+            << t_->dir();
+    }
+    else
+    {
+        CGTV_LOG(debug) << "Initialized: " << *this;
+    }
     return *this;
 }
 
@@ -198,14 +219,21 @@ real_type CheckedGeoTrackView::find_safety(real_type max_safety)
 
     if (result > max_safety)
     {
-        CGTV_LOG(warning) << "Returned safety " << repr(result)
-                          << NativeLength{}
+        CGTV_LOG(warning) << full_precision << "Returned safety "
+                          << StreamableLength{result, unit_length_} << " at "
+                          << StreamableLength{t_->pos(), unit_length_}
                           << " exceeds requested search distance "
-                          << repr(max_safety) << NativeLength{};
+                          << max_safety << NativeLength{};
     }
     else if (result == 0)
     {
         CGTV_LOG(warning) << "Encountered zero safety: " << *this;
+    }
+    else
+    {
+        CGTV_LOG(status) << "Found safety "
+                         << StreamableLength{result, unit_length_} << " at "
+                         << StreamableLength{t_->pos(), unit_length_};
     }
 
     return result;
@@ -316,8 +344,8 @@ Propagation CheckedGeoTrackView::find_next_step(real_type distance)
                       || result.distance == 0,
                   << "boundary state changed during find_next_step (started "
                   << (started_on_boundary ? "on" : "off") << " boundary)");
-    CGTV_LOG(info) << (result.boundary ? "Found" : "No") << " boundary at "
-                   << result.distance;
+    CGTV_LOG(status) << (result.boundary ? "Found" : "No") << " boundary at "
+                     << StreamableLength{result.distance, unit_length_};
 
     if (result.boundary || result.distance > next_step_.value_or(0_r))
     {
@@ -359,6 +387,8 @@ void CheckedGeoTrackView::move_internal(real_type step)
                   !t_->is_on_boundary() && !t_->is_outside(),
                   << "on boundary after moving " << repr(step)
                   << NativeLength{});
+    CGTV_LOG(status) << "Moved internally by "
+                     << StreamableLength{step, unit_length_};
 }
 
 //---------------------------------------------------------------------------//
@@ -417,12 +447,15 @@ void CheckedGeoTrackView::move_internal(Real3 const& pos)
                 << ")";
         }
     }
+    CGTV_LOG(status) << "Moved internally to "
+                     << StreamableLength{pos, unit_length_};
 }
 
 //---------------------------------------------------------------------------//
 /*!
  * Move to the next boundary.
  *
+ * \pre Boundary has been found
  * \post On boundary
  */
 void CheckedGeoTrackView::move_to_boundary()
@@ -430,14 +463,21 @@ void CheckedGeoTrackView::move_to_boundary()
     CGTV_LOG(debug) << "Moving to boundary";
     CELER_VALIDATE(!this->failed() || !check_failure_, << "failure exists");
     CELER_VALIDATE(!this->is_outside(), << "invalid call while outside");
+    CELER_VALIDATE(next_step_ && next_is_boundary_,
+                   << "invalid call while outside");
+    auto const step = *next_step_;
 
     t_->move_to_boundary();
     CGTV_VALIDATE_NOT_FAILED(*this, "move_to_boundary");
     checked_internal_ = false;
+    next_step_.reset();
+    next_is_boundary_ = false;
 
     CGTV_VALIDATE(*this,
                   t_->is_on_boundary(),
                   << "moving to boundary did not leave track on a boundary");
+    CGTV_LOG(status) << "Moved to boundary at "
+                     << StreamableLength{step, unit_length_};
 }
 
 //---------------------------------------------------------------------------//
@@ -501,7 +541,23 @@ void CheckedGeoTrackView::cross_boundary()
                 << " is " << dot_normal;
         }
     }
-    CGTV_LOG(status) << "Crossed boundary: " << *this;
+    {
+        auto msg = CGTV_LOG(status);
+        msg << "Crossed boundary";
+        if (pre_norm)
+        {
+            msg << " with pre-crossing normal " << *pre_norm;
+        }
+        if (this->volumes())
+        {
+            msg << " into " << StreamableUniqueVolName{*this, *this->volumes()};
+        }
+        if (post_norm)
+        {
+            msg << " with post-crossing normal " << *post_norm;
+        }
+    }
+    CGTV_LOG(debug) << "Post-crossing state: " << *this;
 }
 
 //---------------------------------------------------------------------------//
