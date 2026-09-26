@@ -454,10 +454,10 @@ void CheckedGeoTrackView::cross_boundary()
                    << "cannot cross boundary without being on boundary");
 
     // Capture pre-crossing normal if checking is enabled
-    std::optional<Real3> pre_crossing_normal;
+    std::optional<Real3> pre_norm;
     if (check_normal_ && !t_->is_outside())
     {
-        pre_crossing_normal = t_->normal();
+        pre_norm = t_->normal();
     }
 
     // Cross boundary
@@ -468,22 +468,37 @@ void CheckedGeoTrackView::cross_boundary()
                   << "not on boundary after crossing boundary");
 
     // Verify post-crossing normal if checking is enabled
-    if (pre_crossing_normal && !t_->is_outside())
+    std::optional<Real3> post_norm;
+    if (pre_norm && !t_->is_outside())
     {
-        auto post_norm = t_->normal();
-        CGTV_VALIDATE(
-            *this,
-            soft_equal(std::fabs(dot_product(*pre_crossing_normal, post_norm)),
-                       1_r),
-            << "inconsistent surface normal: pre-crossing "
-            << *pre_crossing_normal << ", post-crossing " << post_norm);
-
-        // Check for tangent crossing warning
-        if (soft_zero(dot_product(t_->dir(), post_norm)))
+        SoftZero const soft_zero_dir{celeritas::sqrt_tol<real_type>};
+        post_norm = t_->normal();
+        auto norm_error = min(std::fabs(distance(*pre_norm, *post_norm)),
+                              std::fabs(distance(*pre_norm, -*post_norm)));
+        CGTV_VALIDATE(*this,
+                      soft_zero_dir(norm_error),
+                      << "inconsistent surface normal "
+                      << "(error " << norm_error << "): pre-crossing "
+                      << repr(*pre_norm) << ", post-crossing "
+                      << repr(*post_norm));
+        constexpr real_type tight_tol
+            = std::is_same_v<real_type, float> ? 1e-5 : 1e-10;
+        if (!SoftZero<real_type>{tight_tol}(norm_error))
         {
             CGTV_LOG(warning)
-                << "Crossed at a tangent normal " << repr(post_norm)
-                << ": post-crossing state is " << *this;
+                << "Pre- and post- surface normals almost disagree "
+                << "(error " << norm_error << "): pre-crossing "
+                << repr(*pre_norm) << ", post-crossing " << repr(*post_norm);
+        }
+
+        // Check for tangent crossing
+        auto dot_normal = dot_product(t_->dir(), *post_norm);
+        if (soft_zero_dir(dot_normal))
+        {
+            CGTV_LOG(warning)
+                << "Crossed at a tangent: dot product of exiting normal "
+                << repr(*post_norm) << " with direction " << repr(t_->dir())
+                << " is " << dot_normal;
         }
     }
     CGTV_LOG(status) << "Crossed boundary: " << *this;
