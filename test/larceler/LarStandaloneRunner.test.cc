@@ -13,9 +13,11 @@
 #include <lardataobj/Simulation/SimEnergyDeposit.h>
 #include <nlohmann/json.hpp>
 
+#include "corecel/io/OutputRegistry.hh"
 #include "geocel/UnitUtils.hh"
 #include "celeritas/inp/StandaloneInput.hh"
 #include "celeritas/io/OpticalDistributionReader.hh"
+#include "celeritas/phys/GeneratorCountersIO.json.hh"
 #include "celeritas/phys/PDGNumber.hh"
 
 #include "PersistentSP.hh"
@@ -28,16 +30,18 @@ namespace celeritas
 namespace test
 {
 
+using VecJson = std::vector<nlohmann::json>;
 //---------------------------------------------------------------------------//
 /*!
  * Load a newline-delimited JSON file into a vector of JSON objects.
  */
-std::vector<nlohmann::json> load_ndjson(std::string const& filename)
+VecJson load_ndjson(std::string const& filename)
 {
+    CELER_VALIDATE(!filename.empty(), << "no output filename");
     std::ifstream infile(filename);
     CELER_VALIDATE(infile, << "failed to open '" << filename << "'");
 
-    std::vector<nlohmann::json> result;
+    VecJson result;
     std::string line;
     int count{1};
     while (std::getline(infile, line))
@@ -45,7 +49,8 @@ std::vector<nlohmann::json> load_ndjson(std::string const& filename)
         ++count;
         if (line.empty())
         {
-            continue;
+            CELER_LOG(warning) << filename << ':' << count << ": empty line";
+            result.push_back(nullptr);
         }
         try
         {
@@ -53,8 +58,9 @@ std::vector<nlohmann::json> load_ndjson(std::string const& filename)
         }
         catch (nlohmann::json::exception const&)
         {
-            CELER_LOG(critical) << "Failed to parse " << filename << ':'
-                                << count << ": '" << repr(line) << "'";
+            CELER_LOG(critical)
+                << filename << ':' << count << ": failed to parse JSON line '"
+                << repr(line) << "'";
             throw;
         }
     }
@@ -80,7 +86,14 @@ class LarStandaloneRunnerTestBase : public ::celeritas::test::Test
     void SetUp() final;
 
     //! Access the runner
-    Runner& runner() const { return *runner_; }
+    Runner& runner() const
+    {
+        CELER_EXPECT(runner_);
+        return *runner_;
+    }
+
+    // Reset diagnostic output file, returning previous filename
+    std::string close_diagnostics();
 
   private:
     std::shared_ptr<Runner> runner_;
@@ -96,11 +109,36 @@ void LarStandaloneRunnerTestBase::SetUp()
     CELER_ASSERT(test_info);
     std::string test_name{test_info->test_suite_name()};
     pr.lazy_update(test_name, [this]() {
-        return std::make_shared<Runner>(this->make_input(),
-                                        this->make_detector_point_map());
+        auto result = std::make_shared<Runner>(
+            this->make_input(), this->make_detector_point_map());
+        EXPECT_TRUE(result->output_reg().is_open());
+        return result;
     });
     runner_ = pr.value();
+
+    CELER_ASSERT(runner_);
+    auto& output_reg = const_cast<OutputRegistry&>(runner_->output_reg());
+    if (!output_reg.is_open())
+    {
+        // Probably a subsequent test case
+        output_reg.open(this->make_unique_filename(".out.jsonl"));
+    }
+
     CELER_ENSURE(runner_);
+}
+
+// Reset diagnostic output file, returning the previous filename (empty if not open)
+std::string LarStandaloneRunnerTestBase::close_diagnostics()
+{
+    CELER_EXPECT(runner_);
+    auto& output_reg = const_cast<OutputRegistry&>(runner_->output_reg());
+    std::string result;
+    if (output_reg.is_open())
+    {
+        result = output_reg.output_filename();
+        output_reg.close();
+    }
+    return result;
 }
 
 //---------------------------------------------------------------------------//
@@ -111,44 +149,18 @@ class DuneCryoTest : public LarStandaloneRunnerTestBase
     //! Construct input
     Input make_input() override;
     VecReal3 make_detector_point_map() const override;
-    static std::string& diagnostic_filename()
-    {
-        static std::string result;
-        return result;
-    }
 
     static std::string& offload_filename()
     {
         static std::string result;
         return result;
     }
-
-    //! Clear diagnostic files at end of each run
-    void TearDown() override
-    {
-        close
-
-            auto rename
-            = [](std::string const& old_name, std::string const& new_name) {
-                  {
-                      std::ifstream oldf{old_name};
-                      std::ofstream newf{new_name};
-                      newf << oldf.rdbuf();
-                  }
-                  // Clobber the old filename, leave empty
-                  std::ofstream oldf{old_name};
-              };
-        rename(diagnostic_filename(), this->make_unique_filename(".out.jsonl"));
-        rename(offload_filename(),
-               this->make_unique_filename(".offload.jsonl"));
-    }
 };
 
 auto DuneCryoTest::make_input() -> Input
 {
     Input result;
-    result.problem.output_file = this->diagnostic_filename()
-        = this->make_unique_filename("out.jsonl");
+    result.problem.output_file = this->make_unique_filename(".out.jsonl");
     result.problem.model.geometry
         = this->test_data_path("geocel", "dune-cryostat.gdml");
     result.detectors = {"PhotonDetector"};
@@ -165,7 +177,7 @@ auto DuneCryoTest::make_input() -> Input
     result.problem.num_streams = 1;
     result.problem.generator = inp::OpticalOffloadGenerator{};
     result.problem.offload_file = this->offload_filename()
-        = this->make_unique_filename("offload.jsonl");
+        = this->make_unique_filename(".offload.jsonl");
     result.geant_setup.cherenkov = std::nullopt;
     return result;
 }
@@ -182,16 +194,15 @@ auto DuneCryoTest::make_detector_point_map() const -> VecReal3
 
 TEST_F(DuneCryoTest, setup)
 {
-    // Create runner, which should output diagnostics, cleared at teardown
-    this->runner();
-    auto diagnostics = load_ndjson(this->diagnostic_filename());
+    auto diagnostics = load_ndjson(this->close_diagnostics());
     ASSERT_EQ(1, diagnostics.size());
     std::vector<std::string> keys;
     for (auto&& [key, val] : diagnostics.front().items())
     {
         keys.push_back(key);
     }
-    PRINT_EXPECTED(keys);
+    static std::string const expected_keys[] = {"input", "internal", "system"};
+    EXPECT_VEC_EQ(expected_keys, keys);
 }
 
 TEST_F(DuneCryoTest, two_sim_edeps)
@@ -276,9 +287,13 @@ TEST_F(DuneCryoTest, two_sim_edeps)
 
     // Check diagnostic output counters (setup's TearDown should mean this has
     // *only* counters)
-    auto diagnostics = load_ndjson(this->diagnostic_filename());
-    ASSERT_FALSE(diagnostics.empty());
-    EXPECT_JSON_EQ("", diagnostics.front().dump());
+    auto diagnostics = load_ndjson(this->close_diagnostics());
+    EXPECT_EQ(3, diagnostics.size());
+
+    for (auto& d_json : diagnostics)
+    {
+        auto stats = d_json["result"]["counters"].get<CounterAccumStats>();
+    }
 }
 
 TEST_F(DuneCryoTest, zero_photons)
@@ -301,6 +316,12 @@ TEST_F(DuneCryoTest, zero_photons)
     // No run should occur, BTRs should be empty
     auto result = run({sed});
     EXPECT_TRUE(result.backtrack.empty());
+
+    auto diagnostics = load_ndjson(this->close_diagnostics());
+    ASSERT_EQ(1, diagnostics.size());
+    EXPECT_JSON_EQ(
+        R"json({"result":{"counters":{"flushes":0,"generators":[],"num_cut":0,"num_errored":0,"step_iters":0,"steps":0},"time":{"actions":{},"run":0.0,"setup":0.0,"steps":[],"teardown":0.0}},"system":{"kernels":[]}})json",
+        diagnostics.front().dump());
 }
 
 //---------------------------------------------------------------------------//
