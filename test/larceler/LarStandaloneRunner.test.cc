@@ -290,10 +290,53 @@ TEST_F(DuneCryoTest, two_sim_edeps)
     auto diagnostics = load_ndjson(this->close_diagnostics());
     EXPECT_EQ(3, diagnostics.size());
 
+    std::vector<size_type> flushes;
+    std::vector<size_type> num_cut;
+    std::vector<size_type> num_errored;
+    std::vector<size_type> step_iters;
+    std::vector<size_type> steps;
+    std::vector<size_type> gen_size;
+    std::vector<size_type> buffer_size;
+    std::vector<size_type> num_generated;
+    std::vector<size_type> num_pending;
+
     for (auto& d_json : diagnostics)
     {
-        auto stats = d_json["result"]["counters"].get<CounterAccumStats>();
+        auto stats
+            = d_json.at("result").at("counters").get<CounterAccumStats>();
+        flushes.push_back(stats.flushes);
+        num_cut.push_back(stats.num_cut);
+        num_errored.push_back(stats.num_errored);
+        step_iters.push_back(stats.step_iters);
+        steps.push_back(stats.steps);
+        gen_size.push_back(stats.generators.size());
+        for (auto& g : stats.generators)
+        {
+            buffer_size.push_back(g.buffer_size);
+            num_generated.push_back(g.num_generated);
+            num_pending.push_back(g.num_pending);
+        }
     }
+
+    static unsigned int const expected_flushes[] = {1u, 2u, 3u};
+    static unsigned int const expected_num_cut[] = {1696u, 3378u, 3381u};
+    static unsigned int const expected_num_errored[] = {0u, 0u, 0u};
+    static unsigned int const expected_step_iters[] = {8u, 16u, 24u};
+    static unsigned int const expected_steps[] = {25393u, 50923u, 51014u};
+    static unsigned int const expected_gen_size[] = {1u, 1u, 1u};
+    static unsigned int const expected_buffer_size[] = {4u, 4u, 4u};
+    static unsigned int const expected_num_generated[] = {8192u, 8192u, 30u};
+    static unsigned int const expected_num_pending[] = {0u, 0u, 0u};
+
+    EXPECT_VEC_EQ(expected_flushes, flushes);
+    EXPECT_VEC_EQ(expected_num_cut, num_cut);
+    EXPECT_VEC_EQ(expected_num_errored, num_errored);
+    EXPECT_VEC_EQ(expected_step_iters, step_iters);
+    EXPECT_VEC_EQ(expected_steps, steps);
+    EXPECT_VEC_EQ(expected_gen_size, gen_size);
+    EXPECT_VEC_EQ(expected_buffer_size, buffer_size);
+    EXPECT_VEC_EQ(expected_num_generated, num_generated);
+    EXPECT_VEC_EQ(expected_num_pending, num_pending);
 }
 
 TEST_F(DuneCryoTest, zero_photons)
