@@ -36,7 +36,7 @@ digraph assertions {
     DBG -> UNREACH_FN [label="no\n(ASSERT_UNREACHABLE)"];
     ASSUME_NDEBUG -> UNREACH_FN [label="cond false"];
 
-    DBG -> DFAIL [label="yes\n(ASSERT_UNREACHABLE)"];
+    DBG -> DFAIL_ [label="yes\n(ASSERT_UNREACHABLE)"];
 
     // ---------------- Debug failure dispatch ----------------
     DFAIL_ [label="CELER_DEBUG_FAIL_(MSG, WHICH)", shape=box];

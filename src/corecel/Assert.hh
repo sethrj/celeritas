@@ -228,7 +228,7 @@
 #    define CELER_ENSURE(COND) CELER_ASSERT_IMPL_(COND, postcondition)
 #    define CELER_ASSUME(COND) CELER_ASSERT_IMPL_(COND, assumption)
 #    define CELER_ASSERT_UNREACHABLE() \
-        CELER_DEBUG_FAIL("unreachable code point encountered", unreachable)
+        CELER_DEBUG_FAIL_("unreachable code point encountered", unreachable)
 #else
 #    define CELER_EXPECT(COND) CELER_NOASSERT_(COND)
 #    define CELER_ASSERT(COND) CELER_NOASSERT_(COND)
