@@ -531,6 +531,7 @@ inline __attribute__((noinline)) __host__ __device__ void device_debug_fail(
 inline __host__ void device_debug_fail(
     DebugErrorType, char const*, char const*, int)
 {
+    // The host version of device_debug_fail should *never* be reachable
     CELER_UNREACHABLE;
 }
 
