@@ -506,7 +506,7 @@ class DiscardStream
     }
 
     //! Provide a str() function for ostringstream-like compatibility
-    CELER_FUNCTION void str() const { CELER_UNREACHABLE; }
+    CELER_FUNCTION void str() const { ::celeritas::unreachable(); }
 };
 
 #if CELER_DEVICE_COMPILE
@@ -532,7 +532,7 @@ inline __host__ void device_debug_fail(
     DebugErrorType, char const*, char const*, int)
 {
     // The host version of device_debug_fail should *never* be reachable
-    CELER_UNREACHABLE;
+    ::celeritas::unreachable();
 }
 
 //! Device-only call for HIP (must always be declared; only used if
