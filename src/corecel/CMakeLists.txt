@@ -44,17 +44,6 @@ celeritas_generate_option_config(CELERITAS_RESEED)
 #----------------------------------------------------------------------------#
 # Detailed build configuration for reproducibility/provenance
 
-# Get host system information
-if(NOT DEFINED CELERITAS_HOSTNAME)
-  set(_hostname "$ENV{LMOD_SYSTEM_NAME}")
-  if(NOT _hostname)
-    cmake_host_system_information(RESULT _hostname QUERY HOSTNAME)
-    string(REGEX REPLACE "\\..*" "" _hostname "${_hostname}")
-  endif()
-  set(CELERITAS_HOSTNAME "${_hostname}" CACHE INTERNAL
-    "Build/deploy system name")
-endif()
-
 # Save CMake variables as strings
 set(CELERITAS_CMAKE_STRINGS)
 set(CELERITAS_CMAKE_STRINGS_DECL)
@@ -78,7 +67,7 @@ else()
   endif()
 endif()
 set(CELERITAS_CONSTANTS "CODATA ${CELERITAS_CODATA}")
-foreach(_var BUILD_TYPE HOSTNAME REAL_TYPE UNITS CONSTANTS OPENMP CORE_GEO CORE_RNG RESEED)
+foreach(_var BUILD_TYPE REAL_TYPE UNITS CONSTANTS OPENMP CORE_GEO CORE_RNG RESEED)
   string(TOLOWER "${_var}" _lower)
   celeritas_append_cmake_string("${_lower}" "${CELERITAS_${_var}}")
 endforeach()

@@ -58,7 +58,6 @@ void BuildOutput::output(JsonPimpl* j) const
 
 #define CO_ADD_CFG(NAME) cfg[#NAME] = std::string(config::NAME);
         CO_ADD_CFG(build_type);
-        CO_ADD_CFG(hostname);
         CO_ADD_CFG(real_type);
         CO_ADD_CFG(units);
         CO_ADD_CFG(constants);
