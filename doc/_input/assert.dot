@@ -94,13 +94,13 @@ digraph assertions {
     TRAP  [label="__trap()"];
     ABORT [label="abort()"];
     UNREACH_FN [label="unreachable()"];
-    CELER_UNREACHABLE_STOP [label="CELER_UNREACHABLE"];
+    CELER_UNREACHABLE_STOP [label="::celeritas::unreachable()"];
 
     UNREACH_FN -> CELER_UNREACHABLE_STOP;
 
-    // CELER_UNREACHABLE expansion
+    // ::celeritas::unreachable() expansion
     node [style="filled", fillcolor="#f0f0f0"];
-    EXP [label="CELER_UNREACHABLE expands to:\n__builtin_unreachable() (clang/GCC/NVHPC/\nCUDA>=11.3 device/HIP device),\n__assume(false) (MSVC), or empty", shape=note];
+    EXP [label="::celeritas::unreachable() expands to:\n__builtin_unreachable() (clang/GCC/NVHPC/\nCUDA>=11.3 device/HIP device),\n__assume(false) (MSVC), or empty", shape=note];
     CELER_UNREACHABLE_STOP -> EXP [style=dotted, arrowhead=none];
 
     THROW_DBG -> UNREACH_FN [style=invis];

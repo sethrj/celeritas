@@ -381,7 +381,7 @@ struct RuntimeErrorDetails
 //! Invoke undefined behavior
 [[noreturn]] inline CELER_FUNCTION void unreachable()
 {
-    CELER_UNREACHABLE;
+    CELER_UNREACHABLE_;
 }
 
 // Get a pretty string version of a debug error
