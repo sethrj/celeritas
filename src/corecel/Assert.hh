@@ -539,7 +539,7 @@ inline __attribute__((noinline)) __device__ void device_debug_fail(
     DebugErrorType, char const* condition, char const* file, int line)
 {
     // The existence of a printf breaks HIP 7.14.60850 kernel compilation
-#    if CELERITAS_HIP_VERSION < 0x070b00
+#    if CELERITAS_HIP_VERSION < 0x070e00
     printf("%s:%d:\nceleritas: internal assertion failed: %s\n",
            file,
            line,
