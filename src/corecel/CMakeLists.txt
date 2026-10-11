@@ -128,6 +128,7 @@ endforeach()
 
 # NOTE: some values are defined in top-level CMakeLists
 # - CELERITAS_HAVE_ROCTX
+# - CELERITAS_HAVE_HIPCUB
 # - CELERITAS_SINCOSPI_PREFIX
 
 if(DEFINED CELERITAS_SINCOSPI_PREFIX)
