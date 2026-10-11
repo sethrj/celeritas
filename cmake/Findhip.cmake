@@ -21,7 +21,7 @@ if(NOT _orig_log_lev OR _orig_log_lev STREQUAL "STATUS")
   set(CMAKE_MESSAGE_LOG_LEVEL WARNING)
 endif()
 
-find_package(hip QUIET CONFIG)
+find_package(hip QUIET CONFIG HINTS "${CMAKE_HIP_COMPILER_ROCM_ROOT}")
 
 set(CMAKE_MESSAGE_LOG_LEVEL ${_orig_log_lev})
 unset(_orig_log_lev)

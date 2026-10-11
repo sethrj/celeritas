@@ -10,11 +10,10 @@ Find the roctracer library.
 
 #]=======================================================================]
 
-set(_hints "$ENV{ROCM_PATH}" "${ROCM_PATH}" "/opt/rocm")
 
 find_library(ROCTX_LIBRARY
   NAMES roctx64 roctx
-  HINTS ${_hints}
+  HINTS "${CMAKE_HIP_COMPILER_ROCM_ROOT}"
   PATH_SUFFIXES lib lib64
 )
 mark_as_advanced(ROCTX_LIBRARY)
@@ -23,7 +22,7 @@ set(roctracer_LIBRARIES "${ROCTX_LIBRARY}")
 
 find_path(ROCTRACER_INCLUDE_DIR
   "roctracer/roctracer.h"
-  HINTS ${_hints}
+  HINTS "${CMAKE_HIP_COMPILER_ROCM_ROOT}"
   PATH_SUFFIXES include
 )
 mark_as_advanced(ROCTRACER_INCLUDE_DIR)
@@ -58,7 +57,6 @@ if(roctracer_FOUND AND NOT TARGET roctracer::roctx)
   )
 endif()
 
-unset(_hints)
 unset(_line)
 unset(_roctracer_version_lines)
 

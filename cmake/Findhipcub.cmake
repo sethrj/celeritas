@@ -10,7 +10,8 @@ Find the hipcub library.
 
 #]=======================================================================]
 
-find_package(hipcub QUIET CONFIG)
+find_package(hipcub QUIET CONFIG HINTS "${CMAKE_HIP_COMPILER_ROCM_ROOT}")
+
 include(FindPackageHandleStandardArgs)
 
 if(hipcub_FOUND)
