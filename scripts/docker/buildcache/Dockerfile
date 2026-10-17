@@ -22,27 +22,16 @@ LABEL description="Ubuntu 24.04 GitHub runner toolchain with pinned Spack"
 # runner also has GCC 14, whose libstdc++ headers clang-18 selects.
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8
-RUN apt-get -qq update \
- && apt-get -qq install -y --no-install-recommends \
-    autoconf bash build-essential clang-18 flex git libfl-dev m4 make perl \
-    bzip2 ca-certificates curl file gzip libstdc++-14-dev patch python3 \
-    tar unzip xz-utils zstd \
- && rm -rf /var/lib/apt/lists/*
+RUN <<'EOF'
+set -ex
+apt-get -qq update
+apt-get install -y --no-install-recommends \
+  autoconf bash build-essential clang-18 flex git libfl-dev m4 make perl \
+  bzip2 ca-certificates curl file gzip libstdc++-14-dev patch python3 \
+  tar unzip xz-utils zstd
+rm -rf /var/lib/apt/lists/*
+EOF
 
-# Build as an unprivileged user like the GitHub runner, since some autotools
-# packages refuse to configure as root. The update script installs into
-# /scratch/celeritas/opt-ci when it exists: mount a volume there to keep
-# installations between runs. Rootless podman (e.g. podman-hpc) must run as
-# container root to access bind-mounted files owned by the host user: allow
-# root to use the Spack checkouts.
-RUN useradd --create-home --shell /bin/bash celeritas \
- && mkdir -p /opt/spack /opt/spack-packages /opt/spack-cache \
-    /scratch/celeritas/opt-ci /work \
- && chown celeritas:celeritas /opt/spack /opt/spack-packages /opt/spack-cache \
-    /scratch/celeritas/opt-ci /work \
- && git config --system --add safe.directory /opt/spack \
- && git config --system --add safe.directory /opt/spack-packages
-USER celeritas
 
 # Match the environment of .github/actions/setup-spack. Keep the Spack user
 # cache (including the bootstrap store) independent of HOME so that it is
@@ -50,12 +39,29 @@ USER celeritas
 ENV SPACK_ROOT=/opt/spack \
     SPACK_PACKAGES_ROOT=/opt/spack-packages \
     SPACK_USER_CACHE_PATH=/opt/spack-cache \
-    SPACK_DISABLE_LOCAL_CONFIG=1 \
-    SPACK_COLOR=always \
-    PATH=/opt/spack/bin:$PATH
+    CELER_SPACK_OPT=/scratch/celeritas/opt-ci
+
+# Build as an unprivileged user like the GitHub runner, since some autotools
+# packages refuse to configure as root. The update script installs into
+# /scratch/celeritas/opt-ci when it exists: mount a volume there to keep
+# installations between runs. Rootless podman (e.g. podman-hpc) must run as
+# container root to access bind-mounted files owned by the host user: allow
+# root to use the Spack checkouts.
+RUN <<'EOF'
+set -ex
+useradd --create-home --shell /bin/bash celeritas
+for d in $SPACK_ROOT $SPACK_PACKAGES_ROOT $SPACK_USER_CACHE_PATH $CELER_SPACK_OPT /work; do
+  mkdir -p $d
+  chown celeritas:celeritas $d
+done
+for d in $SPACK_ROOT $SPACK_PACKAGES_ROOT; do
+  git config --system --add safe.directory $d
+done
+EOF
+USER celeritas
 
 #-------------------------------------#
-# Spack version-dependent layers
+# Spack configuration layers
 #-------------------------------------#
 
 # Github repositories and spack refs
@@ -64,7 +70,10 @@ ARG SPACK_REF
 
 LABEL org.spack.spack-repo="${SPACK_REPO}" \
       org.spack.spack-ref="${SPACK_REF}"
-ENV IMAGE_SPACK_REF=${SPACK_REF}
+ENV IMAGE_SPACK_REF=${SPACK_REF} \
+    SPACK_DISABLE_LOCAL_CONFIG=1 \
+    SPACK_COLOR=always \
+    PATH=${SPACK_ROOT}/bin:$PATH
 
 # Check out the pinned spack version and bootstrap (which doesn't require packages repo)
 RUN <<'EOF'
@@ -77,7 +86,7 @@ spack repo set --destination "${SPACK_REF}" builtin
 EOF
 
 #-------------------------------------#
-# Spack package-dependent layers
+# Spack package config layers
 #-------------------------------------#
 
 ARG SPACK_PACKAGES_REPO
@@ -103,13 +112,14 @@ FROM spack-base-ubuntu24 AS buildcache
 
 LABEL description="Celeritas Spack buildcache builder for GitHub CI"
 
-COPY entrypoint.sh /opt/celeritas/
-
 # Allow container root (see above) to configure autotools packages
 ENV FORCE_UNSAFE_CONFIGURE=1 \
-    CELER_SOURCE_DIR=/celeritas
+    CELER_SOURCE_DIR=/celeritas \
+    CELER_ENTRYPOINT_DIR=/opt/celeritas
 
 USER celeritas
 WORKDIR /work
-ENTRYPOINT ["/opt/celeritas/entrypoint.sh"]
-CMD ["/celeritas/scripts/ci/update-spack-buildcache.sh"]
+
+COPY entrypoint.sh ${CELER_ENTRYPOINT_DIR}/
+ENTRYPOINT ["${CELER_ENTRYPOINT_DIR}/entrypoint.sh"]
+CMD ["${CELER_SOURCE_DIR}/scripts/ci/update-spack-buildcache.sh"]

@@ -63,7 +63,7 @@ runs:
       with:
         repository: celeritas-project/spack-packages
         path: ${{steps.vars.outputs.SPACK_PACKAGES_ROOT}}
-        ref: 12d38a38c400f260f507e87a1b6dab55bec95fe5 # ci, 16 October 2026
+        ref: 5c444cc5e0e90867bebd42de4eb7a01317a62a6c # ci, 17 October 2026
 
     - name: Initialize spack environment
       id: init

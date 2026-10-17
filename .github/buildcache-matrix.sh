@@ -25,10 +25,14 @@ if ! command -v build_spack_env >/dev/null 2>&1; then
   }
 fi
 
+CXXSTD=17 ENV_CI=hip build_spack_env hip@5.7.1
+
 # build-spack-hip
-for HIP_VERSION in 7.14.0 6.4.3 5.7.1; do
-  CXXSTD=20 ENV_CI=min build_spack_env hip@${HIP_VERSION}
+for HIP_VERSION in 7.14.0 6.4.3; do
+  CXXSTD=20 ENV_CI=hip build_spack_env hip@${HIP_VERSION}
 done
+CXXSTD=17 ENV_CI=hip build_spack_env hip@5.7.1
+
 # build-spack
 for G4_VERSION in 11.3 11.3+vecgeom 11.2 11.1 11.0 10.7; do
   CXXSTD=20 ENV_CI=default build_spack_env vecgeom@2.2.0 geant4@${G4_VERSION} g4vg hepmc3

@@ -444,10 +444,12 @@ if(CELERITAS_USE_CUDA)
       "${_allowed_arch}"
     )
   endif()
+  # TODO: should be required
   find_package(CUB)
   find_package(Thrust)
 elseif(CELERITAS_USE_HIP)
   enable_language(HIP)
+  # TODO: all these should be required
   find_package(hip) # Enable hip API in host code, and support version diagnostics
   find_package(hipcub)
   find_package(hiprand)

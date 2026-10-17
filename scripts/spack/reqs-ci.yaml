@@ -46,6 +46,9 @@ packages:
       - generator=ninja
   hdf5:
     prefer: [~cxx] # override cxxstd preference
+  llvm-amdgpu:
+    prefer:
+      - "+llvm_dylib +link_llvm_dylib" # Reduce storage by 3x
   geant4:
     variants:
       - generator=ninja
