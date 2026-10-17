@@ -316,6 +316,7 @@ celeritas_add_object_library(corecel_mpi_obj
   sys/Device.cc
   sys/MpiCommunicator.cc
   sys/ScopedMpiInit.cc
+  sys/detail/MpiImpl.cc
 )
 celeritas_target_link_libraries(corecel_mpi_obj
   PRIVATE Celeritas::ExtMPI Celeritas::ExtDeviceApi Celeritas::BuildFlags

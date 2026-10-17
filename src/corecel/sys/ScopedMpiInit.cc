@@ -19,7 +19,7 @@
 #include "corecel/io/Logger.hh"
 
 #include "Environment.hh"
-#include "MpiCommunicator.hh"
+#include "Mpi.hh"
 #include "Stopwatch.hh"
 
 namespace celeritas

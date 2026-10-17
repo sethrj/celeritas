@@ -8,6 +8,7 @@
 
 #include "corecel/Assert.hh"
 
+#include "Mpi.hh"
 #include "ScopedMpiInit.hh"
 
 namespace celeritas

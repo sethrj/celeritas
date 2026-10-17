@@ -4,7 +4,7 @@
 //---------------------------------------------------------------------------//
 //! \file corecel/sys/Mpi.hh
 //! \brief MPI parallel functionality
-//! \note You must link against Celeritas::ExtMPI when including this file!
+//! \note You must link against Celeritas::ExtMPI when including this file
 //---------------------------------------------------------------------------//
 #pragma once
 
@@ -42,8 +42,10 @@
             int mpi_result_ = (STATEMENT); \
             if (CELER_UNLIKELY(mpi_result_ != MPI_SUCCESS)) \
             { \
-                CELER_RUNTIME_FAIL( \
-                    "MPI", mpi_error_to_string(mpi_result_), #STATEMENT); \
+                CELER_RUNTIME_FAIL_( \
+                    "MPI", \
+                    ::celeritas::detail::mpi_error_to_string(mpi_result_), \
+                    #STATEMENT); \
             } \
         } while (0)
 #else
@@ -56,35 +58,6 @@
 
 namespace celeritas
 {
-namespace detail
-{
-
-//---------------------------------------------------------------------------//
-/*!
- * Get an MPI error string.
- */
-std::string mpi_error_to_string(int errorcode)
-{
-#if CELERITAS_USE_MPI
-    std::string error_string;
-    error_string.resize(MPI_MAX_ERROR_STRING);
-    int length = 0;
-    int new_errorcode = 0;
-    new_errorcode = MPI_Error_string(errorcode, &error_string.front(), &length);
-    if (new_errorcode != 0)
-    {
-        // Even the string call failed... just return the code
-        return std::tostring(errorcode);
-    }
-    error_string.resize(length);
-    return error_string;
-#else
-    CELER_DISCARD(errorcode);
-    CELER_NOT_CONFIGURED("MPI");
-#endif
-}
-}  // namespace detail
-
 //---------------------------------------------------------------------------//
 // TYPES
 //---------------------------------------------------------------------------//
