@@ -89,6 +89,7 @@ build_spack_env() (
   SPACK_ENV_FILE="env-ci-${ENV_CI}.yaml" \
   CELER_SOURCE_DIR=${CELER_SOURCE_DIR} \
     "${CELER_SOURCE_DIR}/scripts/ci/setup-spack-ci-env.sh" "$@"
+  spack -e . config add view:false
 
   # Install and push
   log status "Concretizing $envdir"
