@@ -59,6 +59,8 @@ push() {
   target=$1
   shift
   SIF="${OUTPUT_DIR}/${target}-${TAG}.sif"
+  URL="oras://${REPO_HOST}/${PROJECT}/${target}:${TAG}"
+  log info "Pushing to ${URL}"
   apptainer push "${SIF}" "oras://${REPO_HOST}/${PROJECT}/${target}:${TAG}"
 }
 

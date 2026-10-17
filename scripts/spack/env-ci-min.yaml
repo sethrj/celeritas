@@ -1,0 +1,23 @@
+#-------------------------------- -*- yaml -*- ---------------------------------#
+# Copyright Celeritas contributors: see top-level COPYRIGHT file for details
+# SPDX-License-Identifier: (Apache-2.0 OR MIT)
+#-----------------------------------------------------------------------------#
+# Minimal spack environment for building ROCm.
+#-----------------------------------------------------------------------------#
+
+spack:
+  include:
+    - reqs-celer.yaml
+    - reqs-ci.yaml
+    - prefs-hep-nogui.yaml
+    - ext-ubuntu24.yaml
+
+  specs:
+    # Build packages
+    - cmake
+    - ninja
+    - ccache
+    # Test/app packages
+    - cli11
+    - googletest
+    - nlohmann-json

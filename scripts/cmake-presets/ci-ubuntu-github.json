@@ -201,6 +201,17 @@
       "inherits": ["tool-spack"]
     },
     {
+      "name": "orange-rocm",
+      "inherits": ["tool-spack"],
+      "displayName": "FINAL: enable HIP, disable most dependencies, auto covfie",
+      "cacheVariables": {
+        "CELERITAS_USE_covfie": null,
+        "CELERITAS_USE_Geant4": { "type": "BOOL", "value": "OFF" },
+        "CELERITAS_USE_HepMC3": { "type": "BOOL", "value": "OFF" },
+        "CELERITAS_USE_ROOT": { "type": "BOOL", "value": "OFF" }
+      }
+    },
+    {
       "name": "orange-ancient",
       "description": "FINAL: minimal GCC8 build for SCALE integration",
       "inherits": ["tool-spack"],

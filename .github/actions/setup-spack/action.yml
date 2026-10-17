@@ -61,9 +61,9 @@ runs:
       id: checkout-spack-pkg
       uses: actions/checkout@v7
       with:
-        repository: spack/spack-packages
+        repository: celeritas-project/spack-packages
         path: ${{steps.vars.outputs.SPACK_PACKAGES_ROOT}}
-        ref: fa11df3be41f58bac19b73346422e06b103ee5b5 # upstream/develop, 6 October 2026
+        ref: 12d38a38c400f260f507e87a1b6dab55bec95fe5 # ci, 16 October 2026
 
     - name: Initialize spack environment
       id: init
