@@ -23,7 +23,7 @@ spack:
     - cli11
     - googletest
     - nlohmann-json
-    # No reason not to install these as well
+    # Low-cost packages
     - hepmc3
     - libpng
     - covfie

@@ -27,8 +27,8 @@ if [ -n "$SPACK_ENV" ]; then
 fi
 
 if [ -z "$SPACK_ENV_FILE" ]; then
-  SPACK_ENV_FILE="env-ci-base.yaml"
-  log info "Using default SPACK_ENV_FILE: env-ci-base.yaml"
+  SPACK_ENV_FILE="env-ci-default.yaml"
+  log info "Using default SPACK_ENV_FILE: env-ci-default.yaml"
 fi
 if ! [ -e "${SPACK_ENV_FILE}" ]; then
   if [ -z "$CELER_SOURCE_DIR" ]; then

@@ -12,7 +12,7 @@
 # where <WHAT> selects scripts/spack/env-ci-<WHAT>.yaml.
 #
 # This should correspond to the matrix (and its "include" entries) from
-# .github/workflows/build-spack.yml and other spack-based builds
+# .github/workflows/build-spack.yml and other spack-defaultd builds
 # (missing concretization will require running the build-spack workflows
 # on something *other* than a PR, and missing packages will cause a PR to fail
 # due to the `--use-buildcache` option in `setup-spack/action.yaml`)
@@ -26,20 +26,19 @@ if ! command -v build_spack_env >/dev/null 2>&1; then
 fi
 
 # build-spack
-for G4_VERSION in 11.3 11.2 11.1 11.0 10.7; do
-  CXXSTD=20 ENV_CI=base build_spack_env vecgeom@2.2.0 geant4@${G4_VERSION} g4vg root
+for G4_VERSION in 11.3 11.3+vecgeom 11.2 11.1 11.0 10.7; do
+  CXXSTD=20 ENV_CI=default build_spack_env vecgeom@2.2.0 geant4@${G4_VERSION} g4vg hepmc3
 done
 for G4_VERSION in 10.6 10.5; do
-  CXXSTD=17 ENV_CI=base build_spack_env vecgeom@2.2.0 geant4@${G4_VERSION} g4vg hepmc3~rootio
+  CXXSTD=17 ENV_CI=default build_spack_env vecgeom@2.2.0 geant4@${G4_VERSION} g4vg hepmc3~rootio
 done
-CXXSTD=20 ENV_CI=base build_spack_env vecgeom@1.2.11 geant4@11.3 g4vg root
+CXXSTD=20 ENV_CI=default build_spack_env vecgeom@1.2.11 geant4@11.3 g4vg root hepmc3
 
 # UNUSED (will add to CI later)
-CXXSTD=20 ENV_CI=base build_spack_env vecgeom@2.2.0 geant4@11.4 g4vg root dd4hep
+CXXSTD=20 ENV_CI=default build_spack_env vecgeom@2.2.0 geant4@11.4 g4vg root dd4hep
 
 # build-codecov.spack
-CXXSTD=20 ENV_CI=base build_spack_env vecgeom@2.2.0 geant4@11.3 g4vg root py-gcovr
-CXXSTD=20 ENV_CI=base build_spack_env vecgeom@2.2.0 geant4@11.3+vecgeom
+CXXSTD=20 ENV_CI=default build_spack_env vecgeom@2.2.0 geant4@11.3 g4vg root py-gcovr
 
 # build-spack-extra.ancient
 CXXSTD=17 ENV_CI=ancient build_spack_env
