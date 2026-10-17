@@ -2,10 +2,13 @@
 // Copyright Celeritas contributors: see top-level COPYRIGHT file for details
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
-//! \file corecel/sys/detail/MpiCommunicatorImpl.hh
-//! \brief Type definitions for MPI parallel operations (MPI optional)
+//! \file corecel/sys/detail/MpiImpl.hh
+//! \brief Type definitions for MPI parallel operations
+//! \note You must link against Celeritas::ExtMPI when including this file
 //---------------------------------------------------------------------------//
 #pragma once
+
+#include <string>
 
 #include "corecel/Config.hh"
 
@@ -20,6 +23,12 @@ namespace celeritas
 {
 namespace detail
 {
+//---------------------------------------------------------------------------//
+/*!
+ * Get an MPI error string.
+ */
+std::string mpi_error_to_string(int errorcode);
+
 //---------------------------------------------------------------------------//
 //! Traits class for MPI enumerations
 template<class T>
@@ -37,7 +46,7 @@ struct MpiType;
         template<> \
         struct MpiType<T> \
         { \
-            static inline const char* value = #MPI_ENUM; \
+            static constexpr inline char value[] = #MPI_ENUM; \
         }
 #endif
 
@@ -66,17 +75,17 @@ CELER_DEFINE_MPITYPE(long double, MPI_LONG_DOUBLE);
 struct MockMpiComm
 {
     int value_;
+
+    constexpr inline friend bool operator==(MockMpiComm a, MockMpiComm b)
+    {
+        return a.value_ == b.value_;
+    }
+
+    constexpr inline friend bool operator!=(MockMpiComm a, MockMpiComm b)
+    {
+        return !(a == b);
+    }
 };
-
-constexpr inline bool operator==(MpiComm a, MpiComm b)
-{
-    return a.value_ == b.value_;
-}
-
-constexpr inline bool operator!=(MpiComm a, MpiComm b)
-{
-    return !(a == b);
-}
 //!@}
 
 //! Opaque MPI communicator

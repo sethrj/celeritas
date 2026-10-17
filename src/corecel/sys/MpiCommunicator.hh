@@ -3,11 +3,13 @@
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
 //! \file corecel/sys/MpiCommunicator.hh
-//! \note Including this file requires linking against the corecel_mpi target
+//! \note You must link against Celeritas::ExtMPI when including this file
 //---------------------------------------------------------------------------//
 #pragma once
 
-#include "Mpi.hh"
+#include "corecel/Macros.hh"
+
+#include "detail/MpiImpl.hh"
 
 namespace celeritas
 {
@@ -52,6 +54,9 @@ class MpiCommunicator
 
     // Construct with a native MPI communicator
     explicit MpiCommunicator(MpiComm comm);
+
+    // Prevent copying, allow moving
+    CELER_DEFAULT_MOVE_DELETE_COPY(MpiCommunicator);
 
     //// ACCESSORS ////
 
