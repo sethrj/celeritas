@@ -14,21 +14,14 @@
 # Runner toolchain with pinned and bootstrapped Spack
 #-----------------------------------------------------------------------------#
 FROM ubuntu:24.04 AS spack-base-ubuntu24
-
-ARG SPACK_REF
-ARG SPACK_PACKAGES_REF
-
-LABEL description="Ubuntu 24.04 GitHub runner toolchain with pinned Spack" \
-      org.spack.spack-ref="${SPACK_REF}" \
-      org.spack.spack-packages-ref="${SPACK_PACKAGES_REF}"
-
-ENV DEBIAN_FRONTEND=noninteractive \
-    LANG=C.UTF-8
+LABEL description="Ubuntu 24.04 GitHub runner toolchain with pinned Spack"
 
 # System externals must match the versions in scripts/spack/ext-ubuntu24.yaml.
 # Like the GitHub runner, provide build-essential: some autotools packages
 # probe for the unversioned c++ and /lib/cpp even when they only need C. The
 # runner also has GCC 14, whose libstdc++ headers clang-18 selects.
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8
 RUN apt-get -qq update \
  && apt-get -qq install -y --no-install-recommends \
     autoconf bash build-essential clang-18 flex git libfl-dev m4 make perl \
@@ -49,10 +42,7 @@ RUN useradd --create-home --shell /bin/bash celeritas \
     /scratch/celeritas/opt-ci /work \
  && git config --system --add safe.directory /opt/spack \
  && git config --system --add safe.directory /opt/spack-packages
-
-# Github repositories to clone
-ARG SPACK_REPO
-ARG SPACK_PACKAGES_REPO
+USER celeritas
 
 # Match the environment of .github/actions/setup-spack. Keep the Spack user
 # cache (including the bootstrap store) independent of HOME so that it is
@@ -62,29 +52,49 @@ ENV SPACK_ROOT=/opt/spack \
     SPACK_USER_CACHE_PATH=/opt/spack-cache \
     SPACK_DISABLE_LOCAL_CONFIG=1 \
     SPACK_COLOR=always \
-    IMAGE_SPACK_REF=${SPACK_REF} \
-    IMAGE_SPACK_PACKAGES_REF=${SPACK_PACKAGES_REF} \
     PATH=/opt/spack/bin:$PATH
 
+#-------------------------------------#
+# Spack version-dependent layers
+#-------------------------------------#
 
-# Check out the pinned revisions, use the pinned package repository instead
-# of letting Spack clone its own, and bootstrap the concretizer
-USER celeritas
-RUN if [ -z "${SPACK_REF}" ] || [ -z "${SPACK_PACKAGES_REF}" ]; then \
-      echo "error: SPACK_REF and SPACK_PACKAGES_REF build args are required:" \
-           "use scripts/docker/buildcache/build.sh" >&2 ; \
-      exit 1 ; \
-    fi \
- && for pin in "${SPACK_ROOT} ${SPACK_REPO} ${SPACK_REF}" \
-               "${SPACK_PACKAGES_ROOT} ${SPACK_PACKAGES_REPO} ${SPACK_PACKAGES_REF}"; do \
-      set -- ${pin} \
-      && git init -q "$1" \
-      && git -C "$1" fetch -q --depth 1 "https://github.com/$2.git" "$3" \
-      && git -C "$1" checkout -q --detach FETCH_HEAD \
-      || exit 1 ; \
-    done \
- && spack repo set --destination "${SPACK_PACKAGES_ROOT}" builtin \
- && spack bootstrap now
+# Github repositories and spack refs
+ARG SPACK_REPO
+ARG SPACK_REF
+
+LABEL org.spack.spack-repo="${SPACK_REPO}" \
+      org.spack.spack-ref="${SPACK_REF}"
+ENV IMAGE_SPACK_REF=${SPACK_REF}
+
+# Check out the pinned spack version and bootstrap (which doesn't require packages repo)
+RUN <<'EOF'
+git init -q "$SPACK_ROOT"
+git -C "$SPACK_ROOT" fetch -q --depth 1 \
+  "https://github.com/${SPACK_REPO}.git" \
+  "${SPACK_REF}"
+git -C "$SPACK_ROOT" checkout -q --detach FETCH_HEAD
+spack repo set --destination "${SPACK_REF}" builtin
+EOF
+
+#-------------------------------------#
+# Spack package-dependent layers
+#-------------------------------------#
+
+ARG SPACK_PACKAGES_REPO
+ARG SPACK_PACKAGES_REF
+
+LABEL org.spack.spack-packages-repo="${SPACK_PACKAGES_REPO}" \
+      org.spack.spack-packages-ref="${SPACK_PACKAGES_REF}"
+ENV IMAGE_SPACK_PACKAGES_REF=${SPACK_PACKAGES_REF}
+
+RUN <<'EOF'
+git init -q "$SPACK_PACKAGES_ROOT"
+git -C "$SPACK_PACKAGES_ROOT" fetch -q --depth 1 \
+  "https://github.com/${SPACK_PACKAGES_REPO}.git" \
+  "${SPACK_PACKAGES_REF}"
+git -C "$SPACK_PACKAGES_ROOT" checkout -q --detach FETCH_HEAD
+spack bootstrap now
+EOF
 
 #-----------------------------------------------------------------------------#
 # Buildcache update
