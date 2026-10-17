@@ -238,6 +238,7 @@ endforeach()
 #-----------------------------------------------------------------------------#
 
 list(APPEND SOURCES
+  Assert.cc
   AssertIO.json.cc
   Types.cc
   data/Copier.cc
@@ -311,7 +312,6 @@ list(APPEND PRIVATE_DEPS corecel_openmp_obj)
 
 # All these classes depend on MPI if available
 celeritas_add_object_library(corecel_mpi_obj
-  Assert.cc
   io/LogHandlers.cc
   sys/Device.cc
   sys/MpiCommunicator.cc

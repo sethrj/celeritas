@@ -271,36 +271,6 @@
         ::celeritas::unreachable(); \
     } while (0)
 
-/*!
- * \def CELER_MPI_CALL
- *
- * When MPI support is enabled, execute the wrapped statement and throw a
- * RuntimeError if it fails. If MPI is disabled, throw an unconfigured
- * assertion.
- *
- * \note A file that uses this macro must include \c mpi.h.
- *
- * \todo Move to sys/MpiOperations.hh
- */
-#if CELERITAS_USE_MPI
-#    define CELER_MPI_CALL(STATEMENT) \
-        do \
-        { \
-            int mpi_result_ = (STATEMENT); \
-            if (CELER_UNLIKELY(mpi_result_ != MPI_SUCCESS)) \
-            { \
-                CELER_RUNTIME_FAIL_( \
-                    "MPI", mpi_error_to_string(mpi_result_), #STATEMENT); \
-            } \
-        } while (0)
-#else
-#    define CELER_MPI_CALL(STATEMENT) \
-        do \
-        { \
-            CELER_NOT_CONFIGURED("MPI"); \
-        } while (0)
-#endif
-
 namespace celeritas
 {
 //---------------------------------------------------------------------------//
@@ -346,9 +316,6 @@ struct RuntimeErrorDetails
 
 // Get a pretty string version of a debug error
 char const* to_cstring(DebugErrorType which);
-
-// Get an MPI error string
-std::string mpi_error_to_string(int);
 
 // Throw a debug error
 [[noreturn]] void throw_debug_error(DebugErrorDetails&&);
