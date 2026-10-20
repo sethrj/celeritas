@@ -22,8 +22,8 @@ spack:
     - googletest
     - nlohmann-json
     # HIP/ROCm requirements
-    - hip # Will be duplicated by `spack add` but with version
     - hiprand +rocm
     - hipcub +rocm
     - rocthrust
     - roctracer-dev # Optional but useful
+    # NOTE: add version-dependent HIP

@@ -29,9 +29,10 @@ CXXSTD=17 ENV_CI=hip build_spack_env hip@5.7.1
 
 # build-spack-hip
 for HIP_VERSION in 7.14.0 6.4.3; do
-  CXXSTD=20 ENV_CI=hip build_spack_env hip@${HIP_VERSION}
+  CXXSTD=20 ENV_CI=rocm build_spack_env hip@${HIP_VERSION}
 done
-CXXSTD=17 ENV_CI=hip build_spack_env hip@5.7.1
+CXXSTD=17 ENV_CI=rocm build_spack_env hip@5.7.1
+return
 
 # build-spack
 for G4_VERSION in 11.3 11.3+vecgeom 11.2 11.1 11.0 10.7; do
