@@ -13,7 +13,7 @@
 #include <vector>
 
 #include "corecel/Assert.hh"
-#include "corecel/Macros.hh"
+#include "corecel/cont/ScopedSwap.hh"
 #include "corecel/io/LoggerTypes.hh"
 
 namespace celeritas
@@ -21,6 +21,32 @@ namespace celeritas
 class Logger;
 namespace test
 {
+namespace detail
+{
+struct ScopedLogResult
+{
+    LogLevel min_level{LogLevel::warning};
+    int float_digits{4};
+    std::vector<std::string> messages;
+    std::vector<std::string> levels;
+};
+
+class ScopedLogHandler
+{
+  public:
+    explicit ScopedLogHandler(std::shared_ptr<ScopedLogResult> result)
+        : result_{std::move(result)}
+    {
+    }
+
+    void operator()(LogProvenance, LogLevel, std::string);
+
+  private:
+    std::shared_ptr<ScopedLogResult> result_;
+    std::mutex mutex_;
+};
+}  // namespace detail
+
 //---------------------------------------------------------------------------//
 /*!
  * Log handle for saving messages for testing.
@@ -33,11 +59,6 @@ namespace test
  *
  * Messages may be written concurrently from multiple threads, but the
  * accessors must not be called while other threads are still logging.
- *
- * \todo The move constructor is subtly broken: the logger retains a pointer
- * to the moved-from object, which may result in use-after-free. Break this
- * into a \c shared_ptr<ScopedLogResult>, copyable \c ScopedLogHandler, and a
- * generic \c ScopedExchange object.
  *
  * \par Example:
  * \code
@@ -78,13 +99,13 @@ class ScopedLogStorer
     void operator()(LogProvenance, LogLevel lev, std::string msg);
 
     //! Whether no messages were stored
-    bool empty() const { return messages_.empty(); }
+    bool empty() const { return result_->messages.empty(); }
 
     //! Get saved messages
-    VecString const& messages() const { return messages_; }
+    VecString const& messages() const { return result_->messages; }
 
     //! Get corresponding log levels
-    VecString const& levels() const { return levels_; }
+    VecString const& levels() const { return result_->levels; }
 
     // Delete messages that contain a certain string
     void remove_if_contains(std::string const& s);
@@ -95,34 +116,31 @@ class ScopedLogStorer
     //! Clear results
     void clear()
     {
-        messages_.clear();
-        levels_.clear();
+        result_->messages.clear();
+        result_->levels.clear();
     }
 
     //! Get the minimum level being recorded
-    LogLevel level() const { return min_level_; }
+    LogLevel level() const { return result_->min_level; }
 
     //! Change the level to record
-    void level(LogLevel lev) { min_level_ = lev; }
+    void level(LogLevel lev) { result_->min_level = lev; }
 
     //! Get the minimum level being recorded
-    int float_digits() const { return float_digits_; }
+    int float_digits() const { return result_->float_digits; }
 
     //! Change the level to record
     void float_digits(int fd)
     {
         CELER_EXPECT(fd >= 0);
-        float_digits_ = fd;
+        result_->float_digits = fd;
     }
 
   private:
     Logger* logger_{nullptr};
-    std::unique_ptr<Logger> saved_logger_;
-    LogLevel min_level_{LogLevel::warning};
-    int float_digits_{4};
-    VecString messages_;
-    VecString levels_;
-    std::unique_ptr<std::mutex> mutex_;
+    std::shared_ptr<detail::ScopedLogResult> result_
+        = std::make_shared<detail::ScopedLogResult>();
+    std::unique_ptr<ScopedSwap<Logger>> logger_swap_;
 };
 
 // Print expected results

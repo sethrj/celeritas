@@ -12,10 +12,10 @@
 
 #include "corecel/Config.hh"
 
-#include "corecel/Assert.hh"
 #include "corecel/Macros.hh"
 
 class G4VExceptionHandler;
+class G4StateManager;
 
 namespace celeritas
 {
@@ -56,8 +56,9 @@ class ScopedGeantExceptionHandler
 
   private:
 #if CELERITAS_USE_GEANT4
-    G4VExceptionHandler* previous_{nullptr};
+    class ExceptionHandlerSwap;
     std::unique_ptr<G4VExceptionHandler> current_;
+    std::unique_ptr<ExceptionHandlerSwap> handler_swap_;
 #endif
 };
 

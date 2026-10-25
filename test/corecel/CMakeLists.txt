@@ -22,6 +22,7 @@ celeritas_setup_tests(SERIAL
 # TESTS
 #-----------------------------------------------------------------------------#
 celeritas_add_test(StringSimplifier.test.cc)
+celeritas_add_test(ScopedLogStorer.test.cc)
 
 celeritas_add_test(Assert.test.cc
   ENVIRONMENT "CELER_COLOR=1;CELER_LOG=debug"
@@ -34,6 +35,7 @@ celeritas_add_test(Types.test.cc)
 celeritas_add_test(cont/Array.test.cc)
 celeritas_add_test(cont/LdgSpan.test.cc)
 celeritas_add_test(cont/InitializedValue.test.cc)
+celeritas_add_test(cont/ScopedSwap.test.cc)
 celeritas_add_test(cont/IdStack.test.cc)
 celeritas_add_test(cont/Span.test.cc)
 celeritas_add_test(cont/LabelIdMultiMap.test.cc)
