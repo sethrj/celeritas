@@ -7,6 +7,7 @@
 #include "ScopedLogStorer.hh"
 
 #include <iostream>
+#include <memory>
 #include <regex>
 
 #include "corecel/io/ColorUtils.hh"
@@ -39,9 +40,11 @@ ScopedLogStorer::ScopedLogStorer(Logger* orig, LogLevel min_level)
 {
     CELER_EXPECT(logger_);
     CELER_EXPECT(min_level != LogLevel::size_);
-    // Create a new logger that calls our operator(), replace orig and store
-    saved_logger_ = std::make_unique<Logger>(
-        std::exchange(*logger_, Logger{std::ref(*this), LogLevel::debug}));
+    result_ = std::make_shared<ScopedLogResult>();
+    scoped_logger_ = std::make_unique<ScopedSwap<Logger>>(
+        logger_,
+        Logger{LogHandler{ScopedLogHandler{result_, min_level}},
+               LogLevel::debug});
 }
 
 //---------------------------------------------------------------------------//
@@ -60,16 +63,8 @@ ScopedLogStorer::ScopedLogStorer(Logger* orig)
 ScopedLogStorer::~ScopedLogStorer() = default;
 
 //---------------------------------------------------------------------------//
-//! Save a log message
-void ScopedLogStorer::operator()(
-    LogProvenance prov, LogLevel lev, std::string msg)
-{
-    detail::ScopedLogHandler{result_}(prov, lev, std::move(msg));
-}
-
-//---------------------------------------------------------------------------//
 //! Save a log message through the shared result handler
-void detail::ScopedLogHandler::operator()(
+void ScopedLogHandler::operator()(
     LogProvenance prov, LogLevel lev, std::string msg)
 {
     static LogLevel const debug_level
@@ -101,15 +96,15 @@ void detail::ScopedLogHandler::operator()(
         }
     }
 
-    if (lev < result_->min_level)
+    if (lev < min_level_)
     {
         return;
     }
 
-    StringSimplifier simplify{result_->float_digits};
+    msg = StringSimplifier{float_digits_}(std::move(msg));
 
-    std::lock_guard<std::mutex> scoped_lock{*mutex_};
-    result_->messages.push_back(simplify(std::move(msg)));
+    std::lock_guard<std::mutex> scoped_lock{result_->mutex_};
+    result_->messages.emplace_back(std::move(msg));
     result_->levels.push_back(to_cstring(lev));
 }
 

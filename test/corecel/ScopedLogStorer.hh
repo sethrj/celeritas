@@ -21,31 +21,57 @@ namespace celeritas
 class Logger;
 namespace test
 {
-namespace detail
-{
+//---------------------------------------------------------------------------//
+
 struct ScopedLogResult
 {
-    LogLevel min_level{LogLevel::warning};
-    int float_digits{4};
     std::vector<std::string> messages;
     std::vector<std::string> levels;
+
+    //! Clear results
+    void clear()
+    {
+        messages.clear();
+        levels.clear();
+    }
+
+    std::mutex mutex_;
 };
 
+//---------------------------------------------------------------------------//
 class ScopedLogHandler
 {
   public:
-    explicit ScopedLogHandler(std::shared_ptr<ScopedLogResult> result)
-        : result_{std::move(result)}
+    ScopedLogHandler(std::shared_ptr<ScopedLogResult> result,
+                     LogLevel min_level)
+        : result_{std::move(result)}, min_level_(min_level)
     {
     }
 
+    //! Write a log message
     void operator()(LogProvenance, LogLevel, std::string);
+
+    //! Get the minimum level being recorded
+    LogLevel level() const { return min_level_; }
+
+    //! Change the level to record
+    void level(LogLevel lev) { min_level_ = lev; }
+
+    //! Get the minimum level being recorded
+    int float_digits() const { return float_digits_; }
+
+    //! Change the level to record
+    void float_digits(int fd)
+    {
+        CELER_EXPECT(fd >= 0);
+        float_digits_ = fd;
+    }
 
   private:
     std::shared_ptr<ScopedLogResult> result_;
-    std::mutex mutex_;
+    LogLevel min_level_{LogLevel::warning};
+    int float_digits_{4};
 };
-}  // namespace detail
 
 //---------------------------------------------------------------------------//
 /*!
@@ -95,9 +121,6 @@ class ScopedLogStorer
     // Restore original logger on destruction
     ~ScopedLogStorer();
 
-    // Save a log message
-    void operator()(LogProvenance, LogLevel lev, std::string msg);
-
     //! Whether no messages were stored
     bool empty() const { return result_->messages.empty(); }
 
@@ -114,33 +137,12 @@ class ScopedLogStorer
     void print_expected() const;
 
     //! Clear results
-    void clear()
-    {
-        result_->messages.clear();
-        result_->levels.clear();
-    }
-
-    //! Get the minimum level being recorded
-    LogLevel level() const { return result_->min_level; }
-
-    //! Change the level to record
-    void level(LogLevel lev) { result_->min_level = lev; }
-
-    //! Get the minimum level being recorded
-    int float_digits() const { return result_->float_digits; }
-
-    //! Change the level to record
-    void float_digits(int fd)
-    {
-        CELER_EXPECT(fd >= 0);
-        result_->float_digits = fd;
-    }
+    void clear() { result_->clear(); }
 
   private:
     Logger* logger_{nullptr};
-    std::shared_ptr<detail::ScopedLogResult> result_
-        = std::make_shared<detail::ScopedLogResult>();
-    std::unique_ptr<ScopedSwap<Logger>> logger_swap_;
+    std::shared_ptr<ScopedLogResult> result_;
+    std::unique_ptr<ScopedSwap<Logger>> scoped_logger_;
 };
 
 // Print expected results

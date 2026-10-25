@@ -15,7 +15,6 @@
 #include <G4VExceptionHandler.hh>
 
 #include "corecel/Assert.hh"
-#include "corecel/cont/ScopedSwap.hh"
 #include "corecel/io/Logger.hh"
 
 namespace celeritas
@@ -160,47 +159,6 @@ G4bool GeantExceptionHandler::Notify(char const* origin_of_exception,
 //---------------------------------------------------------------------------//
 }  // namespace
 
-class ScopedGeantExceptionHandler::ExceptionHandlerSwap
-{
-  private:
-    struct Setter
-    {
-        G4StateManager* state_manager;
-
-        void operator()(G4VExceptionHandler* handler) const noexcept
-        {
-            state_manager->SetExceptionHandler(handler);
-        }
-    };
-
-  public:
-    ExceptionHandlerSwap(G4StateManager* state_manager,
-                         G4VExceptionHandler* previous,
-                         G4VExceptionHandler* current)
-        : replacement_{current}
-        , swap_{previous, current, Setter{state_manager}}
-    {
-    }
-
-    ~ExceptionHandlerSwap()
-    {
-        if (swap_.active()
-            && G4StateManager::GetStateManager()->GetExceptionHandler()
-                   == replacement_)
-        {
-            swap_.restore();
-        }
-        else
-        {
-            swap_.dismiss();
-        }
-    }
-
-  private:
-    G4VExceptionHandler* replacement_;
-    ScopedSwap<G4VExceptionHandler*, Setter> swap_;
-};
-
 //---------------------------------------------------------------------------//
 /*!
  * Install the Celeritas Geant4 exception handler.
@@ -215,14 +173,12 @@ ScopedGeantExceptionHandler::ScopedGeantExceptionHandler(
     // Get thread-local state manager, to which the handler assigns itself
     auto* state_mgr = G4StateManager::GetStateManager();
     CELER_ASSERT(state_mgr);
-    auto* previous = state_mgr->GetExceptionHandler();
+    previous_ = state_mgr->GetExceptionHandler();
     if (!handle)
     {
         handle = std::rethrow_exception;
     }
     current_ = std::make_unique<GeantExceptionHandler>(std::move(handle));
-    handler_swap_ = std::make_unique<ExceptionHandlerSwap>(
-        state_mgr, previous, current_.get());
     CELER_ENSURE(state_mgr->GetExceptionHandler() == current_.get());
 }
 
@@ -234,6 +190,11 @@ ScopedGeantExceptionHandler::~ScopedGeantExceptionHandler()
 {
     CELER_LOG_LOCAL(debug) << "Destroying scoped G4 exception handler (depth "
                            << --local_eh_depth() << ")";
+    auto* state_mgr = G4StateManager::GetStateManager();
+    if (state_mgr->GetExceptionHandler() == current_.get())
+    {
+        state_mgr->SetExceptionHandler(previous_);
+    }
 }
 
 //---------------------------------------------------------------------------//

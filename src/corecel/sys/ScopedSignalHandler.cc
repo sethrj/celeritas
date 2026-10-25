@@ -12,7 +12,7 @@
 #include <string>
 
 #include "corecel/Assert.hh"
-#include "corecel/cont/ScopedSwap.hh"
+#include "corecel/io/Logger.hh"
 
 #include "Environment.hh"
 
@@ -153,10 +153,7 @@ ScopedSignalHandler::~ScopedSignalHandler()
  */
 ScopedSignalHandler::ScopedSignalHandler(ScopedSignalHandler&& other) noexcept
 {
-    ScopedSwap mask{&mask_, std::exchange(other.mask_, 0)};
-    mask.dismiss();
-    ScopedSwap handles{&handles_, std::move(other.handles_)};
-    handles.dismiss();
+    this->swap(other);
 }
 
 //---------------------------------------------------------------------------//

@@ -15,25 +15,27 @@ namespace celeritas
 {
 namespace detail
 {
+//---------------------------------------------------------------------------//
+/*!
+ * Default setter for ScopedSwap.
+ */
 template<class T>
-class ScopedSwapPointerSetter
+class DefaultScopedSetter
 {
   public:
-    explicit ScopedSwapPointerSetter(T* target) : target_{target} {}
+    DefaultScopedSetter() = default;
+
+    explicit DefaultScopedSetter(T* target) : target_{target} {}
 
     void operator()(T value) const noexcept { *target_ = value; }
 
-  private:
-    T* target_;
-};
+    explicit operator bool() const { return static_cast<bool>(target_); }
 
-template<class T>
-T const& scoped_swap_target(T* target)
-{
-    CELER_EXPECT(target);
-    return *target;
-}
+  private:
+    T* target_ = nullptr;
+};
 }  // namespace detail
+
 //---------------------------------------------------------------------------//
 /*!
  * Swap a value into place and restore the original value on destruction.
@@ -50,43 +52,47 @@ T const& scoped_swap_target(T* target)
     // value == 0
    \endcode
  */
-template<class T, class Setter = detail::ScopedSwapPointerSetter<T>>
+template<class T, class Setter = detail::DefaultScopedSetter<T>>
 class ScopedSwap
 {
+    static constexpr bool nothrow_setter
+        = std::is_nothrow_invocable_v<Setter&, T>;
+    static constexpr bool nothrow_constructible
+        = std::is_nothrow_move_constructible_v<T>
+          && std::is_nothrow_move_constructible_v<Setter>;
+
   public:
     // Swap in a replacement value
-    ScopedSwap(T* target, T replacement) noexcept(
-        std::is_nothrow_invocable_v<Setter&, T>);
+    ScopedSwap(T* target, T replacement) noexcept(nothrow_setter);
 
     // Set a replacement value through a custom setter
     ScopedSwap(T original, T replacement, Setter setter) noexcept(
-        std::is_nothrow_move_constructible_v<Setter>
-        && std::is_nothrow_invocable_v<Setter&, T>);
+        nothrow_constructible && nothrow_setter);
 
     // Restore the target on destruction
-    ~ScopedSwap() noexcept(std::is_nothrow_invocable_v<Setter&, T>);
+    ~ScopedSwap() noexcept(nothrow_setter);
 
     // Transfer restoration responsibility
-    ScopedSwap(ScopedSwap&& other) noexcept(
-        std::is_nothrow_move_constructible_v<T>
-        && std::is_nothrow_move_constructible_v<Setter>);
+    ScopedSwap(ScopedSwap&& other) noexcept(nothrow_constructible);
     ScopedSwap(ScopedSwap const&) = delete;
     ScopedSwap& operator=(ScopedSwap&&) = delete;
     ScopedSwap& operator=(ScopedSwap const&) = delete;
 
-    //! Keep the replacement value without restoring the target
-    void dismiss() noexcept { active_ = false; }
-
     //! Whether restoration is still active
-    bool active() const noexcept { return active_; }
+    bool active() const noexcept { return static_cast<bool>(setter_); }
 
     //! Restore the original value immediately
-    void restore() noexcept(std::is_nothrow_invocable_v<Setter&, T>);
+    void restore() noexcept(nothrow_setter);
 
   private:
     Setter setter_;
     T original_;
-    bool active_{true};
+
+    static T const& checked_target(T* t)
+    {
+        CELER_EXPECT(t);
+        return *t;
+    }
 };
 
 //---------------------------------------------------------------------------//
@@ -94,9 +100,9 @@ class ScopedSwap
 //---------------------------------------------------------------------------//
 //! Swap in a replacement value
 template<class T, class Setter>
-ScopedSwap<T, Setter>::ScopedSwap(T* target, T replacement) noexcept(
-    std::is_nothrow_invocable_v<Setter&, T>)
-    : setter_{target}, original_{detail::scoped_swap_target(target)}
+ScopedSwap<T, Setter>::ScopedSwap(T* target,
+                                  T replacement) noexcept(nothrow_setter)
+    : setter_{target}, original_{checked_target(target)}
 {
     setter_(std::move(replacement));
 }
@@ -104,10 +110,8 @@ ScopedSwap<T, Setter>::ScopedSwap(T* target, T replacement) noexcept(
 //! Set a replacement value through a custom setter
 template<class T, class Setter>
 ScopedSwap<T, Setter>::ScopedSwap(
-    T original,
-    T replacement,
-    Setter setter) noexcept(std::is_nothrow_move_constructible_v<Setter>
-                            && std::is_nothrow_invocable_v<Setter&, T>)
+    T original, T replacement, Setter setter) noexcept(nothrow_constructible
+                                                       && nothrow_setter)
     : setter_{std::move(setter)}, original_{std::move(original)}
 {
     setter_(std::move(replacement));
@@ -115,33 +119,31 @@ ScopedSwap<T, Setter>::ScopedSwap(
 
 //! Restore the target on destruction
 template<class T, class Setter>
-ScopedSwap<T, Setter>::~ScopedSwap() noexcept(
-    std::is_nothrow_invocable_v<Setter&, T>)
+ScopedSwap<T, Setter>::~ScopedSwap() noexcept(nothrow_setter)
 {
     this->restore();
-}
-
-//! Restore the original value immediately
-template<class T, class Setter>
-void ScopedSwap<T, Setter>::restore() noexcept(
-    std::is_nothrow_invocable_v<Setter&, T>)
-{
-    if (active_)
-    {
-        setter_(std::move(original_));
-        active_ = false;
-    }
 }
 
 //! Transfer restoration responsibility
 template<class T, class Setter>
 ScopedSwap<T, Setter>::ScopedSwap(ScopedSwap&& other) noexcept(
-    std::is_nothrow_move_constructible_v<T>
-    && std::is_nothrow_move_constructible_v<Setter>)
-    : setter_{std::move(other.setter_)}
+    nothrow_constructible)
+    : setter_{std::exchange(other.setter_, {})}
     , original_{std::move(other.original_)}
-    , active_{std::exchange(other.active_, false)}
 {
+    CELER_ENSURE(!other.active());
+}
+
+//---------------------------------------------------------------------------//
+//! Restore the original value immediately
+template<class T, class Setter>
+void ScopedSwap<T, Setter>::restore() noexcept(nothrow_setter)
+{
+    if (this->active())
+    {
+        setter_(std::move(original_));
+        setter_ = {};
+    }
 }
 
 //---------------------------------------------------------------------------//

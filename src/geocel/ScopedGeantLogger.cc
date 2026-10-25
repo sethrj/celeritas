@@ -26,7 +26,6 @@
 #endif
 
 #include "corecel/Assert.hh"
-#include "corecel/cont/ScopedSwap.hh"
 #include "corecel/io/Logger.hh"
 #include "corecel/io/StringUtils.hh"
 
@@ -141,32 +140,6 @@ SGLState& sgl_state()
     return result;
 }
 
-#if CELER_G4SSBUF
-struct G4CoutDestinationSetter
-{
-    void operator()(G4coutDestination* destination) const noexcept
-    {
-        G4coutbuf.SetDestination(destination);
-    }
-};
-
-struct G4CerrDestinationSetter
-{
-    void operator()(G4coutDestination* destination) const noexcept
-    {
-        G4cerrbuf.SetDestination(destination);
-    }
-};
-#else
-struct G4DestinationSetter
-{
-    void operator()(G4coutDestination* destination) const noexcept
-    {
-        G4iosSetDestination(destination);
-    }
-};
-#endif
-
 //---------------------------------------------------------------------------//
 }  // namespace
 
@@ -192,13 +165,8 @@ class ScopedGeantLogger::StreamDestination final : public G4coutDestination
   private:
     Logger& celer_log_;
 #if CELER_G4SSBUF
-    using CoutSwap = ScopedSwap<G4coutDestination*, G4CoutDestinationSetter>;
-    using CerrSwap = ScopedSwap<G4coutDestination*, G4CerrDestinationSetter>;
-    std::unique_ptr<CoutSwap> cout_swap_;
-    std::unique_ptr<CerrSwap> cerr_swap_;
-#else
-    using DestinationSwap = ScopedSwap<G4coutDestination*, G4DestinationSetter>;
-    std::unique_ptr<DestinationSwap> destination_swap_;
+    G4coutDestination* saved_cout_{nullptr};
+    G4coutDestination* saved_cerr_{nullptr};
 #endif
 };
 
@@ -223,14 +191,13 @@ ScopedGeantLogger::StreamDestination::StreamDestination(Logger& celer_log)
     }
 
 #if CELER_G4SSBUF
-    cout_swap_ = std::make_unique<CoutSwap>(
-        G4coutbuf.GetDestination(), this, G4CoutDestinationSetter{});
-    cerr_swap_ = std::make_unique<CerrSwap>(
-        G4cerrbuf.GetDestination(), this, G4CerrDestinationSetter{});
+    saved_cout_ = G4coutbuf.GetDestination();
+    saved_cerr_ = G4cerrbuf.GetDestination();
+    G4coutbuf.SetDestination(this);
+    G4cerrbuf.SetDestination(this);
 #else
     // See Geant4 change global-V11-01-01
-    destination_swap_ = std::make_unique<DestinationSwap>(
-        nullptr, this, G4DestinationSetter{});
+    G4iosSetDestination(this);
 #endif
 }
 
@@ -238,7 +205,15 @@ ScopedGeantLogger::StreamDestination::StreamDestination(Logger& celer_log)
 /*!
  * Restore iostream buffers on destruction.
  */
-ScopedGeantLogger::StreamDestination::~StreamDestination() = default;
+ScopedGeantLogger::StreamDestination::~StreamDestination()
+{
+#if CELER_G4SSBUF
+    G4coutbuf.SetDestination(saved_cout_);
+    G4cerrbuf.SetDestination(saved_cerr_);
+#else
+    G4iosSetDestination(nullptr);
+#endif
+}
 
 //---------------------------------------------------------------------------//
 /*!
