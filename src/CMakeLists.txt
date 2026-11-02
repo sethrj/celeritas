@@ -164,6 +164,9 @@ celer_add_ext_library(Thrust)
 if(CELERITAS_USE_CUDA)
   # Perlmutter with RDC enabled complains about missing dlclose
   target_link_libraries(ExtThrust INTERFACE ${CMAKE_DL_LIBS})
+  if(TARGET Thrust::Thrust)
+    target_include_directories(ExtThrust INTERFACE "${_THRUST_INCLUDE_DIR}")
+  endif()
 endif()
 
 celeritas_add_interface_library(ExtGeant4Geo)
