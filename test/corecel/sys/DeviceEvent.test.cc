@@ -57,9 +57,6 @@ void set_value(void* user_data)
 
 TEST_F(DeviceEventTest, host)
 {
-    Stream stream{nullptr};
-    EXPECT_FALSE(stream);
-
     DeviceEvent event{nullptr};
     EXPECT_FALSE(event);
 
@@ -67,7 +64,6 @@ TEST_F(DeviceEventTest, host)
     EXPECT_TRUE(event.ready());
 
     // Test implicit construction
-    stream = nullptr;
     event = nullptr;
 }
 

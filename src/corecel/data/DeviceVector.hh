@@ -9,6 +9,7 @@
 #include "corecel/Types.hh"
 #include "corecel/cont/InitializedValue.hh"
 #include "corecel/cont/Span.hh"
+#include "corecel/sys/Device.hh"
 #include "corecel/sys/ThreadId.hh"
 
 #include "DeviceAllocation.hh"
@@ -61,11 +62,17 @@ class DeviceVector
     // Construct with no elements
     explicit DeviceVector(StreamId stream);
 
+    // Construct with no elements and an optional stream owner
+    explicit DeviceVector(std::shared_ptr<Stream> stream);
+
     // Construct with a number of elements
     explicit DeviceVector(size_type count);
 
     // Construct with a number of elements
     DeviceVector(size_type count, StreamId stream);
+
+    // Construct with a number of elements and an optional stream owner
+    DeviceVector(size_type count, std::shared_ptr<Stream> stream);
 
     // Swap with another vector
     inline void swap(DeviceVector& other) noexcept;
@@ -117,7 +124,18 @@ inline void swap(DeviceVector<T>& a, DeviceVector<T>& b) noexcept;
  * Construct with a stream.
  */
 template<class T>
-DeviceVector<T>::DeviceVector(StreamId stream) : allocation_{stream}, size_{0}
+DeviceVector<T>::DeviceVector(StreamId stream)
+    : DeviceVector{stream ? device().stream_owner(stream) : nullptr}
+{
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Construct with a stream owner.
+ */
+template<class T>
+DeviceVector<T>::DeviceVector(std::shared_ptr<Stream> stream)
+    : allocation_{std::move(stream)}, size_{0}
 {
 }
 
@@ -139,16 +157,20 @@ DeviceVector<T>::DeviceVector(size_type count)
  */
 template<class T>
 DeviceVector<T>::DeviceVector(size_type count, StreamId stream)
+    : DeviceVector{count, stream ? device().stream_owner(stream) : nullptr}
 {
-    if (stream)
-    {
-        allocation_ = DeviceAllocation{count * sizeof(T), stream};
-    }
-    else
-    {
-        allocation_ = DeviceAllocation{count * sizeof(T)};
-    }
-    size_ = count;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Construct with a number of allocated elements and an optional stream owner.
+ *
+ * A null owner selects synchronous allocation and copy operations.
+ */
+template<class T>
+DeviceVector<T>::DeviceVector(size_type count, std::shared_ptr<Stream> stream)
+    : allocation_{count * sizeof(T), std::move(stream)}, size_{count}
+{
 }
 
 //---------------------------------------------------------------------------//
@@ -176,7 +198,7 @@ void DeviceVector<T>::assign(T const* first, T const* last)
     if (new_size > size_ && new_size * sizeof(T) > allocation_.size())
     {
         // Reallocate
-        *this = DeviceVector<T>(new_size, allocation_.stream_id());
+        *this = DeviceVector<T>(new_size, allocation_.stream_owner());
     }
     else
     {

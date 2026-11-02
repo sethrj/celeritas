@@ -16,6 +16,7 @@
 
 #include "Device.hh"
 #include "Stream.hh"
+#include "StreamRuntime.hh"
 
 namespace celeritas
 {
@@ -25,7 +26,7 @@ namespace celeritas
  */
 struct DeviceEvent::Impl
 {
-    EventT event{nullptr};
+    detail::RuntimeEventT event{nullptr};
 };
 
 //---------------------------------------------------------------------------//
@@ -62,7 +63,7 @@ DeviceEvent::DeviceEvent(Device const& d)
 {
     if (d)
     {
-        EventT event;
+        detail::RuntimeEventT event;
         CELER_DEVICE_API_CALL(EventCreateWithFlags(
             &event, CELER_DEVICE_API_SYMBOL(EventDisableTiming)));
         impl_.reset(new Impl{event});
@@ -85,12 +86,13 @@ DeviceEvent::DeviceEvent(std::nullptr_t)
  *
  * This provides direct access to the underlying event for advanced use cases.
  */
-auto DeviceEvent::get() const -> EventT
+detail::RuntimeEventT detail::DeviceEventRuntimeAccess::get(
+    DeviceEvent const& event)
 {
-    if (!impl_)
+    if (!event)
         return nullptr;
 
-    return impl_->event;
+    return event.impl_->event;
 }
 
 //---------------------------------------------------------------------------//
@@ -104,7 +106,8 @@ auto DeviceEvent::get() const -> EventT
 void DeviceEvent::record(Stream const& s)
 {
     CELER_EXPECT(*this);
-    CELER_DEVICE_API_CALL(EventRecord(impl_->event, s.get()));
+    CELER_DEVICE_API_CALL(
+        EventRecord(impl_->event, detail::StreamRuntimeAccess::get(s)));
 #if !CELER_USE_DEVICE
     CELER_DISCARD(s);
 #endif

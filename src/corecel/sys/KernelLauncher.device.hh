@@ -17,6 +17,7 @@
 #include "Device.hh"
 #include "KernelParamCalculator.device.hh"
 #include "Stream.hh"
+#include "StreamRuntime.hh"
 #include "ThreadId.hh"
 
 #include "detail/KernelLauncherImpl.device.hh"
@@ -104,10 +105,10 @@ void KernelLauncher<F>::operator()(
     if (!threads.empty())
     {
         ScopedProfiling profile_this_{name_};
-        using StreamT = CELER_DEVICE_API_SYMBOL(Stream_t);
-        StreamT stream = stream_id
-                             ? celeritas::device().stream(stream_id).get()
-                             : nullptr;
+        detail::RuntimeStreamT stream
+            = stream_id ? detail::StreamRuntimeAccess::get(
+                              celeritas::device().stream(stream_id))
+                        : nullptr;
         auto config = calc_launch_params_(threads.size());
         detail::launch_action_impl<F>
             <<<config.blocks_per_grid, config.threads_per_block, 0, stream>>>(

@@ -15,6 +15,7 @@
 
 #include "Device.hh"
 #include "Stream.hh"
+#include "StreamRuntime.hh"
 #include "ThreadId.hh"
 
 #include "detail/AsyncMemoryResource.hh"  // IWYU pragma: keep
@@ -40,7 +41,7 @@ inline auto& thrust_execute()
  */
 inline auto thrust_execute_on(StreamId stream_id)
 {
-    using Alloc = thrust::mr::allocator<char, Stream::ResourceT>;
+    using Alloc = thrust::mr::allocator<char, detail::AsyncMemoryResource>;
     Stream& stream = celeritas::device().stream(stream_id);
 #if THRUST_VERSION >= 101600
     // Newer thrust supports asynchronous par
@@ -49,7 +50,9 @@ inline auto thrust_execute_on(StreamId stream_id)
     // Fall back to synchronous execution
     auto& par_nosync = thrust::CELER_DEVICE_PLATFORM::par;
 #endif
-    return par_nosync(Alloc(&stream.memory_resource())).on(stream.get());
+    return par_nosync(
+               Alloc(&detail::StreamRuntimeAccess::memory_resource(stream)))
+        .on(detail::StreamRuntimeAccess::get(stream));
 }
 
 //---------------------------------------------------------------------------//

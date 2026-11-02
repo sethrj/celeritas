@@ -14,6 +14,7 @@
 #include "corecel/Macros.hh"
 #include "corecel/sys/Device.hh"
 #include "corecel/sys/Stream.hh"
+#include "corecel/sys/StreamRuntime.hh"
 
 namespace celeritas
 {
@@ -83,8 +84,11 @@ void copy_bytes_async(MemSpace dstmem,
         return;
     }
     CELER_DISCARD(stream);
-    CELER_DEVICE_API_CALL(MemcpyAsync(
-        dst, src, count, to_memcpy_kind(srcmem, dstmem), stream.get()));
+    CELER_DEVICE_API_CALL(MemcpyAsync(dst,
+                                      src,
+                                      count,
+                                      to_memcpy_kind(srcmem, dstmem),
+                                      StreamRuntimeAccess::get(stream)));
 }
 
 //---------------------------------------------------------------------------//
@@ -108,12 +112,12 @@ void copy_bytes_async(MemSpace dstmem,
         return;
     }
     CELER_DISCARD(stream);
-    CELER_DEVICE_API_CALL(
-        MemcpyAsync(dst,
-                    src,
-                    count,
-                    to_memcpy_kind(srcmem, dstmem),
-                    celeritas::device().stream(stream).get()));
+    CELER_DEVICE_API_CALL(MemcpyAsync(
+        dst,
+        src,
+        count,
+        to_memcpy_kind(srcmem, dstmem),
+        StreamRuntimeAccess::get(celeritas::device().stream(stream))));
 }
 
 //---------------------------------------------------------------------------//

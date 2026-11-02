@@ -21,6 +21,7 @@
 #include "corecel/sys/Device.hh"
 #include "corecel/sys/KernelParamCalculator.device.hh"
 #include "corecel/sys/Stream.hh"
+#include "corecel/sys/StreamRuntime.hh"
 #include "corecel/sys/Thrust.device.hh"
 
 namespace celeritas
@@ -89,7 +90,8 @@ void sort_impl(TrackSlots const& track_slots,
     CELER_LAUNCH_KERNEL_TEMPLATE_1(reorder_ids,
                                    Id,
                                    track_slots.size(),
-                                   celeritas::device().stream(stream_id).get(),
+                                   detail::StreamRuntimeAccess::get(
+                                       celeritas::device().stream(stream_id)),
                                    track_slots.data(),
                                    ids,
                                    make_observer(reordered_ids.data()),
@@ -187,7 +189,8 @@ void count_tracks_per_action(
                  start + offsets.size(),
                  ThreadId{});
     CELER_DEVICE_API_CALL(PeekAtLastError());
-    auto* stream = celeritas::device().stream(states.stream_id).get();
+    auto* stream = detail::StreamRuntimeAccess::get(
+        celeritas::device().stream(states.stream_id));
     CELER_LAUNCH_KERNEL(tracks_per_action,
                         states.size(),
                         stream,

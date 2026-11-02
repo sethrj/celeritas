@@ -42,6 +42,11 @@ CoreState<M>::CoreState(
                    << params.sizes().streams);
     CELER_VALIDATE(num_track_slots > 0, << "number of track slots is not set");
 
+    if (device())
+    {
+        stream_pair_ = device().stream_pair_owner(stream_id);
+    }
+
     ScopedProfiling profile_this{"construct-state"};
 
     states_ = StateDataStore<CoreStateData, M>(

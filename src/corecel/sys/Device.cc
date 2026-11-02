@@ -307,7 +307,17 @@ void Device::create_streams(unsigned int num_streams) const
 
     CELER_LOG(info) << "Creating " << num_streams << " device streams";
     self->streams_.resize(num_streams);
-    self->memcpy_streams_.resize(num_streams);
+    for (unsigned int index = 0; index < num_streams; ++index)
+    {
+        StreamId sid{index};
+        auto& streams = self->streams_[sid.get()];
+        if (!streams)
+        {
+            streams = std::make_shared<StreamPair>(
+                StreamPair{std::make_shared<Stream>(*this),
+                           std::make_shared<Stream>(*this)});
+        }
+    }
 }
 
 //---------------------------------------------------------------------------//
@@ -332,7 +342,6 @@ void Device::destroy_streams() const
         CELER_LOG(debug) << "Destroying streams";
     }
     auto* self = const_cast<Device*>(this);
-    self->memcpy_streams_.clear();
     self->streams_.clear();
 }
 

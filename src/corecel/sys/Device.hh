@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <iosfwd>  // IWYU pragma: keep
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -22,6 +23,13 @@ namespace celeritas
 //---------------------------------------------------------------------------//
 class MpiCommunicator;
 class Stream;
+
+//! An execution stream and its paired data-transfer stream
+struct StreamPair
+{
+    std::shared_ptr<Stream> execution;
+    std::shared_ptr<Stream> memcpy;
+};
 
 //---------------------------------------------------------------------------//
 /*!
@@ -127,6 +135,12 @@ class Device
     // Access the kernel execution stream for a stream ID
     inline Stream& stream(StreamId) const;
 
+    // Get shared ownership of the kernel execution stream
+    inline std::shared_ptr<Stream> stream_owner(StreamId) const;
+
+    // Get shared ownership of the paired execution and data-transfer streams
+    inline std::shared_ptr<StreamPair const> stream_pair_owner(StreamId) const;
+
     // Access the data transfer stream paired with an execution stream
     inline Stream& memcpy_stream(StreamId) const;
 
@@ -147,8 +161,7 @@ class Device
     unsigned int capability_{0};
     unsigned int eu_per_cu_{};
     MapStrInt extra_;
-    std::vector<Stream> streams_;
-    std::vector<Stream> memcpy_streams_;
+    std::vector<std::shared_ptr<StreamPair>> streams_;
 };
 
 //---------------------------------------------------------------------------//
@@ -207,7 +220,30 @@ int Device::device_id() const
 Stream& Device::stream(StreamId id) const
 {
     CELER_EXPECT(id < streams_.size());
-    return const_cast<Stream&>(streams_[id.get()]);
+    CELER_EXPECT(streams_[id.get()]);
+    return *streams_[id.get()]->execution;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Get shared ownership of the kernel execution stream.
+ */
+std::shared_ptr<Stream> Device::stream_owner(StreamId id) const
+{
+    CELER_EXPECT(id < streams_.size());
+    CELER_EXPECT(streams_[id.get()]);
+    return streams_[id.get()]->execution;
+}
+
+//---------------------------------------------------------------------------//
+/*!
+ * Get shared ownership of an execution and data-transfer stream pair.
+ */
+std::shared_ptr<StreamPair const> Device::stream_pair_owner(StreamId id) const
+{
+    CELER_EXPECT(id < streams_.size());
+    CELER_EXPECT(streams_[id.get()]);
+    return streams_[id.get()];
 }
 
 //---------------------------------------------------------------------------//
@@ -221,8 +257,9 @@ Stream& Device::stream(StreamId id) const
  */
 Stream& Device::memcpy_stream(StreamId id) const
 {
-    CELER_EXPECT(id < memcpy_streams_.size());
-    return const_cast<Stream&>(memcpy_streams_[id.get()]);
+    CELER_EXPECT(id < streams_.size());
+    CELER_EXPECT(streams_[id.get()]);
+    return *streams_[id.get()]->memcpy;
 }
 
 //---------------------------------------------------------------------------//

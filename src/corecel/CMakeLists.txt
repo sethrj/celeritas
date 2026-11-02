@@ -287,6 +287,7 @@ list(APPEND SOURCES
   sys/Environment.cc
   # Stream.cc must be listed before KernelRegistry.cc for ordering in Unity builds.
   sys/Stream.cc
+  sys/StreamRuntime.cc
   sys/KernelRegistry.cc
   sys/KernelRegistryIO.json.cc
   sys/ScopedSignalHandler.cc
@@ -379,11 +380,6 @@ if(CELERITAS_USE_HIP)
   if(roctracer_FOUND)
     list(APPEND PRIVATE_DEPS roctracer::roctx)
   endif()
-  # Build some files as HIP due to rocThrust
-  set_source_files_properties(
-    sys/Stream.cc
-    PROPERTIES LANGUAGE HIP
-  )
 endif()
 
 #-----------------------------------------------------------------------------#

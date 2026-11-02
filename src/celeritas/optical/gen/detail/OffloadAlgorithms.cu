@@ -30,6 +30,7 @@
 #include "corecel/sys/Device.hh"
 #include "corecel/sys/ScopedProfiling.hh"
 #include "corecel/sys/Stream.hh"
+#include "corecel/sys/StreamRuntime.hh"
 #include "corecel/sys/Thrust.device.hh"
 
 #if CELERITAS_HAVE_HIPCUB
@@ -92,12 +93,13 @@ void add_pending_photon_count(
     // processed instead of the end of the entries, so we need to pass the end
     // of the distributions (size) minus the starting point, which is offset
     // Compute summation
-    auto cub_error_code = cub::DeviceReduce::Sum(nullptr,
-                                                 temp_storage_bytes,
-                                                 transform,
-                                                 result.data(),
-                                                 size - offset,
-                                                 stream.get());
+    auto cub_error_code
+        = cub::DeviceReduce::Sum(nullptr,
+                                 temp_storage_bytes,
+                                 transform,
+                                 result.data(),
+                                 size - offset,
+                                 StreamRuntimeAccess::get(stream));
     // HIP defines hipCUB functions as [[nodiscard]], but we defer error checks
     CELER_DISCARD(cub_error_code);
     // Note: Reductions are done in place but allocate 1 byte, so this could
@@ -108,7 +110,7 @@ void add_pending_photon_count(
                                             transform,
                                             result.data(),
                                             size - offset,
-                                            stream.get());
+                                            StreamRuntimeAccess::get(stream));
     CELER_DISCARD(cub_error_code);
 
     // Must match variable name in #else below for thrust

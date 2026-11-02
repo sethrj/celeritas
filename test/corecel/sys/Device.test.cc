@@ -52,7 +52,14 @@ TEST_F(DeviceTest, json_output)
         EXPECT_EQ(10u, d.num_streams());
         EXPECT_TRUE(d.stream(StreamId{9}));
         EXPECT_TRUE(d.memcpy_stream(StreamId{9}));
+        auto stream_pair = d.stream_pair_owner(StreamId{9});
+        std::weak_ptr<StreamPair const> weak_pair = stream_pair;
         d.destroy_streams();
+        EXPECT_FALSE(weak_pair.expired());
+        EXPECT_TRUE(stream_pair->execution);
+        EXPECT_TRUE(stream_pair->memcpy);
+        stream_pair.reset();
+        EXPECT_TRUE(weak_pair.expired());
     }
 }
 

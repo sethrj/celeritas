@@ -9,6 +9,7 @@
 #include "corecel/io/Logger.hh"
 
 #include "../Device.hh"
+#include "../StreamRuntime.hh"
 
 namespace celeritas
 {
@@ -55,6 +56,18 @@ void free_async(void* ptr, DeviceStream_t s)
     {
         CELER_DEVICE_API_CALL(Free(ptr));
     }
+}
+
+//---------------------------------------------------------------------------//
+void* StreamRuntimeAccess::create_memory_resource(RuntimeStreamT stream)
+{
+    return new AsyncMemoryResource{stream};
+}
+
+//---------------------------------------------------------------------------//
+void StreamRuntimeAccess::destroy_memory_resource(void* ptr) noexcept
+{
+    delete static_cast<AsyncMemoryResource*>(ptr);
 }
 
 //---------------------------------------------------------------------------//

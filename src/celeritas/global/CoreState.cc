@@ -13,6 +13,7 @@
 #include "corecel/data/Copier.hh"
 #include "corecel/io/Logger.hh"
 #include "corecel/sys/ActionRegistry.hh"
+#include "corecel/sys/Device.hh"
 #include "corecel/sys/ScopedProfiling.hh"
 #include "celeritas/track/CounterAlgorithms.hh"
 #include "celeritas/track/TrackInitParams.hh"
@@ -51,6 +52,11 @@ CoreState<M>::CoreState(
                    << " is out of range: max streams is "
                    << params.sizes().streams);
     CELER_VALIDATE(num_track_slots > 0, << "number of track slots is not set");
+
+    if (device())
+    {
+        stream_pair_ = device().stream_pair_owner(stream_id);
+    }
 
     ScopedProfiling profile_this{"construct-state"};
 

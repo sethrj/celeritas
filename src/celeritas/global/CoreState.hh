@@ -6,6 +6,8 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
+#include <memory>
+
 #include "corecel/Types.hh"
 #include "corecel/data/AsyncSnapshot.hh"
 #include "corecel/data/AuxInterface.hh"
@@ -25,6 +27,7 @@
 namespace celeritas
 {
 class CoreParams;
+struct StreamPair;
 //---------------------------------------------------------------------------//
 /*!
  * Abstract base class for CoreState.
@@ -196,6 +199,8 @@ class CoreState final : public CoreStateInterface
     inline auto& native_action_thread_offsets();
 
   private:
+    std::shared_ptr<StreamPair const> stream_pair_;
+
     // State data
     StateDataStore<CoreStateData, M> states_;
 

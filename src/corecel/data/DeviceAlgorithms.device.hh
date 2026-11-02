@@ -99,23 +99,26 @@ void select_if_async(ObserverPtr<T, MemSpace::device> data,
     // Calling with nullptr returns the amount of working space needed
     std::size_t temp_storage_bytes = 0;
     // HIP defines hipCUB functions as [[nodiscard]], but we defer error checks
-    auto cub_error_code = cub::DeviceSelect::If(nullptr,
-                                                temp_storage_bytes,
-                                                data.get(),
-                                                num_selected.get(),
-                                                num_items,
-                                                pred,
-                                                stream.get());
+    auto cub_error_code
+        = cub::DeviceSelect::If(nullptr,
+                                temp_storage_bytes,
+                                data.get(),
+                                num_selected.get(),
+                                num_items,
+                                pred,
+                                detail::StreamRuntimeAccess::get(stream));
     CELER_DISCARD(cub_error_code);
     // Freed asynchronously on the stream after the algorithm completes
-    DeviceAllocation temp_storage(temp_storage_bytes, stream_id);
-    cub_error_code = cub::DeviceSelect::If(temp_storage.data(),
-                                           temp_storage_bytes,
-                                           data.get(),
-                                           num_selected.get(),
-                                           num_items,
-                                           pred,
-                                           stream.get());
+    DeviceAllocation temp_storage(temp_storage_bytes,
+                                  device().stream_owner(stream_id));
+    cub_error_code
+        = cub::DeviceSelect::If(temp_storage.data(),
+                                temp_storage_bytes,
+                                data.get(),
+                                num_selected.get(),
+                                num_items,
+                                pred,
+                                detail::StreamRuntimeAccess::get(stream));
     CELER_DISCARD(cub_error_code);
     CELER_DEVICE_API_CALL(PeekAtLastError());
 #endif
@@ -158,25 +161,28 @@ void copy_if_async(InputIt input,
 #    endif
     auto& stream = device().stream(stream_id);
     std::size_t temp_storage_bytes = 0;
-    auto cub_error_code = cub::DeviceSelect::If(nullptr,
-                                                temp_storage_bytes,
-                                                input,
-                                                output.get(),
-                                                num_selected.get(),
-                                                num_items,
-                                                pred,
-                                                stream.get());
+    auto cub_error_code
+        = cub::DeviceSelect::If(nullptr,
+                                temp_storage_bytes,
+                                input,
+                                output.get(),
+                                num_selected.get(),
+                                num_items,
+                                pred,
+                                detail::StreamRuntimeAccess::get(stream));
     CELER_DISCARD(cub_error_code);
     // Freed asynchronously on the stream after the algorithm completes
-    DeviceAllocation temp_storage(temp_storage_bytes, stream_id);
-    cub_error_code = cub::DeviceSelect::If(temp_storage.data(),
-                                           temp_storage_bytes,
-                                           input,
-                                           output.get(),
-                                           num_selected.get(),
-                                           num_items,
-                                           pred,
-                                           stream.get());
+    DeviceAllocation temp_storage(temp_storage_bytes,
+                                  device().stream_owner(stream_id));
+    cub_error_code
+        = cub::DeviceSelect::If(temp_storage.data(),
+                                temp_storage_bytes,
+                                input,
+                                output.get(),
+                                num_selected.get(),
+                                num_items,
+                                pred,
+                                detail::StreamRuntimeAccess::get(stream));
     CELER_DISCARD(cub_error_code);
     CELER_DEVICE_API_CALL(PeekAtLastError());
 #endif
@@ -204,21 +210,24 @@ void reduce_sum_async(InputIt input,
 #    endif
     auto& stream = device().stream(stream_id);
     std::size_t temp_storage_bytes = 0;
-    auto cub_error_code = cub::DeviceReduce::Sum(nullptr,
-                                                 temp_storage_bytes,
-                                                 input,
-                                                 result.get(),
-                                                 num_items,
-                                                 stream.get());
+    auto cub_error_code
+        = cub::DeviceReduce::Sum(nullptr,
+                                 temp_storage_bytes,
+                                 input,
+                                 result.get(),
+                                 num_items,
+                                 detail::StreamRuntimeAccess::get(stream));
     CELER_DISCARD(cub_error_code);
     // Freed asynchronously on the stream after the algorithm completes
-    DeviceAllocation temp_storage(temp_storage_bytes, stream_id);
-    cub_error_code = cub::DeviceReduce::Sum(temp_storage.data(),
-                                            temp_storage_bytes,
-                                            input,
-                                            result.get(),
-                                            num_items,
-                                            stream.get());
+    DeviceAllocation temp_storage(temp_storage_bytes,
+                                  device().stream_owner(stream_id));
+    cub_error_code
+        = cub::DeviceReduce::Sum(temp_storage.data(),
+                                 temp_storage_bytes,
+                                 input,
+                                 result.get(),
+                                 num_items,
+                                 detail::StreamRuntimeAccess::get(stream));
     CELER_DISCARD(cub_error_code);
     CELER_DEVICE_API_CALL(PeekAtLastError());
 #else
@@ -265,7 +274,7 @@ void exclusive_sum_async(ObserverPtr<T const, MemSpace::device> input,
                                                         input.get(),
                                                         output.get(),
                                                         num_items,
-                                                        stream.get());
+        detail::StreamRuntimeAccess::get(stream));
     CELER_DISCARD(cub_error_code);
     // Freed asynchronously on the stream after the algorithm completes
     DeviceAllocation temp_storage(temp_storage_bytes, stream_id);
@@ -274,7 +283,7 @@ void exclusive_sum_async(ObserverPtr<T const, MemSpace::device> input,
                                                    input.get(),
                                                    output.get(),
                                                    num_items,
-                                                   stream.get());
+        detail::StreamRuntimeAccess::get(stream));
     CELER_DISCARD(cub_error_code);
     CELER_DEVICE_API_CALL(PeekAtLastError());
 #endif
@@ -308,21 +317,24 @@ void inclusive_sum_async(InputIt input,
 #    endif
     auto& stream = device().stream(stream_id);
     std::size_t temp_storage_bytes = 0;
-    auto cub_error_code = cub::DeviceScan::InclusiveSum(nullptr,
-                                                        temp_storage_bytes,
-                                                        input,
-                                                        output.get(),
-                                                        num_items,
-                                                        stream.get());
+    auto cub_error_code = cub::DeviceScan::InclusiveSum(
+        nullptr,
+        temp_storage_bytes,
+        input,
+        output.get(),
+        num_items,
+        detail::StreamRuntimeAccess::get(stream));
     CELER_DISCARD(cub_error_code);
     // Freed asynchronously on the stream after the algorithm completes
-    DeviceAllocation temp_storage(temp_storage_bytes, stream_id);
-    cub_error_code = cub::DeviceScan::InclusiveSum(temp_storage.data(),
-                                                   temp_storage_bytes,
-                                                   input,
-                                                   output.get(),
-                                                   num_items,
-                                                   stream.get());
+    DeviceAllocation temp_storage(temp_storage_bytes,
+                                  device().stream_owner(stream_id));
+    cub_error_code = cub::DeviceScan::InclusiveSum(
+        temp_storage.data(),
+        temp_storage_bytes,
+        input,
+        output.get(),
+        num_items,
+        detail::StreamRuntimeAccess::get(stream));
     CELER_DISCARD(cub_error_code);
     CELER_DEVICE_API_CALL(PeekAtLastError());
 #endif

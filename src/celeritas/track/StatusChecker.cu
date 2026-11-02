@@ -10,6 +10,7 @@
 
 #include "corecel/Assert.hh"
 #include "corecel/sys/Stream.hh"
+#include "corecel/sys/StreamRuntime.hh"
 #include "celeritas/global/ActionLauncher.device.hh"
 #include "celeritas/global/CoreParams.hh"
 #include "celeritas/global/CoreState.hh"
@@ -35,8 +36,8 @@ void StatusChecker::step_impl(
     static ActionLauncher<decltype(execute_thread)> const launch_kernel(
         this->label());
     launch_kernel(state, execute_thread);
-    CELER_DEVICE_API_CALL(StreamSynchronize(
-        celeritas::device().stream(state.stream_id()).get()));
+    CELER_DEVICE_API_CALL(StreamSynchronize(detail::StreamRuntimeAccess::get(
+        celeritas::device().stream(state.stream_id()))));
 }
 
 //---------------------------------------------------------------------------//

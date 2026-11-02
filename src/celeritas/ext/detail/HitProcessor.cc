@@ -297,7 +297,8 @@ void HitProcessor::copy_pending_steps()
     // then so the destructor waits on failure.
     num_selected_.sync();
     auto states = std::exchange(pending_device_steps_, {});
-    auto& stream = celeritas::device().memcpy_stream(states.stream_id);
+    auto stream_pair = celeritas::device().stream_pair_owner(states.stream_id);
+    auto& stream = *stream_pair->memcpy;
     try
     {
         copy_compacted_steps_async(

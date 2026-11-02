@@ -6,6 +6,8 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
+#include <memory>
+
 #include "corecel/cont/Span.hh"
 #include "corecel/data/AsyncSnapshot.hh"
 #include "corecel/data/AuxInterface.hh"
@@ -23,6 +25,8 @@
 
 namespace celeritas
 {
+struct StreamPair;
+
 namespace optical
 {
 class CoreParams;
@@ -109,6 +113,8 @@ class CoreStateBase : public CoreStateInterface
 
     // Anchor vtable
     ~CoreStateBase() override;
+
+    std::shared_ptr<StreamPair const> stream_pair_;
 
   private:
     //! Counts accumulated over the event for diagnostics

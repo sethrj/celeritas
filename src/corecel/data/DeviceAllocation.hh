@@ -13,11 +13,12 @@
 #include "corecel/Macros.hh"
 #include "corecel/cont/InitializedValue.hh"
 #include "corecel/cont/Span.hh"
-#include "corecel/sys/ThreadId.hh"
 
 namespace celeritas
 {
 //---------------------------------------------------------------------------//
+class Stream;
+
 /*!
  * Allocate raw uninitialized memory.
  *
@@ -40,14 +41,14 @@ class DeviceAllocation
     // Construct in unallocated state
     DeviceAllocation() = default;
 
-    // Construct in unallocated state
-    explicit DeviceAllocation(StreamId stream);
+    // Construct in unallocated state with an optional stream owner
+    explicit DeviceAllocation(std::shared_ptr<Stream> stream);
 
     // Construct and allocate a number of bytes
     explicit DeviceAllocation(size_type num_bytes);
 
-    // Construct and allocate a number of bytes
-    DeviceAllocation(size_type num_bytes, StreamId stream);
+    // Construct and allocate a number of bytes with an optional stream owner
+    DeviceAllocation(size_type num_bytes, std::shared_ptr<Stream> stream);
 
     // Swap with another allocation
     inline void swap(DeviceAllocation& other) noexcept;
@@ -60,8 +61,11 @@ class DeviceAllocation
     //! Whether memory is allocated
     bool empty() const { return size_ == 0; }
 
-    //! Access the stream, set for asynchronous allocation/copy
-    StreamId stream_id() const { return stream_; }
+    //! Shared owner for asynchronous allocation/copy operations
+    std::shared_ptr<Stream> const& stream_owner() const
+    {
+        return data_.get_deleter().stream;
+    }
 
     //// DEVICE ACCESSORS ////
 
@@ -86,7 +90,7 @@ class DeviceAllocation
   private:
     struct DeviceFreeDeleter
     {
-        StreamId stream_;
+        std::shared_ptr<Stream> stream;
         void operator()(std::byte*) const noexcept(CELER_USE_DEVICE);
     };
     using DeviceUniquePtr = std::unique_ptr<std::byte[], DeviceFreeDeleter>;
@@ -94,7 +98,6 @@ class DeviceAllocation
     //// DATA ////
 
     InitializedValue<size_type> size_;
-    StreamId stream_;
     DeviceUniquePtr data_;
 };
 
@@ -112,7 +115,6 @@ void DeviceAllocation::swap(DeviceAllocation& other) noexcept
     using std::swap;
     swap(this->data_, other.data_);
     swap(this->size_, other.size_);
-    swap(this->stream_, other.stream_);
 }
 
 //---------------------------------------------------------------------------//

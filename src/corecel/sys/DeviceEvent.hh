@@ -6,21 +6,22 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
+#include <cstddef>
 #include <memory>
 
 #include "corecel/Assert.hh"  // IWYU pragma: keep
 #include "corecel/Macros.hh"
-#include "corecel/sys/ThreadId.hh"
-
-#if CELER_DEVICE_SOURCE
-#    include "corecel/DeviceRuntimeApi.hh"
-#endif
 
 namespace celeritas
 {
 //---------------------------------------------------------------------------//
 class Device;
 class Stream;
+
+namespace detail
+{
+class DeviceEventRuntimeAccess;
+}
 
 //---------------------------------------------------------------------------//
 /*!
@@ -61,18 +62,6 @@ class Stream;
 class DeviceEvent
 {
   public:
-#if !CELER_USE_DEVICE
-    //! Event implementation is unavailable
-    using EventT = std::nullptr_t;
-#elif !defined(CELER_DEVICE_RUNTIME_INCLUDED)
-    //! Sentinel type to indicate compilation error: include runtime downstream
-    using MissingDeviceRuntime = void;
-#else
-    //! Actual CUDA/HIP stream opaque pointer
-    using EventT = CELER_DEVICE_API_SYMBOL(Event_t);
-#endif
-
-  public:
     // Construct with a device context
     explicit DeviceEvent(Device const& d);
     // Construct a null event
@@ -82,12 +71,6 @@ class DeviceEvent
 
     // Whether the event is valid (not null or moved-from)
     inline explicit operator bool() const;
-
-#if defined(CELER_DEVICE_RUNTIME_INCLUDED) || !CELER_USE_DEVICE
-    EventT get() const;
-#else
-    MissingDeviceRuntime get() const {}
-#endif
 
     // Record this event on the stream
     void record(Stream const& s);
@@ -106,6 +89,8 @@ class DeviceEvent
     };
 
     std::unique_ptr<Impl, ImplDeleter> impl_{};
+
+    friend class detail::DeviceEventRuntimeAccess;
 };
 
 //---------------------------------------------------------------------------//

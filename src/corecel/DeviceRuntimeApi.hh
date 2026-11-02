@@ -8,6 +8,8 @@
 //---------------------------------------------------------------------------//
 #pragma once
 
+#include <cstddef>
+
 #include "corecel/Config.hh"
 
 #include "corecel/Assert.hh"
@@ -65,17 +67,14 @@
 #    define CELER_EU_PER_CU 0
 #endif
 
-/*!
- * This macro informs downstream Celeritas code (namely, Stream and
- * DeviceEvent) that it's safe to use types from the device APIs.
- */
-#define CELER_DEVICE_RUNTIME_INCLUDED 1
-
-#if defined(CELER_DEVICE_RUNTIME_NEEDED) \
-    && defined(CELER_DEVICE_RUNTIME_INCLUDE_ERROR)
-static_assert(false,
-              "A file that requires DeviceRuntimeApi.hh was included before "
-              "this: " CELER_DEVICE_RUNTIME_NEEDED);
+#if CELERITAS_USE_CUDA
+#    define CELER_STREAM_SUPPORTS_ASYNC 1
+#elif CELERITAS_USE_HIP \
+    && (HIP_VERSION_MAJOR > 5 \
+        || (HIP_VERSION_MAJOR == 5 && HIP_VERSION_MINOR >= 2))
+#    define CELER_STREAM_SUPPORTS_ASYNC 1
+#else
+#    define CELER_STREAM_SUPPORTS_ASYNC 0
 #endif
 
 /*!
