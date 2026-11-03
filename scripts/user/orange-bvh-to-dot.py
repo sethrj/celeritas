@@ -96,10 +96,16 @@ def calc_overlap(bbox_a, bbox_b):
 def dump_dot(universe_id, tree, out):
 
     def format_bbox(bbox):
-        result = ""
-        for ax, lo, hi in zip("xyz", bbox[0], bbox[1]):
-            result += f"{ax}: [{lo:.3g}, {hi:.3g}]\\l"
-        return result
+        return "".join(
+            f"{axis}: [{lo:.3g}, {hi:.3g}]\\l"
+            for axis, lo, hi in zip("xyz", bbox[0], bbox[1])
+        )
+
+    def child_node_ids(child_index):
+        child = tree[child_index]
+        if child[0] == "l":
+            return [f"n{child_index}_v{index}" for index in range(len(child[1]))]
+        return [f"n{child_index}_split"]
 
     out.write(
         dedent(f"""\
@@ -110,37 +116,40 @@ def dump_dot(universe_id, tree, out):
     )
 
     for i, node in enumerate(tree):
-        nodetype = node[0]
-        if nodetype == "i":
-            (axis, children, bboxes) = node[1:]
-            (lo_bbox, hi_bbox) = bboxes
-
+        if node[0] == "i":
+            axis, children, bboxes = node[1:]
+            lo_bbox, hi_bbox = bboxes
             overlap = calc_overlap(lo_bbox, hi_bbox)
-
-            fill = fill_node(overlap)
-
             axis_color = _AXIS_COLORS.get(axis, "black")
 
-            label = (
-                f"axis: {axis}\\l"
-                f"lo:\\l{format_bbox(lo_bbox)}"
-                f"hi:\\l{format_bbox(hi_bbox)}"
-                f"overlap: {100 * overlap:.1f}%\\l"
-            )
-
             out.write(
-                f'  n{i} [label="{label}"'
-                f' fillcolor="{fill}" color="{axis_color}" penwidth=3]\n'
+                f'  n{i}_split [label="axis: {axis}\\loverlap: '
+                f'{100 * overlap:.1f}%\\l" fillcolor="{fill_node(overlap)}" '
+                f'color="{axis_color}" penwidth=3]\n'
             )
-
-            for edge_label, c in zip(["lo", "hi"], children):
-                out.write(f'    n{i} -> n{c} [label="{edge_label}"]\n')
+            for side, bbox in zip(("lo", "hi"), bboxes):
+                out.write(
+                    f'  n{i}_{side} [label="{side} bbox:\\l{format_bbox(bbox)}" '
+                    f'fillcolor="{_FILL_COLORS["leaf"]}"]\n'
+                )
         else:
-            assert nodetype == "l"
-            vols = ", ".join("{}".format(v) for v in node[1])
-            out.write(
-                f'  n{i} [label="vols=[{vols}]" fillcolor="{_FILL_COLORS["leaf"]}"]\n'
-            )
+            assert node[0] == "l"
+            for primitive_index, volume_id in enumerate(node[1]):
+                out.write(
+                    f'  n{i}_v{primitive_index} [label="vol={volume_id}" '
+                    f'fillcolor="{_FILL_COLORS["leaf"]}"]\n'
+                )
+
+    for i, node in enumerate(tree):
+        if node[0] != "i":
+            continue
+        _, children, _ = node[1:]
+        for side, child_index in zip(("lo", "hi"), children):
+            bbox_node_id = f"n{i}_{side}"
+            out.write(f'  n{i}_split -> {bbox_node_id} [label="{side}"]\n')
+            for child_node_id in child_node_ids(child_index):
+                out.write(f"  {bbox_node_id} -> {child_node_id}\n")
+
     out.write("}\n")
 
 
