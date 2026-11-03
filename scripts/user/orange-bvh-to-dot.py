@@ -173,11 +173,15 @@ def run(args):
 
     if "internal" in data:
         print("Assuming app output was given rather than ORANGE output")
-        orange = data["internal"]["orange"]
+        bvh_data = data["internal"]["orange"]["bvh_metadata"]
+    elif "orange_stats" in data:
+        print("Assuming orange stats output")
+        bvh_data = data["orange_stats"]["bvh_metadata"]
+    elif "structure" in data:
+        print("Assuming raw bvh output output")
+        bvh_data = data
     else:
-        orange = data["orange_stats"]
-
-    bvh_data = orange["bvh_metadata"]
+        raise RuntimeError("Unknown format for input JSON file")
 
     if args.universe:
         uids = args.universe
