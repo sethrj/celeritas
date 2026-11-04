@@ -6,20 +6,25 @@ Convert BVH structure metadata within a JSON file to GraphViz .dot files.
 
 Behavior:
 
-1. ``-u/--universe``: write ``bvh_<uid>.dot`` for selected universe IDs,
-2. ``-a/--all``: write ``bvh_<uid>.dot`` for all universes,
+1. ``-u/--universe``: write a DOT file for selected universe IDs,
+2. ``-a/--all``: write a DOT file for all universes,
 3. Neither ``-u/--universe`` nor ``-a/--all``: print univers-wise diagnostics
    only.
 
-In cases 1 and 2 the output directory can be specified with ``-o/--output``.
+For a single universe, ``-o/--output`` is the output filename (with ``.dot``
+added if needed). For multiple universes, it is a filename prefix, or a
+directory if it ends with ``/``.
 
 .. example::
 
-    # Write selected universes
-    ./orange-bvh-to-dot.py out.json -u 0 3
+    # Write one universe
+    ./orange-bvh-to-dot.py out.json -u 0 -o universe.dot
 
-    # Write all universes
-    ./orange-bvh-to-dot.py out.json --all
+    # Write selected universes using a filename prefix
+    ./orange-bvh-to-dot.py out.json -u 0 3 -o bvh_
+
+    # Write all universes to a directory
+    ./orange-bvh-to-dot.py out.json --all -o bvh/
 
     # Print diagnostics only
     ./orange-bvh-to-dot.py out.json
@@ -191,8 +196,24 @@ def run(args):
         write_diagnostic(sys.stdout, bvh_data)
         return
 
+    def make_output_path():
+        if args.output is None:
+            return lambda uid: Path.cwd() / f"bvh_{uid}.dot"
+        elif len(uids) == 1:
+            output_name = str(args.output)
+            if output_name.endswith("/"):
+                raise ValueError("Output must be a filename for a single universe")
+            if not output_name.endswith(".dot"):
+                output_name += ".dot"
+            return lambda uid: Path(output_name)
+        elif str(args.output).endswith("/"):
+            return lambda uid: Path(args.output) / f"{uid}.dot"
+        else:
+            return lambda uid: Path(f"{args.output}{uid}.dot")
+
+    output_path = make_output_path()
     for uid in uids:
-        with open(Path(args.output) / "bvh_{}.dot".format(uid), "w") as out:
+        with open(output_path(uid), "w") as out:
             dump_dot(uid, bvh_data["structure"][uid]["tree"], out)
 
 
@@ -223,8 +244,8 @@ def main():
     parser.add_argument(
         "-o",
         "--output",
-        default=Path.cwd(),
-        help="Output directory (default: current directory)",
+        default=None,
+        help="Output filename (one universe), prefix (multiple), or directory ending in / (default: ./bvh_<uid>.dot)",
     )
 
     run(parser.parse_args())
