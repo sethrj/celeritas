@@ -4,7 +4,7 @@
 //---------------------------------------------------------------------------//
 //! \file corecel/sys/detail/AsyncMemoryResource.cu
 //---------------------------------------------------------------------------//
-#include "AsyncMemoryResource.hh"
+#include "AsyncMemoryResource.device.hh"
 
 #include "corecel/io/Logger.hh"
 

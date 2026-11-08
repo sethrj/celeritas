@@ -18,7 +18,7 @@
 #include "StreamRuntime.hh"
 #include "ThreadId.hh"
 
-#include "detail/AsyncMemoryResource.hh"  // IWYU pragma: keep
+#include "detail/AsyncMemoryResource.device.hh"  // IWYU pragma: keep
 
 namespace celeritas
 {

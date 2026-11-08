@@ -2,15 +2,13 @@
 // Copyright Celeritas contributors: see top-level COPYRIGHT file for details
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 //---------------------------------------------------------------------------//
-//! \file corecel/sys/detail/AsyncMemoryResource.hh
+//! \file corecel/sys/detail/AsyncMemoryResource.device.hh
 //---------------------------------------------------------------------------//
 #pragma once
 
 #include "corecel/Macros.hh"
 
-#if CELER_USE_DEVICE
-#    include <thrust/mr/memory_resource.h>
-#endif
+#include <thrust/mr/memory_resource.h>
 #include <cstdlib>
 
 #include "corecel/DeviceRuntimeApi.hh"
@@ -21,18 +19,13 @@ namespace detail
 {
 //---------------------------------------------------------------------------//
 //! CUDA/HIP opaque stream handle
-#if CELER_USE_DEVICE
 using DeviceStream_t = CELER_DEVICE_API_SYMBOL(Stream_t);
-#else
-using DeviceStream_t = std::nullptr_t;
-#endif
 
 //! Allocate memory asynchronously if supported
 void* malloc_async(std::size_t bytes, DeviceStream_t s);
 //! Free memory asynchronously if supported
 void free_async(void* ptr, DeviceStream_t s);
 
-#if CELER_USE_DEVICE || defined(__DOXYGEN__)
 //---------------------------------------------------------------------------//
 /*!
  * Thrust async memory resource associated with a CUDA/HIP stream.
@@ -61,18 +54,6 @@ class AsyncMemoryResource final : public thrust::mr::memory_resource<void*>
   private:
     StreamT stream_{nullptr};
 };
-#else
-class AsyncMemoryResource;
-inline void* malloc_async(std::size_t, DeviceStream_t)
-{
-    CELER_ASSERT_UNREACHABLE();
-}
-inline void free_async(void*, DeviceStream_t)
-{
-    CELER_ASSERT_UNREACHABLE();
-}
-
-#endif
 
 //---------------------------------------------------------------------------//
 }  // namespace detail
