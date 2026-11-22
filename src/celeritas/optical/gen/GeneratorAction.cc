@@ -94,7 +94,8 @@ void GeneratorAction::insert(CoreStateBase& state, SpanConstData data) const
     for (auto const& d : data)
     {
         CELER_VALIDATE(d, << "invalid optical step distribution " << d);
-        if (d.points[StepPoint::pre].pos == d.points[StepPoint::post].pos)
+        if (d.type == GeneratorType::cherenkov
+            && d.points[StepPoint::pre].pos == d.points[StepPoint::post].pos)
         {
             // TODO: if we buffer this on the host, it might be better to fix
             // here rather than for every track in CherenkovOffload (see
