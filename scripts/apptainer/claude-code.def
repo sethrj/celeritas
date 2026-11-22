@@ -1,0 +1,15 @@
+Bootstrap: localimage
+From: base.sif
+
+%environment
+    # /tmp is bind-mounted by the launchers/Makefile from node-local scratch
+    # (/scratch/$USER/agent-tmp, or the persistent home as a fallback), so
+    # point Claude Code's scratch files and the standard TMPDIR at it.
+    export CLAUDE_CODE_TMPDIR=/tmp
+    export TMPDIR=/tmp
+
+%runscript
+    if [ -f "$HOME/.profile" ]; then
+        . "$HOME/.profile"
+    fi
+    exec claude "$@"

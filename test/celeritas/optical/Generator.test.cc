@@ -232,6 +232,34 @@ TEST_F(LArSphereGeneratorTest, direct)
     EXPECT_EQ(128, gen.num_generated);
 }
 
+// Photons that start in a volume without an optical material (here, the
+// vacuum world) must be flagged as errored rather than crashing
+TEST_F(LArSphereGeneratorTest, direct_nonoptical_volume)
+{
+    osi_.problem.generator = inp::OpticalDirectGenerator{};
+    osi_.problem.capacity.tracks = 32;
+
+    auto make_init = [](Real3 const& pos) {
+        return optical::TrackInitializer{units::MevEnergy{1e-5},
+                                         pos,
+                                         Real3{1, 0, 0},
+                                         Real3{0, 1, 0},
+                                         0,
+                                         {},  // primary
+                                         ImplVolumeId{0}};
+    };
+    std::vector<optical::TrackInitializer> inits(8, make_init({0, 0, 0}));
+    inits[3] = make_init({500, 0, 0});  // world: vacuum, no optical material
+
+    optical::Runner run(std::move(osi_));
+    run.insert(make_span(inits));
+    auto result = run();
+
+    EXPECT_EQ(1, result.counters.num_errored);
+    ASSERT_EQ(1, result.counters.generators.size());
+    EXPECT_EQ(8, result.counters.generators.front().num_generated);
+}
+
 TEST_F(LArSphereGeneratorTest, offload)
 {
     // Generate Cherenkov and scintillation photons

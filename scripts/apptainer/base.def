@@ -1,0 +1,79 @@
+Bootstrap: docker
+From: ubuntu:24.04
+
+%setup
+    mkdir -p "$APPTAINER_ROOTFS/slurm-install"
+
+%post
+    cat >/etc/apt/apt.conf.d/80proxy <<'EOF'
+Acquire::http::Proxy "http://proxy.ftpn.ornl.gov:3128";
+EOF
+
+    apt-get update
+    apt-get install -y software-properties-common
+    add-apt-repository -y universe
+    apt-get update
+
+    # No official Docker Hub "node" image targets Ubuntu, so Node.js is
+    # installed from NodeSource instead of coming from the base image.
+    apt-get install -y ca-certificates curl gnupg
+    https_proxy=http://proxy.ftpn.ornl.gov:3128 HTTPS_PROXY=http://proxy.ftpn.ornl.gov:3128 \
+        curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+
+    apt-get install -y \
+        bubblewrap \
+        build-essential \
+        ca-certificates \
+        fd-find \
+        git \
+        lmod \
+        nodejs \
+        python3 \
+        python3-pip \
+        ripgrep \
+        socat
+
+    # Lmod only wires the `module` command into login shells
+    # (/etc/profile.d/lmod.sh). Claude Code's Bash tool runs each command as
+    # a fresh non-interactive `bash -c`, which never sources profile.d, so
+    # BASH_ENV (honored by bash specifically for non-interactive shells) is
+    # set in %environment below to source this instead.
+    cat >/etc/lmod-bashenv.sh <<'EOF'
+if [ -z "${LMOD_CMD:-}" ] && [ -f /usr/share/lmod/lmod/init/bash ]; then
+    . /usr/share/lmod/lmod/init/bash
+fi
+EOF
+
+    rm -f /etc/apt/apt.conf.d/80proxy
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+
+%post
+    cat >/etc/apt/apt.conf.d/80proxy <<'EOF'
+Acquire::http::Proxy "http://proxy.ftpn.ornl.gov:3128";
+EOF
+
+    apt-get update
+    apt-get install -y \
+        munge \
+        /slurm-install/slurm-smd_*.deb \
+        /slurm-install/slurm-smd-client_*.deb \
+        /slurm-install/slurm-smd-libpmi0_*.deb \
+        /slurm-install/slurm-smd-libpmi2-0_*.deb
+
+    # slurm.conf's SlurmUser=slurm must resolve locally or client commands
+    # (sinfo, squeue, ...) abort config parsing entirely, even though no
+    # Slurm daemon runs in this client-only container. The exact UID
+    # doesn't need to match the cluster's real slurm UID: job auth goes
+    # through munge using the submitting user's own UID, not SlurmUser's.
+    adduser --system --group --no-create-home --shell /usr/sbin/nologin slurm
+
+    rm -f /etc/apt/apt.conf.d/80proxy
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+
+%environment
+    export HOME=/home/claude
+    export PATH=/home/claude/.local/bin:/usr/local/bin:$PATH
+    export MODULEPATH=/auto/software/swtree/ubuntu24.04/x86_64/modulefiles
+    export BASH_ENV=/etc/lmod-bashenv.sh
