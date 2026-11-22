@@ -319,6 +319,36 @@ TEST_F(LArSphereGeneratorTest, offload)
     EXPECT_VEC_EQ(expected_labels, labels);
 }
 
+// Scintillation with identical pre- and post-step times (delta distribution)
+// is valid: all photons are emitted at the pre-step time
+TEST_F(LArSphereGeneratorTest, offload_scint_delta_time)
+{
+    osi_.problem.generator = inp::OpticalOffloadGenerator{};
+    osi_.geant_setup.scintillation = ScintillationPhysicsOptions{};
+    osi_.problem.capacity.generators = 64;
+
+    auto host_data
+        = this->make_distributions(*osi_.problem.capacity.generators);
+    for (auto& d : host_data)
+    {
+        d.type = GeneratorType::scintillation;
+        d.points[StepPoint::pre].speed = units::LightSpeed{0};
+        d.points[StepPoint::post].speed = units::LightSpeed{0};
+        d.points[StepPoint::post].time = d.points[StepPoint::pre].time;
+        EXPECT_TRUE(d);
+    }
+
+    optical::Runner run(std::move(osi_));
+    run.insert(make_span(host_data));
+    auto result = run();
+
+    ASSERT_EQ(1, result.counters.generators.size());
+    auto const& gen = result.counters.generators.front();
+    EXPECT_GT(gen.num_generated, 0);
+    EXPECT_EQ(gen.num_generated, gen.num_pending);
+    EXPECT_EQ(0, result.counters.num_errored);
+}
+
 TEST_F(DuneGeneratorTest, offload)
 {
     // Generate Cherenkov and scintillation photons

@@ -6,7 +6,6 @@
 //---------------------------------------------------------------------------//
 #include "LarStandaloneRunner.hh"
 
-#include <cmath>
 #include <limits>
 #include <memory>
 #include <utility>
@@ -215,16 +214,6 @@ auto LarStandaloneRunner::operator()(VecSED const& sim_energy_deposits)
             = convert_from_larsoft<LarsoftTime>(edepi.EndT());
         data.points[StepPoint::post].pos = static_array_cast<real_type>(
             convert_from_larsoft<LarsoftLen>(edepi.End()));
-        if (data.points[StepPoint::post].time
-            <= data.points[StepPoint::pre].time)
-        {
-            // In single precision, very short steps can have identical
-            // start and end times after conversion; scintillation sampling
-            // requires the post-step time to be strictly later
-            data.points[StepPoint::post].time
-                = std::nextafter(data.points[StepPoint::pre].time,
-                                 std::numeric_limits<real_type>::infinity());
-        }
         data.primary = id_cast<PrimaryId>(step_md_.size());
 
         auto insert_component
